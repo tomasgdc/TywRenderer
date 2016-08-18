@@ -30,7 +30,7 @@ Shader - [Normal Mapping Shader](Assets/Shaders/NormalMapping)
 <img src="ScreenShots/StaticModel.png" height="96px" align="right">
 Shader - [Static Model Shader](Assets/Shaders/StaticModel)
 There are issues with normal mapping. Shader is not complete.
-Using TBN Matrix convert light vector and light direction to tangent space.
+Using TBN Matrix convert view vector and light vector to tangent space. Doing this results in black model.
 
 
 ## [Skeletal Animation](Projects/SkeletalAnimation)
