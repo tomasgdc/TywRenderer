@@ -12,8 +12,8 @@ Run .bat file which will build vs2015 solution
 
 
 #Projects
-- [Triangle](Projects/Triangle)
-- [Texture](Projects/Texture)
-- [Normal Mapping](Projects/NormalMapping)
-- [Static Model](Projects/StaticModel)
-- [Skeletal Animation](Projects/SkeletalAnimation)
+- [Triangle](Projects/Triangle) | [Triangle Shader]
+- [Texture](Projects/Texture) | [Texture Shader]
+- [Normal Mapping](Projects/NormalMapping) | [Normal Mapping Shader]
+- [Static Model](Projects/StaticModel) | [Static Model Shader]
+- [Skeletal Animation](Projects/SkeletalAnimation) | [Skeletal Animation Shader]
