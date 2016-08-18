@@ -1,0 +1,80 @@
+# Blender MTL File: 'None'
+# Material Count: 6
+
+newmtl Arm
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Bump nanosuit/arm_showroom_ddn_bc5.KTX
+map_Kd 	 nanosuit/arm_dif_bc2.KTX
+map_Ks 	 nanosuit/arm_showroom_spec_bc4.KTX
+
+
+newmtl Body
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Bump nanosuit/body_showroom_ddn_bc5.KTX
+map_Kd 	 nanosuit/body_dif_bc2.KTX
+map_Ks   nanosuit/body_showroom_spec_bc4.KTX
+
+newmtl Glass
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Bump nanosuit/glass_ddn_bc5.KTX
+map_Kd   nanosuit/glass_dif_bc2.KTX
+
+newmtl Hand
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Bump nanosuit/hand_showroom_ddn_bc5.KTX
+map_Kd 	 nanosuit/hand_dif_bc2.KTX
+map_Ks 	 nanosuit/hand_showroom_spec_bc4.KTX
+
+newmtl Helmet
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Bump nanosuit/helmet_showroom_ddn_bc5.KTX
+map_Kd 	 nanosuit/helmet_dif_bc2.KTX
+map_Ks 	 nanosuit/helmet_showroom_spec_bc4.KTX
+
+newmtl Leg
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Bump nanosuit/leg_showroom_ddn_bc5.KTX
+map_Kd   nanosuit/leg_dif_bc2.KTX
+map_Ks   nanosuit/leg_showroom_spec_bc4.KTX

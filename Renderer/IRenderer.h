@@ -1,0 +1,29 @@
+#pragma once
+class TYWRENDERER_API IRenderState
+{
+public:
+	virtual std::string VToString() = 0;
+};
+
+
+
+class TYWRENDERER_API IRenderer
+{
+public:
+	virtual ~IRenderer(){}
+
+	virtual bool VInitRenderer(uint32_t height, uint32_t widht, bool isFullscreen, LRESULT(CALLBACK MainWindowProc)(HWND, UINT, WPARAM, LPARAM)) = 0;
+	virtual void VSetBackgroundColor(BYTE bgA, BYTE bgR, BYTE bgG, BYTE bgB) = 0;
+	virtual void VWindowResize(uint32_t iHeight, uint32_t iWidth) = 0;
+	virtual HRESULT VOnRestore() = 0;
+	virtual void VShutdown() = 0;
+	virtual bool VPreRender() = 0;
+	virtual bool VPostRender() = 0;
+	virtual std::shared_ptr<IRenderState> VPrepareAlphaPass() = 0;
+	virtual std::shared_ptr<IRenderState> VPrepareSkyBoxPass() = 0;
+	
+
+	virtual void StartFrame() = 0;
+	virtual void EndFrame(uint64_t* gpuMicroSec) = 0;
+};
+
