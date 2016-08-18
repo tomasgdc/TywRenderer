@@ -12,7 +12,8 @@ Run .bat file which will build vs2015 solution
 
 
 #Projects
-## [Triangle](Projects/Triangle) | [Triangle Shader](Assets/Shaders/Triangle)
+## [Triangle](Projects/Triangle)
+Shader - [Triangle Shader](Assets/Shaders/Triangle)
 <img src="ScreenShots/Triangle.png" height="96px" align="right">
 
 ## [Texture](Projects/Texture) | [Texture Shader](Assets/Shaders/Texture)
