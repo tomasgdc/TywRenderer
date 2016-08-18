@@ -12,7 +12,7 @@ Run .bat file which will build vs2015 solution
 
 
 #Projects
-- [Triangle](Projects/Triangle) | [Triangle Shader]((Assets/Shaders/Triangle)
+- [Triangle](Projects/Triangle) | [Triangle Shader](Assets/Shaders/Triangle)
 - [Texture](Projects/Texture) | [Texture Shader](Assets/Shaders/Texture)
 - [Normal Mapping](Projects/NormalMapping) | [Normal Mapping Shader](Assets/Shaders/NormalMapping)
 - [Static Model](Projects/StaticModel) | [Static Model Shader](Assets/Shaders/StaticModel)
