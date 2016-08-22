@@ -21,18 +21,23 @@ Shader - [Triangle Shader](Assets/Shaders/Triangle)
 <img src="ScreenShots/Texture.png" height="96px" align="right">
 Shader - [Texture Shader](Assets/Shaders/Texture)
 
+## [Freetype font rendering](Projects/FontRendering)
+Freetpye font rendering. Not finnished
 
 ## [Normal Mapping](Projects/NormalMapping)
 <img src="ScreenShots/NormallMapping.png" height="96px" align="right">
 Shader - [Normal Mapping Shader](Assets/Shaders/NormalMapping)
+
 
 ## [Static Model](Projects/StaticModel)
 <img src="ScreenShots/StaticModel.png" height="96px" align="right">
 Shader - [Static Model Shader](Assets/Shaders/StaticModel)
 There are issues with normal mapping. Shader is not complete.
 Using TBN Matrix convert view vector and light vector to tangent space. Doing this results in black model.
+Using my own wavefront parser.
 
 
 ## [Skeletal Animation](Projects/SkeletalAnimation)
 Shader - [Static Model Shader](Assets/Shaders/StaticModel)
 Project is not finnished
+Using my own MD5 parser.
