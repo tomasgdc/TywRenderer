@@ -508,11 +508,11 @@ VkShaderModule VkTools::LoadShader(AAssetManager* assetManager, const char *file
 	return shaderModule;
 }
 #else
-VkShaderModule VkTools::LoadShader(const char *fileName, VkDevice device, VkShaderStageFlagBits stage)
+VkShaderModule VkTools::LoadShader(const std::string& fileName, VkDevice device, VkShaderStageFlagBits stage)
 {
 	size_t size;
 
-	FILE *fp = fopen(fileName, "rb");
+	FILE *fp = fopen(fileName.c_str(), "rb");
 	assert(fp);
 
 	fseek(fp, 0L, SEEK_END);

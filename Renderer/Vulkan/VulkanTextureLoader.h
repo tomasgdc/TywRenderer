@@ -53,6 +53,10 @@ namespace VkTools
 		// Load a 2D texture
 		bool LoadTexture(const std::string& filename, VkFormat format, VulkanTexture *texture, bool forceLinear, VkImageUsageFlags imageUsageFlags);
 
+		//Generates texture from given data
+		bool GenerateTexture(void * pImageData, VulkanTexture *texture,  VkFormat format, uint32_t size, uint32_t width, uint32_t height, uint32_t miplevels, bool bForceLinear, VkImageUsageFlags imageUsageFlags);
+
+
 		// Clean up vulkan resources used by a texture object
 		void DestroyTexture(VulkanTexture& texture);
 

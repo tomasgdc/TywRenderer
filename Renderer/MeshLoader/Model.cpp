@@ -107,37 +107,37 @@ bool RenderModelStatic::ConvertOBJToModelSurfaces(const struct objModel_a* obj) 
 		if (strlen(material->map_bump) != 0) {
 			//globalImage->GetImage(material->map_bump, VkFormat::VK_FORMAT_UNDEFINED);
 			
-			mat[matNumber].setTexture(globalImage->GetImage(material->map_bump, VkFormat::VK_FORMAT_UNDEFINED), false);
+			mat[matNumber].setTexture(globalImage->GetImage(material->map_bump, "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED), false);
 			matNumber++;
 		}
 		if (strlen(material->map_d) != 0) {
 			//globalImage->GetImage(material->map_d, VkFormat::VK_FORMAT_UNDEFINED);
 
-			mat[matNumber].setTexture(globalImage->GetImage(material->map_d, VkFormat::VK_FORMAT_UNDEFINED), false);
+			mat[matNumber].setTexture(globalImage->GetImage(material->map_d, "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED), false);
 			matNumber++;
 		}
 		if (strlen(material->map_Ka) != 0) {
 			//globalImage->GetImage(material->map_Ka, VkFormat::VK_FORMAT_UNDEFINED);
 
-			mat[matNumber].setTexture(globalImage->GetImage(material->map_Ka, VkFormat::VK_FORMAT_UNDEFINED), false);
+			mat[matNumber].setTexture(globalImage->GetImage(material->map_Ka, "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED), false);
 			matNumber++;
 		}
 		if (strlen(material->map_Kd) != 0) {
 			//globalImage->GetImage(material->map_Kd, VkFormat::VK_FORMAT_UNDEFINED);
 
-			mat[matNumber].setTexture(globalImage->GetImage(material->map_Kd, VkFormat::VK_FORMAT_UNDEFINED), false);
+			mat[matNumber].setTexture(globalImage->GetImage(material->map_Kd, "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED), false);
 			matNumber++;
 		}
 		if (strlen(material->map_Ks) != 0) {
 			//globalImage->GetImage(material->map_Ks, VkFormat::VK_FORMAT_UNDEFINED);
 
-			mat[matNumber].setTexture(globalImage->GetImage(material->map_Ks, VkFormat::VK_FORMAT_UNDEFINED), false);
+			mat[matNumber].setTexture(globalImage->GetImage(material->map_Ks, "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED), false);
 			matNumber++;
 		}
 		if (strlen(material->map_Ns) != 0) {
 			//globalImage->GetImage(material->map_Ns, VkFormat::VK_FORMAT_UNDEFINED);
 
-			mat[matNumber].setTexture(globalImage->GetImage(material->map_Ns, VkFormat::VK_FORMAT_UNDEFINED), false);
+			mat[matNumber].setTexture(globalImage->GetImage(material->map_Ns, "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED), false);
 			matNumber++;
 		}
 		m_material.insert(std::pair<std::string, Material*>(material->name, mat));

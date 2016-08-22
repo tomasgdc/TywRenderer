@@ -16,7 +16,7 @@ struct TYWRENDERER_API srfTriangles_t
 	drawVert*			verts;			//vert, normal, tex
 
 	int					numIndexes;		//number of indixes
-	uint16_t*			indexes;		//vertex indices
+	uint32_t*			indexes;		//vertex indices
 };
 
 struct TYWRENDERER_API modelSurface_t 
@@ -44,9 +44,9 @@ struct TYWRENDERER_API deformInfo_t
 	drawVert *			verts;
 
 	int					numIndexes;
-	uint16_t *			indexes;
+	uint32_t *			indexes;
 
-	uint16_t *			silIndexes;				// indexes changed to be the first vertex with same XYZ, ignoring normal and texcoords
+	uint32_t*			silIndexes;				// indexes changed to be the first vertex with same XYZ, ignoring normal and texcoords
 
 	int					numMirroredVerts;		// this many verts at the end of the vert list are tangent mirrors
 	int *				mirroredVerts;			// tri->mirroredVerts[0] is the mirror of tri->numVerts - tri->numMirroredVerts + 0

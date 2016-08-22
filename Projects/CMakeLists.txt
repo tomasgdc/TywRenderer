@@ -8,4 +8,5 @@ ADD_SUBDIRECTORY(Texture)
 ADD_SUBDIRECTORY(StaticModel)
 ADD_SUBDIRECTORY(NormalMapping)
 ADD_SUBDIRECTORY(SkeletalAnimation)
+ADD_SUBDIRECTORY(FontRendering)
 

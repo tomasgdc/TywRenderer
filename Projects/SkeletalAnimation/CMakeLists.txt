@@ -15,8 +15,8 @@ SOURCE_GROUP("Source Files" FILES ${SOURCES})
 
 
 SET(RESOURCES
-	"${CMAKE_SOURCE_DIR}/Assets/Shaders/StaticModel/triangle.frag"
-	"${CMAKE_SOURCE_DIR}/Assets/Shaders/StaticModel/triangle.vert"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SkeletalAnimation/cpuAnimation.frag"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SkeletalAnimation/cpuAnimation.vert"
 )
 SOURCE_GROUP("Shader Files" FILES ${RESOURCES})
 

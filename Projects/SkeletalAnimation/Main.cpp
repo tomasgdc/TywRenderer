@@ -13,6 +13,7 @@
 #include <Renderer\MeshLoader\Model_local.h>
 #include <Renderer\MeshLoader\ImageManager.h>
 #include <Renderer\MeshLoader\Material.h>
+#include <Renderer\AnimationManager\MD5Anim\MD5Anim.h>
 
 //Vulkan Includes
 #include <Renderer\Vulkan\VkBufferObject.h>
@@ -34,6 +35,9 @@ bool		g_bPrepared = false;
 glm::vec3	g_Rotation = glm::vec3();
 glm::vec3	g_CameraPos = glm::vec3();
 glm::vec2	g_MousePos;
+
+//timer
+
 
 
 // Use to adjust mouse rotation speed
@@ -96,10 +100,20 @@ class Renderer final: public VKRenderer
 	uint32_t numUvs = 0;
 	uint32_t numNormals = 0;
 
+	//Animation
+	float		m_fDeltaTime;
+	frameBlend_t frame;
+
 	std::vector<VkBufferObject_s> listLocalBuffers;
+	std::vector<VkBufferObject_s> listLocalIndexBuffers;
+
+
 	std::vector<VkDescriptorSet>  listDescriptros;
 	std::vector<uint32_t>		   meshSize;
 
+	//Model loading
+	RenderModelMD5 md5Model;
+	MD5Anim		   md5Anim;
 public:
 	Renderer() {}
 	~Renderer(){}
@@ -125,6 +139,7 @@ public:
 
 	void LoadAssets() override;
 
+	void StartFrame() override;
 
 	void ChangeLodBias(float delta);
 };
@@ -142,6 +157,92 @@ void Renderer::ChangeLodBias(float delta)
 	}
 
 	UpdateUniformBuffers();
+}
+
+
+void Renderer::StartFrame()
+{
+	/*
+		Update skeleton start
+		Not working yet due to mappping. Need to create HOST_VISIBLE instead of Local
+	*/
+
+	/*
+	md5Anim.ConvertDeltaTimeToFrame(m_fDeltaTime, frame);
+	md5Anim.GetInterpolatedFrame(frame);
+
+	std::vector<JointQuat> jointFrame = md5Anim.GetSkeleton().joints;
+	for (int i = 0; i < md5Model.meshes.size(); i++)
+	{
+		MD5Mesh* m = &md5Model.meshes[i];
+	//	m->UpdateMesh(m, jointFrame, nullptr, m->deformInfo);
+		deformInfo_t* vert = m->deformInfo;
+		drawVert* vertD = vert->verts;
+
+
+		// Map uniform buffer and update it
+		void *mapped;
+		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, listLocalBuffers[i].memory, 0, sizeof(vertD[0])* vert->numSourceVerts, 0, &mapped));
+		memcpy(mapped, &vertD, sizeof(vertD[0])* vert->numSourceVerts);
+		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, listLocalBuffers[i].memory);
+	}
+	*/
+
+	/*
+		Update skeleton end
+	*/
+
+
+
+	{
+		// Get next image in the swap chain (back/front buffer)
+		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.GetNextImage(Semaphores.presentComplete, &m_pWRenderer->m_currentBuffer));
+
+		// Submit the post present image barrier to transform the image back to a color attachment
+		// that can be used to write to by our render pass
+		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_pWRenderer->m_PostPresentCmdBuffers[m_pWRenderer->m_currentBuffer];
+
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+		// Make sure that the image barrier command submitted to the queue 
+		// has finished executing
+		VK_CHECK_RESULT(vkQueueWaitIdle(m_pWRenderer->m_Queue));
+	}
+
+
+
+	{
+		// The submit infor strcuture contains a list of
+		// command buffers and semaphores to be submitted to a queue
+		// If you want to submit multiple command buffers, pass an array
+		VkPipelineStageFlags pipelineStages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
+		submitInfo.pWaitDstStageMask = &pipelineStages;
+		// The wait semaphore ensures that the image is presented 
+		// before we start submitting command buffers agein
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &Semaphores.presentComplete;
+		// Submit the currently active command buffer
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_pWRenderer->m_DrawCmdBuffers[m_pWRenderer->m_currentBuffer];
+		// The signal semaphore is used during queue presentation
+		// to ensure that the image is not rendered before all
+		// commands have been submitted
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
+
+		// Submit to the graphics queue
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+		// Present the current buffer to the swap chain
+		// We pass the signal semaphore from the submit info
+		// to ensure that the image is not rendered until
+		// all commands have been submitted
+		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.QueuePresent(m_pWRenderer->m_Queue, m_pWRenderer->m_currentBuffer, Semaphores.renderComplete));
+	}
+
 }
 
 
@@ -216,8 +317,11 @@ void Renderer::BuildCommandBuffers()
 			//Bind Buffer
 			vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &listLocalBuffers[j].buffer, offsets);
 
+			//Bind mesh index buffers
+			vkCmdBindIndexBuffer(m_pWRenderer->m_DrawCmdBuffers[i], listLocalIndexBuffers[i].buffer, 0, VK_INDEX_TYPE_UINT32);
+
 			//Draw
-			vkCmdDraw(m_pWRenderer->m_DrawCmdBuffers[i], meshSize[j], 1, 0, 0);
+			vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], meshSize[i], 1, 0, 0, 0);
 		}
 
 
@@ -260,7 +364,7 @@ void Renderer::UpdateUniformBuffers()
 
 	m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 5.0f, g_zoom));
 
-	m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 5.0f));
+	m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 50.0f, -200.0f));
 	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
 	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
 	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -322,28 +426,45 @@ void Renderer::PrepareUniformBuffers()
 
 void Renderer::PrepareVertices(bool useStagingBuffers)
 {
-	RenderModelAssimp assimpModel;
-	assimpModel.InitFromFile("Geometry/cyberwarrior/warrior.fbx", GetAssetPath());
+	
+	md5Model.InitFromFile("Geometry/hellknight/hellknight.md5mesh", GetAssetPath());
+	md5Anim.LoadAnim("Animation/hellknight/idle2.md5anim", GetAssetPath());
 
 
 	
-	std::vector<VkBufferObject_s> listStagingBuffers;
+	std::vector<VkBufferObject_s> listStagingBuffersVerts;
+	std::vector<VkBufferObject_s> listStagingBuffersIndex;
 
-	listLocalBuffers.resize(assimpModel.m_Entries.size());
-	listStagingBuffers.resize(assimpModel.m_Entries.size());
-	listDescriptros.resize(assimpModel.m_Entries.size());
+	//Verts
+	listStagingBuffersVerts.resize(md5Model.meshes.size());
+	listStagingBuffersVerts.resize(md5Model.meshes.size());
+	listStagingBuffersVerts.resize(md5Model.meshes.size());
 
+
+	//Indexes
+	listStagingBuffersIndex.resize(md5Model.meshes.size());
+	listStagingBuffersIndex.resize(md5Model.meshes.size());
+	listStagingBuffersIndex.resize(md5Model.meshes.size());
+
+
+	listLocalBuffers.resize(md5Model.meshes.size());
+	listLocalIndexBuffers.resize(md5Model.meshes.size());
+	listDescriptros.resize(md5Model.meshes.size());
+
+	listDescriptros.resize(md5Model.meshes.size());
 	m_pWRenderer->m_DescriptorPool = VK_NULL_HANDLE;
 	SetupDescriptorPool();
 	VkDescriptorSetAllocateInfo allocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &descriptorSetLayout, 1);
 
-	for (int i = 0; i < assimpModel.m_Entries.size(); i++)
+	for (int i = 0; i < md5Model.meshes.size(); i++)
 	{
 		//Get triangles
-		srfTriangles_t* tr = assimpModel.m_Entries[i].geometry;
+		deformInfo_t* tr = md5Model.meshes[i].deformInfo;
 
 		
-		VkTools::VulkanTexture* vkDiffuseTexture = assimpModel.m_Entries[i].material[0].getTexture();
+		VkTools::VulkanTexture* vkDiffuseTexture = md5Model.meshes[i].shader->getTexture();
+		uint32_t numVerts = md5Model.meshes[i].verts.size();
+
 		//VkTools::VulkanTexture* vkDiffuseTexture = md5Model.surfaces[i].material[1].getTexture();
 
 
@@ -379,24 +500,46 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 
 
 
-		//Create stagging buffer first
+		//Create stagign buffer
+		//Verts
 		VkBufferObject::CreateBuffer(
 			m_pWRenderer->m_SwapChain,
 			m_pWRenderer->m_DeviceMemoryProperties,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-			static_cast<uint32_t>(sizeof(drawVert) * tr->numVerts),
-			listStagingBuffers[i],
+			static_cast<uint32_t>(sizeof(drawVert) * numVerts),
+			listStagingBuffersVerts[i],
 			tr->verts);
 
+		//Index
+		VkBufferObject::CreateBuffer(
+			m_pWRenderer->m_SwapChain,
+			m_pWRenderer->m_DeviceMemoryProperties,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			static_cast<uint32_t>(sizeof(uint32_t) * tr->numIndexes),
+			listStagingBuffersIndex[i],
+			tr->indexes);
+
+
 		//Create Local Copy
+		//Verts
 		VkBufferObject::CreateBuffer(
 			m_pWRenderer->m_SwapChain,
 			m_pWRenderer->m_DeviceMemoryProperties,
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			static_cast<uint32_t>(sizeof(drawVert) * tr->numVerts),
+			static_cast<uint32_t>(sizeof(drawVert) * numVerts),
 			listLocalBuffers[i]);
+
+		//Index
+		VkBufferObject::CreateBuffer(
+			m_pWRenderer->m_SwapChain,
+			m_pWRenderer->m_DeviceMemoryProperties,
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			static_cast<uint32_t>(sizeof(uint32_t) * tr->numIndexes),
+			listLocalIndexBuffers[i]);
 
 
 		//Create new command buffer
@@ -408,15 +551,22 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 			copyCmd,
 			m_pWRenderer->m_Queue,
 			*m_pWRenderer,
-			static_cast<uint32_t>(sizeof(drawVert) * tr->numVerts),
-				listStagingBuffers[i],
+			static_cast<uint32_t>(sizeof(drawVert) * numVerts),
+				listStagingBuffersVerts[i],
 				listLocalBuffers[i], (drawVertFlags::Vertex | drawVertFlags::Normal | drawVertFlags::Uv | drawVertFlags::Tangent | drawVertFlags::Binormal));
 
-		meshSize.push_back(tr->numVerts);
 
-		numVerts += tr->numVerts;
-		numUvs += tr->numVerts;
-		numNormals += tr->numVerts;
+		copyCmd = GetCommandBuffer(true);
+		VkBufferObject::SubmitBufferObjects(
+			copyCmd,
+			m_pWRenderer->m_Queue,
+			*m_pWRenderer,
+			static_cast<uint32_t>(sizeof(uint32_t) * tr->numIndexes),
+			listStagingBuffersIndex[i],
+			listLocalIndexBuffers[i], drawVertFlags::None);
+
+
+		meshSize.push_back(tr->numIndexes);
 	}
 }
 
@@ -528,8 +678,8 @@ void Renderer::PreparePipeline()
 	// Load shaders
 	//Shaders are loaded from the SPIR-V format, which can be generated from glsl
 	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
-	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/StaticModel/triangle.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/StaticModel/triangle.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SkeletalAnimation/cpuAnimation.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SkeletalAnimation/cpuAnimation.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
 
 	// Create Pipeline state VI-IA-VS-VP-RS-FS-CB
@@ -620,7 +770,7 @@ void Renderer::SetupDescriptorSet()
 
 void Renderer::LoadAssets()
 {
-	VLoadTexture(GetAssetPath() + "Textures/pattern_02_bc2.ktx", VK_FORMAT_BC2_UNORM_BLOCK, false);
+	//VLoadTexture(GetAssetPath() + "Textures/pattern_02_bc2.ktx", VK_FORMAT_BC2_UNORM_BLOCK, false);
 }
 
 

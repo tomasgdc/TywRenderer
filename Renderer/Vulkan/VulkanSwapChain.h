@@ -57,7 +57,7 @@ typedef struct _SwapChainBuffers {
 	VkImageView view;
 } SwapChainBuffer;
 
-class VulkanSwapChain
+class TYWRENDERER_API VulkanSwapChain
 {
 public:
 	VkInstance instance;

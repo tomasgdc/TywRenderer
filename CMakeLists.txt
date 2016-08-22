@@ -30,6 +30,7 @@ INCLUDE_DIRECTORIES(
 	"${CMAKE_SOURCE_DIR}/External/glm"
 	"${CMAKE_SOURCE_DIR}/External/gli"
 	"${CMAKE_SOURCE_DIR}/External/Assimp-3.2"
+	"${CMAKE_SOURCE_DIR}/External/freetype/include"
 )
 
 # Set preprocessor defines

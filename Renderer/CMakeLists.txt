@@ -39,6 +39,19 @@ SOURCE_GROUP("ThirdParty\\ImGui\\Header Files" FILES ${HEADERS_THIRDPARTY_IMGUI}
 SOURCE_GROUP("ThirdParty\\ImGui\\Source Files" FILES ${SOURCES_THIRDPARTY_IMGUI})
 
 
+SET(HEADERS_THIRDPARTY_FREETYPE
+	"ThirdParty/FreeType/VkFont.h"
+	"ThirdParty/FreeType/FreetypeLoad.h"
+
+)
+SET(SOURCES_THIRDPARTY_FREETYPE
+	"ThirdParty/FreeType/VkFont.cpp"
+	"ThirdParty/FreeType/FreetypeLoad.cpp"
+)
+SOURCE_GROUP("ThirdParty\\FreeType\\Header Files" FILES ${HEADERS_THIRDPARTY_FREETYPE})
+SOURCE_GROUP("ThirdParty\\FreeType\\Source Files" FILES ${SOURCES_THIRDPARTY_FREETYPE})
+
+
 SET(HEADERS_MESHLOADER
 	"MeshLoader/Model.h"
 	"MeshLoader/Model_local.h"
@@ -72,6 +85,17 @@ SET(SOURCES_GEOMETRY
 SOURCE_GROUP("Geometry\\Header Files" FILES ${HEADERS_GEOMETRY})
 SOURCE_GROUP("Geometry\\Source Files" FILES ${SOURCES_GEOMETRY})
 
+SET(HEADERS_ANIMATION
+	"AnimationManager/AnimationManager.h"
+	"AnimationManager/AnimationMacro.h"
+	"AnimationManager/MD5Anim/MD5Anim.h"
+)
+SET(SOURCES_ANIMATION
+	"AnimationManager/AnimationManager.cpp"
+	"AnimationManager/MD5Anim/MD5Anim.cpp"
+)
+SOURCE_GROUP("Animation Manager\\Header Files" FILES ${HEADERS_ANIMATION})
+SOURCE_GROUP("Animation Manager\\Source Files" FILES ${SOURCES_ANIMATION})
 
 
 SET(HEADERS_VULKAN
@@ -117,10 +141,14 @@ ADD_LIBRARY(${PROJECT_NAME} SHARED
 	${SOURCES_SCENE_MANAGER}
 	${HEADERS_THIRDPARTY_IMGUI}	
 	${SOURCES_THIRDPARTY_IMGUI}
+	${HEADERS_THIRDPARTY_FREETYPE}
+	${SOURCES_THIRDPARTY_FREETYPE}
 	${HEADERS_MESHLOADER}
 	${SOURCES_MESHLOADER}
 	${HEADERS_GEOMETRY}
 	${SOURCES_GEOMETRY}
+	${HEADERS_ANIMATION}
+	${SOURCES_ANIMATION}
 	${HEADERS_VULKAN}
 	${SOURCES_VULKAN}
 	${HEADERS}
@@ -132,6 +160,7 @@ TARGET_LINK_LIBRARIES(${PROJECT_NAME} PUBLIC
 	 ${VULKAN_LIB}
 	"${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/ThirdParty/assimp-vc140-mt.lib"
 	"${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/ThirdParty/libpng16.lib"
+	"${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/ThirdParty/freetype265MT.lib"
 	)
 
 

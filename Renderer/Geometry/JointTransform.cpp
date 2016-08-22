@@ -44,11 +44,16 @@ glm::mat4x4 JointMat::GetRotation() {
 	return m;
 }
 
-glm::vec3 JointMat::GetTranslation()
+
+void JointQuat::CalculateQuatW(glm::quat & q)
 {
-	glm::vec3 t;
-	t[0] = mat[0][3];
-	t[1] = mat[1][3];
-	t[2] = mat[2][3];
-	return t;
+	float t = 1.0f - (q.x * q.x) - (q.y * q.y) - (q.z * q.z);
+	if (t < 0.0f)
+	{
+		q.w = 0.0f;
+	}
+	else
+	{
+		q.w = -sqrtf(t);
+	}
 }

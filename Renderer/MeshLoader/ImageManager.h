@@ -17,7 +17,7 @@ public:
 	~ImageManager();
 
 	//looks for loaded image
-	VkTools::VulkanTexture*					GetImage(const std::string& name, VkFormat format);
+	VkTools::VulkanTexture*					GetImage(const std::string& name, const std::string& path, VkFormat format);
 
 	//Purges all images
 	void									PurgeAllImages();

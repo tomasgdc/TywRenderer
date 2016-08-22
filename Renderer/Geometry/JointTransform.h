@@ -2,6 +2,9 @@
 class JointQuat 
 {
 public:
+	static void CalculateQuatW(glm::quat & q);
+
+public:
 	glm::quat		 q;
 	glm::vec3		 t;
 };
@@ -41,4 +44,9 @@ inline void JointMat::SetTranslation(const glm::vec3 &t) {
 	mat[0][3] = t[0];
 	mat[1][3] = t[1];
 	mat[2][3] = t[2];
+}
+
+inline glm::vec3 JointMat::GetTranslation()
+{
+	return glm::vec3(mat[0][3], mat[1][3], mat[2][3]);
 }

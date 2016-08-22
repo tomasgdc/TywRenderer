@@ -12,7 +12,7 @@ struct srfTriangles_t;
 struct glconfig_st;
 struct gl_params;
 class  ImageManager;
-
+class VkFont;
 
 
 #include <External\vulkan\vulkan.h>
@@ -114,8 +114,8 @@ public:
 	//Clears screens and swaps buffers
 	//void SwapCommandsFinnishRendering(uint64_t* gpuMicroSec);
 
-	void StartFrame() override;
-	void EndFrame(uint64_t* gpuMicroSec) override;
+	virtual void StartFrame();
+	virtual void EndFrame(uint64_t* gpuMicroSec);
 public:
 	//Log Renderer
 	void   Logv(const char* format, ...);
@@ -129,7 +129,7 @@ public:
 	//Prints directly log info to screen
 	void   Log(char* str,...);
 
-	std::string GetAssetPath() { return "../../../Assets/"; }
+	static std::string GetAssetPath() { return "../../../Assets/"; }
 public:
 	//Calculates swap command and calculates how much time gpu took to process requests
 	void SwapCommandBuffers_FinnishRendering(uint64_t* gpuMicroSec);
@@ -197,6 +197,7 @@ protected:
 
 	VulkanRendererInitializer			*m_pWRenderer;
 	VkTools::VulkanTextureLoader		*m_pTextureLoader;
+	VkFont								*m_FontRender;
 	ImageManager						*m_pImageManager;
 
 protected:

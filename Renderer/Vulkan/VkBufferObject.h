@@ -1,3 +1,4 @@
+//Copyright 2015-2016 Tomas Mikalauskas. All rights reserved.
 #pragma once
 #include <External\vulkan\vulkan.h>
 
@@ -26,7 +27,10 @@ public:
 	static VkResult CreateBuffer(const VulkanSwapChain& pSwapChain, VkPhysicalDeviceMemoryProperties& memoryProperties, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkBufferObject_s& bufferObject, void *data = nullptr);
 	static VkResult SubmitBufferObjects(const VkCommandBuffer& copyCmd, const VkQueue& copyQueue, const VulkanRendererInitializer& pRendInit, VkDeviceSize size, VkBufferObject_s& stagingBuffer, VkBufferObject_s& localBuffer, enum drawVertFlags enumDrawDescriptors);
 
-private:
+	//You can use this function if command buffer was not submitted
+	static VkResult SubmitCommandBuffer(const VkQueue& copyQueue,const VkCommandBuffer& copyCmd, const VulkanRendererInitializer& pRendInit);
+
+public:
 	//Vertex
 	static void BindVertexDescriptor(VkBufferObject_s& localBuffer);
 

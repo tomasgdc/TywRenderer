@@ -73,7 +73,7 @@ namespace VkTools
 	// So they need to be loaded via the asset manager
 	VkShaderModule LoadShader(AAssetManager* assetManager, const char *fileName, VkDevice device, VkShaderStageFlagBits stage);
 #else
-	TYWRENDERER_API VkShaderModule LoadShader(const char *fileName, VkDevice device, VkShaderStageFlagBits stage);
+	TYWRENDERER_API VkShaderModule LoadShader(const std::string& fileName, VkDevice device, VkShaderStageFlagBits stage);
 #endif
 
 	namespace Initializer

@@ -27,7 +27,7 @@ ImageManager::~ImageManager()
 }
 
 
-VkTools::VulkanTexture* ImageManager::GetImage(const std::string& name, VkFormat format)
+VkTools::VulkanTexture* ImageManager::GetImage(const std::string& name, const std::string& path, VkFormat format)
 {
 	//find image by name
 	m_it = m_images.find(name);

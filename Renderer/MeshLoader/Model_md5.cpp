@@ -23,20 +23,6 @@ static uint32_t	 c_numWeights = 0;
 static uint32_t	 c_numWeightJoints = 0;
 
 
-//Helpers
-void CalculateQuatW(glm::quat & q)
-{
-	float t = 1.0f - (q.x * q.x) - (q.y * q.y) - (q.z * q.z);
-	if (t < 0.0f)
-	{
-		q.w = 0.0f;
-	}
-	else
-	{
-		q.w = -sqrtf(t);
-	}
-}
-
 
 MD5Mesh::MD5Mesh():
 	shader(nullptr), 
@@ -64,7 +50,7 @@ void MD5_ParseVerts(FILE* ptrFile, std::vector<vertIndex_t> &vert, uint32_t	 num
 	for (int i = 0; i < numVerts; i++) {
 		bool ferror = fgets(strLine, 256, ptrFile) == nullptr;
 		if (!ferror) { 
-			puts(strLine); 
+			//puts(strLine); 
 			int32_t rval = sscanf(strLine, "%s %i %s%f %f%s %i %i\n", junk, &v.index, junk, &v.texCoord.x, &v.texCoord.y, junk, &v.firstWeightForVertex, &v.numWeightsForVertex);
 			if (rval != 8)break;
 			vert.push_back(v);
@@ -79,7 +65,7 @@ void MD5_ParseTriangles(FILE* ptrFile, std::vector<uint32_t> &tri, uint32_t nums
 	for (int i = 0; i < numsTriangles; i++) {
 		bool ferror = fgets(strLine, 256, ptrFile) == nullptr;
 		if (!ferror) {
-			puts(strLine);
+		//	puts(strLine);
 			int32_t rval = sscanf(strLine, "%s %s %i %i %i\n", junk, junk, &vIndex.indices[0], &vIndex.indices[1], &vIndex.indices[2]);
 			if (rval != 5)break;
 
@@ -98,7 +84,7 @@ void MD5_ParseWeights(FILE* ptrFile, std::vector<vertexWeight_t> &weight, int32_
 	for (int i = 0; i < numWeights; i++) {
 		bool ferror = fgets(strLine, 256, ptrFile) == nullptr;
 		if (!ferror) {
-			puts(strLine);
+		//	puts(strLine);
 			int32_t rval = sscanf(strLine, "%s %s %i %f %s %f %f %f %s\n", junk, junk, &w.jointId, &w.jointWeight, junk, &w.pos.x, &w.pos.y, &w.pos.z, junk);
 			if (rval != 9)break;
 			weight.push_back(w);
@@ -147,7 +133,7 @@ void MD5Mesh::ParseMesh(FILE* ptrFile, int numJoints, std::vector<JointMat>& joi
 			//Engine::getInstance().Sys_Printf("%s \n", shaderName);
 			
 			shader = TYW_NEW Material;
-			shader->setTexture(globalImage->GetImage(shaderName, VkFormat::VK_FORMAT_UNDEFINED), false);
+			shader->setTexture(globalImage->GetImage(shaderName, "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED), false);
 		}
 		else if (strcmp(lineHeader, "numverts") == 0) 
 		{
@@ -176,7 +162,7 @@ void MD5Mesh::ParseMesh(FILE* ptrFile, int numJoints, std::vector<JointMat>& joi
 
 	deformInfo = TYW_NEW deformInfo_t;
 	deformInfo->verts = TYW_NEW drawVert[verts.size()];
-	deformInfo->indexes = TYW_NEW uint16_t[tri.size()];
+	deformInfo->indexes = TYW_NEW uint32_t[tri.size()];
 
 	deformInfo->numSourceVerts = verts.size();
 	deformInfo->numIndexes = tri.size();
@@ -220,13 +206,13 @@ bool RenderModelMD5::ParseJoint(FILE* ptrFile, MD5Joint& joint, JointQuat& pose)
 		if (!ferror) 
 		{
 			//breaks	
-			puts(strLine);
+//			puts(strLine);
 			int32_t rval = sscanf(strLine, "%s %i %s %f %f %f %s %s %f %f %f %s", joint.name, &joint.parentID, junk, &pose.t.x, &pose.t.y, &pose.t.z, junk, junk, &pose.q.x, &pose.q.y, &pose.q.z, junk);
 			if (rval != 12)
 			{
 				return false;
 			}
-			CalculateQuatW(pose.q);
+			JointQuat::CalculateQuatW(pose.q);
 		}
 	return true;
 }
@@ -281,7 +267,52 @@ void RenderModelMD5::InitFromFile(std::string fileName, std::string filePath) {
 					joints.push_back(joint);
 					defaultPose.push_back(pose);
 
-					pMat.SetRotation(glm::mat4_cast(pose.q));
+					/*Convert quat to mat4*/
+					glm::mat4x4 mat;
+
+					float	wx, wy, wz;
+					float	xx, yy, yz;
+					float	xy, xz, zz;
+					float	x2, y2, z2;
+
+					x2 = pose.q.x + pose.q.x;
+					y2 = pose.q.y + pose.q.y;
+					z2 = pose.q.z + pose.q.z;
+
+					xx = pose.q.x * x2;
+					xy = pose.q.x * y2;
+					xz = pose.q.x * z2;
+
+					yy = pose.q.y * y2;
+					yz = pose.q.y * z2;
+					zz = pose.q.z * z2;
+
+					wx = pose.q.w * x2;
+					wy = pose.q.w * y2;
+					wz = pose.q.w * z2;
+
+					mat[0][0] = 1.0f - (yy + zz);
+					mat[0][1] = xy - wz;
+					mat[0][2] = xz + wy;
+					mat[0][3] = 0.0f;
+
+					mat[1][0] = xy + wz;
+					mat[1][1] = 1.0f - (xx + zz);
+					mat[1][2] = yz - wx;
+					mat[1][3] = 0.0f;
+
+					mat[2][0] = xz - wy;
+					mat[2][1] = yz + wx;
+					mat[2][2] = 1.0f - (xx + yy);
+					mat[2][3] = 0.0f;
+
+					mat[3][0] = 0.0f;
+					mat[3][1] = 0.0f;
+					mat[3][2] = 0.0f;
+					mat[3][3] = 1.0f;
+					/*Convert end*/
+
+					pMat.SetRotation(mat);
 					pMat.SetTranslation(pose.t);
 					poseMat.push_back(pMat);
 				}
@@ -316,7 +347,54 @@ void MD5Mesh::UpdateMesh(const MD5Mesh *mesh,  std::vector<JointQuat>& joints, c
 			JointQuat& joint = joints[tempWeight.jointId];
 
 			JointMat mat;
-			mat.SetRotation(glm::mat4_cast(joint.q));
+
+
+			/*Convert quat to mat4*/
+			glm::mat4x4 quatMat4;
+			float	wx, wy, wz;
+			float	xx, yy, yz;
+			float	xy, xz, zz;
+			float	x2, y2, z2;
+
+			x2 = joint.q.x + joint.q.x;
+			y2 = joint.q.y + joint.q.y;
+			z2 = joint.q.z + joint.q.z;
+
+			xx = joint.q.x * x2;
+			xy = joint.q.x * y2;
+			xz = joint.q.x * z2;
+
+			yy = joint.q.y * y2;
+			yz = joint.q.y * z2;
+			zz = joint.q.z * z2;
+
+			wx = joint.q.w * x2;
+			wy = joint.q.w * y2;
+			wz = joint.q.w * z2;
+
+			quatMat4[0][0] = 1.0f - (yy + zz);
+			quatMat4[0][1] = xy - wz;
+			quatMat4[0][2] = xz + wy;
+			quatMat4[0][3] = 0.0f;
+
+			quatMat4[1][0] = xy + wz;
+			quatMat4[1][1] = 1.0f - (xx + zz);
+			quatMat4[1][2] = yz - wx;
+			quatMat4[1][3] = 0.0f;
+
+			quatMat4[2][0] = xz - wy;
+			quatMat4[2][1] = yz + wx;
+			quatMat4[2][2] = 1.0f - (xx + yy);
+			quatMat4[2][3] = 0.0f;
+
+			quatMat4[3][0] = 0.0f;
+			quatMat4[3][1] = 0.0f;
+			quatMat4[3][2] = 0.0f;
+			quatMat4[3][3] = 1.0f;
+			/*Convert end*/
+
+
+			mat.SetRotation(quatMat4);
 			mat.SetTranslation(joint.t);
 
 			// Convert the weight position from Joint local space to object space

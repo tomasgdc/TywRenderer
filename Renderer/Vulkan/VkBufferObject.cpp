@@ -46,7 +46,7 @@ VkResult VkBufferObject::CreateBuffer(const VulkanSwapChain& pSwapChain, VkPhysi
 }
 
 
-VkResult VkBufferObject::SubmitBufferObjects(const VkCommandBuffer& copyCmd, const VkQueue& copyQueue, const VulkanRendererInitializer& pRendInit, VkDeviceSize size, VkBufferObject_s& stagingBuffer, VkBufferObject_s& localBuffer, enum drawVertFlags enumDrawDescriptors)
+VkResult VkBufferObject::SubmitBufferObjects(const VkCommandBuffer& copyCmd, const VkQueue& copyQueue, const VulkanRendererInitializer& pRendInit, VkDeviceSize size, VkBufferObject_s& stagingBuffer, VkBufferObject_s& localBuffer, drawVertFlags enumDrawDescriptors)
 {
 	VkBufferCopy copyRegion = {};
 
@@ -85,7 +85,21 @@ VkResult VkBufferObject::SubmitBufferObjects(const VkCommandBuffer& copyCmd, con
 	return VK_SUCCESS;
 }
 
+VkResult VkBufferObject::SubmitCommandBuffer(const VkQueue& copyQueue, const VkCommandBuffer& copyCmd, const VulkanRendererInitializer& pRendInit)
+{
+	VK_CHECK_RESULT(vkEndCommandBuffer(copyCmd));
 
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &copyCmd;
+
+	VK_CHECK_RESULT(vkQueueSubmit(copyQueue, 1, &submitInfo, VK_NULL_HANDLE));
+	VK_CHECK_RESULT(vkQueueWaitIdle(copyQueue));
+	vkFreeCommandBuffers(pRendInit.m_SwapChain.device, pRendInit.m_CmdPool, 1, &copyCmd);
+
+	return VK_SUCCESS;
+}
 
 
 void VkBufferObject::BindVertexDescriptor(VkBufferObject_s& localBuffer)
@@ -160,10 +174,10 @@ void VkBufferObject::BindUvDescriptor(VkBufferObject_s& localBuffer)
 	localBuffer.attributeDescriptions.resize(1);
 
 	// Location 0 : Uv
-	localBuffer.attributeDescriptions[2].binding = 0;
-	localBuffer.attributeDescriptions[2].location = 0;
-	localBuffer.attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-	localBuffer.attributeDescriptions[2].offset = offsetof(drawVert, tex);
+	localBuffer.attributeDescriptions[0].binding = 0;
+	localBuffer.attributeDescriptions[0].location = 0;
+	localBuffer.attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+	localBuffer.attributeDescriptions[0].offset = offsetof(drawVert, tex);
 
 	// Assign to vertex input state
 	localBuffer.inputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -181,29 +195,24 @@ void VkBufferObject::BindVertexUvDescriptor(VkBufferObject_s& localBuffer)
 	// Binding description
 	localBuffer.bindingDescriptions.resize(1);
 	localBuffer.bindingDescriptions[0].binding = 0;
-	localBuffer.bindingDescriptions[0].stride = sizeof(drawVert);
+	localBuffer.bindingDescriptions[0].stride = sizeof(drawFont);
 	localBuffer.bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 	// Attribute descriptions
 	// Describes memory layout and shader attribute locations
-	localBuffer.attributeDescriptions.resize(3);
+	localBuffer.attributeDescriptions.resize(2);
 	// Location 0 : Position
 	localBuffer.attributeDescriptions[0].binding = 0;
 	localBuffer.attributeDescriptions[0].location = 0;
 	localBuffer.attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-	localBuffer.attributeDescriptions[0].offset = offsetof(drawVert, vertex);
+	localBuffer.attributeDescriptions[0].offset = offsetof(drawFont, vertex);
 
-	// Location 1 : Normal
+
+	// Location 1 : Uv
 	localBuffer.attributeDescriptions[1].binding = 0;
 	localBuffer.attributeDescriptions[1].location = 1;
-	localBuffer.attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	localBuffer.attributeDescriptions[1].offset = offsetof(drawVert, normal);
-
-	// Location 2 : Uv
-	localBuffer.attributeDescriptions[2].binding = 0;
-	localBuffer.attributeDescriptions[2].location = 2;
-	localBuffer.attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-	localBuffer.attributeDescriptions[2].offset = offsetof(drawVert, tex);
+	localBuffer.attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
+	localBuffer.attributeDescriptions[1].offset = offsetof(drawFont, tex);
 
 	// Assign to vertex input state
 	localBuffer.inputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;

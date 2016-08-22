@@ -23,7 +23,7 @@ inline void R_AllocStaticTriSurfIndexes(srfTriangles_t *tri, int numIndexes)
 {
 	if (!tri)return;
 	tri->numIndexes = numIndexes;
-	tri->indexes = TYW_NEW uint16_t[numIndexes]; //use 16bit alloc for indixes
+	tri->indexes = TYW_NEW uint32_t[numIndexes]; //use 16bit alloc for indixes
 }
 
 inline void	R_FreeStaticTriSurfSilIndexes(srfTriangles_t *tri)

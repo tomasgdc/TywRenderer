@@ -11,7 +11,8 @@ enum drawVertFlags
 	Normal   = 1 << 2,
 	Tangent  = 1 << 3,
 	Binormal = 1 << 4,
-	Uv       = 1 << 5
+	Uv       = 1 << 5,
+	None     = 1 << 6
 };
 
 inline drawVertFlags operator|(const drawVertFlags& a, const drawVertFlags& b)
@@ -19,6 +20,14 @@ inline drawVertFlags operator|(const drawVertFlags& a, const drawVertFlags& b)
 	return static_cast<drawVertFlags>(static_cast<int>(a) | static_cast<int>(b));
 }
 
+/*
+	Font data
+*/
+struct drawFont
+{
+	glm::vec3 vertex;		//12 bytes
+	glm::vec2 tex;			//8 bytes
+};
 
 /*
 	glm::vec3 vertex;		
@@ -82,6 +91,9 @@ inline drawVert::drawVert(const glm::vec3& v, const glm::vec3& n, const glm::vec
 inline drawVert::drawVert():
 	vertex(0.0f, 0.0f, 0.0f),
 	normal(0.0f, 0.0f, 0.0f),
+	tangent(0.0f, 0.0f, 0.0f),
+	bitangent(0.0f, 0.0f, 0.0f),
+	color(0.0f, 0.0f, 0.0f),
 	tex(0.0f, 0.0f)
 {
 

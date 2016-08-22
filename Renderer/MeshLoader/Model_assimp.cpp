@@ -25,7 +25,7 @@
 
 //Fucntions declared
 bool InitFromScene(const aiScene* pScene, const std::string& Filename, std::vector<modelSurface_t>& entries, RenderModelAssimp::MaterialMap& materialMap);
-void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, std::vector<modelSurface_t>& entries, RenderModelAssimp::MaterialMap& materialMap);
+void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, std::vector<modelSurface_t>& entries, RenderModelAssimp::MaterialMap& materialMap, const std::string& Filename);
 
 
 RenderModelAssimp::RenderModelAssimp()
@@ -132,8 +132,8 @@ void RenderModelAssimp::Clear()
 	{
 		SAFE_DELETE_ARRAY(mesh.geometry->indexes);
 		SAFE_DELETE_ARRAY(mesh.geometry->verts);
+		SAFE_DELETE_ARRAY(mesh.material);
 		SAFE_DELETE(mesh.geometry);
-		SAFE_DELETE(mesh.material);
 	}
 
 	for (auto& material : m_material)
@@ -164,20 +164,15 @@ bool InitFromScene(const aiScene* pScene, const std::string& Filename, std::vect
 	for (unsigned int i = 0; i < entries.size(); i++)
 	{
 		const aiMesh* paiMesh = pScene->mMeshes[i];
-		entries[i].geometry->indexes = TYW_NEW uint16_t[paiMesh->mNumFaces*3];
-		entries[i].geometry->numIndexes = paiMesh->mNumFaces*3;
-
-		InitMesh(i, paiMesh, pScene, entries, materialMap);
+		InitMesh(i, paiMesh, pScene, entries, materialMap, Filename);
 	}
 
 	return true;
 }
 
 
-void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, std::vector<modelSurface_t>& entries, RenderModelAssimp::MaterialMap& materialMap)
+void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, std::vector<modelSurface_t>& entries, RenderModelAssimp::MaterialMap& materialMap, const std::string& Filename)
 {
-	entries[index].material = TYW_NEW Material;
-
 	aiColor3D pColor(0.f, 0.f, 0.f);
 	pScene->mMaterials[paiMesh->mMaterialIndex]->Get(AI_MATKEY_COLOR_DIFFUSE, pColor);
 
@@ -198,17 +193,17 @@ void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, 
 
 		if (material->GetTexture(aiTextureType_DIFFUSE, texIndex, &path) == AI_SUCCESS)
 		{
-			vkTextures.push_back(std::make_tuple(path.C_Str(), globalImage->GetImage(path.C_Str(), VkFormat::VK_FORMAT_UNDEFINED)));
+			vkTextures.push_back(std::make_tuple(path.C_Str(), globalImage->GetImage(path.C_Str(), "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED)));
 			NumbTextures++;
 		}
 		if (material->GetTexture(aiTextureType::aiTextureType_NORMALS, texIndex, &path) == AI_SUCCESS)
 		{
-			vkTextures.push_back(std::make_tuple(path.C_Str(), globalImage->GetImage(path.C_Str(), VkFormat::VK_FORMAT_UNDEFINED)));
+			vkTextures.push_back(std::make_tuple(path.C_Str(), globalImage->GetImage(path.C_Str(), "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED)));
 			NumbTextures++;
 		}
 		if (material->GetTexture(aiTextureType::aiTextureType_SPECULAR, texIndex, &path) == AI_SUCCESS)
 		{
-			vkTextures.push_back(std::make_tuple(path.C_Str(), globalImage->GetImage(path.C_Str(), VkFormat::VK_FORMAT_UNDEFINED)));
+			vkTextures.push_back(std::make_tuple(path.C_Str(), globalImage->GetImage(path.C_Str(), "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED)));
 			NumbTextures++;
 		}
 
@@ -218,7 +213,8 @@ void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, 
 		{
 			mat[i].setTexture(std::get<1>(vkTextures[i]), false);
 		}
-		materialMap.insert(std::pair<std::string, Material*>(std::get<0>(vkTextures[i]), mat));
+		//materialMap.insert(std::pair<std::string, Material*>(std::get<0>(vkTextures[0]), mat));
+		entries[index].material = mat;
 	}
 
 
@@ -258,8 +254,14 @@ void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, 
 
 		entries[index].geometry->verts[i] = v;
 	}
-
 	//dim.size = dim.max - dim.min;
+
+	entries[index].geometry->indexes = TYW_NEW uint32_t[paiMesh->mNumFaces*3];
+	entries[index].geometry->numIndexes = paiMesh->mNumFaces*3;
+
+
+	std::vector<uint32_t> test;
+	test.resize(paiMesh->mNumFaces * 3);
 
 	for (unsigned int i = 0; i < paiMesh->mNumFaces; i++)
 	{
@@ -268,7 +270,11 @@ void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, 
 			continue;
 
 		entries[index].geometry->indexes[(i*3)]   = Face.mIndices[0];
-		entries[index].geometry->indexes[(i+1)*3] = Face.mIndices[1];
-		entries[index].geometry->indexes[(i+2)*3] = Face.mIndices[2];
+		entries[index].geometry->indexes[(i * 3 + 1)] = Face.mIndices[1];
+		entries[index].geometry->indexes[(i * 3 + 2)] = Face.mIndices[2];
+
+		test[(i * 3)] = Face.mIndices[0];
+		test[(i * 3 + 1)] = Face.mIndices[1];
+		test[(i * 3 + 2)] = Face.mIndices[2];
 	}
 }
