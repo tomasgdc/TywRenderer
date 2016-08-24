@@ -12,7 +12,7 @@ Run .bat file which will build vs2015 solution
 > - Freetype
 
 #Credits
->- Sacha Williams - https://github.com/SaschaWillems/Vulkan
+>- Sascha Willems - https://github.com/SaschaWillems/Vulkan
 
 
 #Projects
