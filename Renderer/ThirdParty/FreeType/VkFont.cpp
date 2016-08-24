@@ -1,4 +1,8 @@
-//Copyright 2015-2016 Tomas Mikalauskas. All rights reserved.
+/*
+*	Copyright 2015-2016 Tomas Mikalauskas. All rights reserved.
+*	GitHub repository - https://github.com/TywyllSoftware/TywRenderer
+*	This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
+*/
 #include <RendererPch\stdafx.h>
 
 
@@ -16,6 +20,10 @@
 
 #include "ThirdParty\FreeType\FreetypeLoad.h"
 #include "VkFont.h"
+
+
+//math
+#include <External\glm\glm\gtc\matrix_inverse.hpp>
 
 
 /*
@@ -63,7 +71,6 @@ void VkFont::CreateFontVk(const std::string& strTypeface, int point_size, int dp
 		printf("%s \n", data->getLog().c_str());
 		return;
 	}
-	//buffer->AllocateBufferObject(nullptr, sizeof(drawVert)*6, enumBuffer::DYNAMIC_DRAW);
 }
 
 /*
@@ -79,8 +86,8 @@ void VkFont::InitializeChars(char* source, VkTools::VulkanTextureLoader& pTextur
 		printf("ERROR: VkFont::InitializeChars: returned false \n");
 	}
 	
-	SetupDescriptorPool();
-	SetupDescriptorSetLayout();
+	//SetupDescriptorPool();
+	//SetupDescriptorSetLayout();
 	VkDescriptorSetAllocateInfo allocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
 
 	size_t size = strlen(source);
@@ -91,7 +98,7 @@ void VkFont::InitializeChars(char* source, VkTools::VulkanTextureLoader& pTextur
 		{
 			VkTools::VulkanTexture* texture = TYW_NEW VkTools::VulkanTexture;
 			
-			pTextureLoader.GenerateTexture(temp.bitmap_buffer, texture, VkFormat::VK_FORMAT_B8G8R8A8_SRGB, sizeof(temp.bitmap_buffer), temp.bitmap_width, 0, temp.bitmap_rows, false, VK_IMAGE_USAGE_SAMPLED_BIT);
+			pTextureLoader.GenerateTexture(temp.bitmap_buffer, texture, VkFormat::VK_FORMAT_B8G8R8A8_SRGB, sizeof(temp.bitmap_buffer), temp.bitmap_width, temp.bitmap_rows, 0, true, VK_IMAGE_USAGE_SAMPLED_BIT);
 			glyphs.insert(std::unordered_map<char, VkTools::VulkanTexture*>::value_type(source[i], texture));
 
 
@@ -102,9 +109,9 @@ void VkFont::InitializeChars(char* source, VkTools::VulkanTextureLoader& pTextur
 			std::vector<VkWriteDescriptorSet> writeDescriptorSets =
 			{
 				// Binding 0 : Vertex shader uniform buffer
-				//VkTools::Initializer::WriteDescriptorSet(set,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	0,&uniformDataVS.descriptor),
+				VkTools::Initializer::WriteDescriptorSet(set,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	0,&uniformDataVS.descriptor),
 
-				// Binding 1 : Fragment shader texture sampler
+				//// Binding 1 : Fragment shader texture sampler
 				VkTools::Initializer::WriteDescriptorSet(set,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,&texDescriptorDiffuse),
 			};
 
@@ -164,29 +171,29 @@ void VkFont::AddText(float x, float y, float ws, float hs, const char* text)
 
 
 		{
-			pDataLocal->tex = data[0].tex;
-			pDataLocal->vertex = data[0].vertex;
-			pDataLocal++;
+			pDataLocal[0].tex = data[0].tex;
+			pDataLocal[0].vertex = data[0].vertex;
+			//pDataLocal++;
 
-			pDataLocal->tex = data[1].tex;
-			pDataLocal->vertex = data[1].vertex;
-			pDataLocal++;
+			pDataLocal[1].tex = data[1].tex;
+			pDataLocal[1].vertex = data[1].vertex;
+			//pDataLocal++;
 
-			pDataLocal->tex = data[2].tex;
-			pDataLocal->vertex = data[2].vertex;
-			pDataLocal++;
+			pDataLocal[2].tex = data[2].tex;
+			pDataLocal[2].vertex = data[2].vertex;
+			//pDataLocal++;
 
-			pDataLocal->tex = data[3].tex;
-			pDataLocal->vertex = data[3].vertex;
-			pDataLocal++;
+			pDataLocal[3].tex = data[3].tex;
+			pDataLocal[3].vertex = data[3].vertex;
+			//pDataLocal++;
 
-			pDataLocal->tex = data[4].tex;
-			pDataLocal->vertex = data[4].vertex;
-			pDataLocal++;
+			pDataLocal[4].tex = data[4].tex;
+			pDataLocal[4].vertex = data[4].vertex;
+			//pDataLocal++;
 
-			pDataLocal->tex = data[5].tex;
-			pDataLocal->vertex = data[5].vertex;
-			pDataLocal++;
+			pDataLocal[5].tex = data[5].tex;
+			pDataLocal[5].vertex = data[5].vertex;
+			//pDataLocal++;
 
 
 			numLetters++;
@@ -244,7 +251,7 @@ bool VkFont::Release() {
 =============================
 */
 VkFont::~VkFont() {
-	Release();
+	//Release();
 }
 
 
@@ -253,9 +260,9 @@ void VkFont::SetupDescriptorSetLayout()
 	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings =
 	{
 		// Binding 0 : Vertex shader uniform buffer
-		//VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,0),
+		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,0),
 
-		// Binding 1 : Fragment shader image sampler
+		//// Binding 1 : Fragment shader image sampler
 		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,1),
 	};
 
@@ -269,7 +276,7 @@ void VkFont::SetupDescriptorPool()
 	// Example uses one ubo and one image sampler
 	std::vector<VkDescriptorPoolSize> poolSizes =
 	{
-		//VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1),
+		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 256),
 		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 256)
 	};
 
@@ -606,7 +613,8 @@ void VkFont::EndTextUpdate()
 		for (uint32_t j = 0; j < text.size(); j++)
 		{
 			vkCmdBindDescriptorSets(cmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptors[text[j]], 0, NULL);
-			vkCmdDraw(cmdBuffers[i], 6, 1, j * 6, 0);
+			//vkCmdDraw(cmdBuffers[i], 6, 1, j * 6, 0);
+			vkCmdDraw(cmdBuffers[i], 6, 1, 0, 0);
 		}
 
 
@@ -652,4 +660,65 @@ void VkFont::SubmitToQueue(VkQueue queue, uint32_t bufferindex, VkSubmitInfo sub
 	submitInfo.commandBufferCount = 1;
 
 	VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
+}
+
+
+void VkFont::UpdateUniformBuffers(uint32_t windowWidth, uint32_t windowHeight, float zoom)
+{
+	// Update matrices
+	m_uboVS.projectionMatrix = glm::perspective(glm::radians(60.0f), (float)windowWidth / (float)windowHeight, 0.1f, 256.0f);
+
+	m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, zoom));
+	m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -5.0f));
+	m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
+
+	// Map uniform buffer and update it
+	uint8_t *pData;
+	VK_CHECK_RESULT(vkMapMemory(device, uniformDataVS.memory, 0, sizeof(m_uboVS), 0, (void **)&pData));
+	memcpy(pData, &m_uboVS, sizeof(m_uboVS));
+	vkUnmapMemory(device, uniformDataVS.memory);
+}
+
+
+void VkFont::PrepareUniformBuffers()
+{
+	// Prepare and initialize a uniform buffer block containing shader uniforms
+	// In Vulkan there are no more single uniforms like in GL
+	// All shader uniforms are passed as uniform buffer blocks 
+	VkMemoryRequirements memReqs;
+
+	// Vertex shader uniform buffer block
+	VkBufferCreateInfo bufferInfo = {};
+	VkMemoryAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.pNext = NULL;
+	allocInfo.allocationSize = 0;
+	allocInfo.memoryTypeIndex = 0;
+
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = sizeof(m_uboVS);
+	bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+	// Create a new buffer
+	VK_CHECK_RESULT(vkCreateBuffer(device, &bufferInfo, nullptr, &uniformDataVS.buffer));
+	// Get memory requirements including size, alignment and memory type 
+	vkGetBufferMemoryRequirements(device, uniformDataVS.buffer, &memReqs);
+	allocInfo.allocationSize = memReqs.size;
+	// Get the memory type index that supports host visibile memory access
+	// Most implementations offer multiple memory tpyes and selecting the 
+	// correct one to allocate memory from is important
+	// We also want the buffer to be host coherent so we don't have to flush 
+	// after every update. 
+	// Note that this may affect performance so you might not want to do this 
+	// in a real world application that updates buffers on a regular base
+	allocInfo.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, deviceMemoryProperties);
+	// Allocate memory for the uniform buffer
+	VK_CHECK_RESULT(vkAllocateMemory(device, &allocInfo, nullptr, &(uniformDataVS.memory)));
+	// Bind memory to buffer
+	VK_CHECK_RESULT(vkBindBufferMemory(device, uniformDataVS.buffer, uniformDataVS.memory, 0));
+
+	// Store information in the uniform's descriptor
+	uniformDataVS.descriptor.buffer = uniformDataVS.buffer;
+	uniformDataVS.descriptor.offset = 0;
+	uniformDataVS.descriptor.range = sizeof(m_uboVS);
 }

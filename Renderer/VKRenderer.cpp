@@ -1,4 +1,8 @@
-//Copyright 2015-2016 Tomas Mikalauskas. All rights reserved.
+/*
+*	Copyright 2015-2016 Tomas Mikalauskas. All rights reserved.
+*	GitHub repository - https://github.com/TywyllSoftware/TywRenderer
+*	This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
+*/
 #include <RendererPch\stdafx.h>
 
 //Renderer Includes
@@ -38,7 +42,6 @@ VKRenderer::VKRenderer(): m_pWRenderer(nullptr), m_bIsOpenglRunning(false)
 VKRenderer::~VKRenderer()
 {
 	SAFE_DELETE(m_pTextureLoader);
-	SAFE_DELETE(m_FontRender);
 	SAFE_DELETE(m_pImageManager);
 	SAFE_DELETE(m_pWRenderer);
 }
@@ -82,11 +85,6 @@ bool VKRenderer::VInitRenderer(uint32_t height, uint32_t width, bool isFullscree
 	//Initialize Texture Loader
 	m_pTextureLoader = TYW_NEW VkTools::VulkanTextureLoader(m_pWRenderer->m_SwapChain.physicalDevice, m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_Queue, m_pWRenderer->m_CmdPool);
 	globalImage = TYW_NEW ImageManager(m_pWRenderer->m_SwapChain.physicalDevice, m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_Queue, m_pWRenderer->m_CmdPool);
-	
-	m_FontRender = TYW_NEW VkFont(m_pWRenderer->m_SwapChain.physicalDevice, m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_Queue, m_pWRenderer->m_FrameBuffers, &width, &height);
-	m_FontRender->CreateFontVk((GetAssetPath()+"Textures/freetype/mario.ttf"), 64, 96);
-	m_FontRender->InitializeChars("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM-:.@1234567890", *m_pTextureLoader);
-	m_FontRender->PrepareResources();
 
 	//Load all needed assets. Overrided
 	//Models, textures and so on

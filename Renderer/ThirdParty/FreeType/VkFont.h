@@ -1,4 +1,8 @@
-//Copyright 2015-2016 Tomas Mikalauskas. All rights reserved.
+/*
+*	Copyright 2015-2016 Tomas Mikalauskas. All rights reserved.
+*	GitHub repository - https://github.com/TywyllSoftware/TywRenderer
+*	This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
+*/
 #pragma once
 
 
@@ -41,6 +45,10 @@ class TYWRENDERER_API VkFont
 		void PreparePipeline();
 		void SetupDescriptorSetLayout();
 		void SetupDescriptorPool();
+
+		void UpdateUniformBuffers(uint32_t windowWidth, uint32_t windowHeight, float zoom);
+		void PrepareUniformBuffers();
+
 		void BuildCommandBuffers();
 		void UpdateCommandBuffers();
 
@@ -53,7 +61,7 @@ class TYWRENDERER_API VkFont
 private:
 	VkPipelineShaderStageCreateInfo VkFont::LoadShader(const std::string& fileName, VkShaderStageFlagBits stage);
 
-private:
+public:
 	VkDevice					device;
 	VkPipelineLayout			pipelineLayout;
 	VkDescriptorSetLayout		descriptorSetLayout;
@@ -84,7 +92,24 @@ private:
 	drawFont*				    pData;
 	drawFont*					pDataLocal; //during text updates
 	uint32_t					numLetters;
-private:
+
+
+	struct {
+		glm::mat4 projectionMatrix;
+		glm::mat4 modelMatrix;
+		glm::mat4 viewMatrix;
+		glm::vec4 viewPos;
+		float lodBias = 0.0f;
+	}m_uboVS;
+
+
+	struct 
+	{
+		VkBuffer buffer;
+		VkDeviceMemory memory;
+		VkDescriptorBufferInfo descriptor;
+	}  uniformDataVS;
+public:
 	GlyphData* data;
 	std::unordered_map<char, VkTools::VulkanTexture*> glyphs; //Create hash map
 	std::unordered_map<char, VkDescriptorSet> descriptors; //Create hash map

@@ -1,4 +1,8 @@
-//Copyright 2015-2016 Tomas Mikalauskas. All rights reserved.
+/*
+*	Copyright 2015-2016 Tomas Mikalauskas. All rights reserved.
+*	GitHub repository - https://github.com/TywyllSoftware/TywRenderer
+*	This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
+*/
 #include <RendererPch\stdafx.h>
 
 
@@ -109,7 +113,15 @@ bool VulkanRendererInitializer::CreateRendererScreen(uint32_t height, uint32_t w
 #endif
 
 
-	VkResult err = CreateVulkanInstance(false);
+	VkResult err;
+#ifdef _DEBUG
+	//enalbe validation during debug mode
+	err = CreateVulkanInstance(true);
+#else
+	//disable validation during release mode
+	err = CreateVulkanInstance(false);
+#endif
+
 	if(err)
 	{
 		fprintf(stdout, "Could not create Vulkan Instance %s\n", VkTools::VkResultToString(err));
@@ -383,8 +395,8 @@ VkResult VulkanRendererInitializer::CreateVulkanInstance(bool bEnableValidation)
 	}
 	if (bEnableValidation)
 	{
-		//instanceCreateInfo.enabledLayerCount = vkDebug::validationLayerCount;
-		//instanceCreateInfo.ppEnabledLayerNames = vkDebug::validationLayerNames;
+		instanceCreateInfo.enabledLayerCount = vkDebug::validationLayerCount;
+		instanceCreateInfo.ppEnabledLayerNames = vkDebug::validationLayerNames;
 	}
 	return vkCreateInstance(&instanceCreateInfo, nullptr, &m_SwapChain.instance);
 }

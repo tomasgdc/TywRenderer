@@ -1,3 +1,8 @@
+/*
+*	Copyright 2015-2016 Tomas Mikalauskas. All rights reserved.
+*	GitHub repository - https://github.com/TywyllSoftware/TywRenderer
+*	This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
+*/
 #include <RendererPch\stdafx.h>
 
 
@@ -302,14 +307,14 @@ void VkBufferObject::BindVertexNormalUvTangentBinormalDescriptor(VkBufferObject_
 	// Location 3 : Tangent
 	localBuffer.attributeDescriptions[3].binding = 0;
 	localBuffer.attributeDescriptions[3].location = 3;
-	localBuffer.attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
+	localBuffer.attributeDescriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
 	localBuffer.attributeDescriptions[3].offset = offsetof(drawVert, tangent);
 
 
 	// Location 4 : Binormal
 	localBuffer.attributeDescriptions[4].binding = 0;
 	localBuffer.attributeDescriptions[4].location = 4;
-	localBuffer.attributeDescriptions[4].format = VK_FORMAT_R32G32_SFLOAT;
+	localBuffer.attributeDescriptions[4].format = VK_FORMAT_R32G32B32_SFLOAT;
 	localBuffer.attributeDescriptions[4].offset = offsetof(drawVert, bitangent);
 
 

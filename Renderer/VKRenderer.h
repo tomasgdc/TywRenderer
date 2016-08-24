@@ -1,4 +1,8 @@
-//Copyright 2015-2016 Tomas Mikalauskas. All rights reserved.
+/*
+*	Copyright 2015-2016 Tomas Mikalauskas. All rights reserved.
+*	GitHub repository - https://github.com/TywyllSoftware/TywRenderer
+*	This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
+*/
 #pragma once
 
 
@@ -197,7 +201,6 @@ protected:
 
 	VulkanRendererInitializer			*m_pWRenderer;
 	VkTools::VulkanTextureLoader		*m_pTextureLoader;
-	VkFont								*m_FontRender;
 	ImageManager						*m_pImageManager;
 
 protected:
