@@ -1018,8 +1018,8 @@ bool GenerateEvents(MSG& msg)
 void WIN_Sizing(WORD side, RECT *rect)
 {
 	// restrict to a standard aspect ratio
-	g_iDesktopHeight = rect->right - rect->left;
-	g_iDesktopWidth = rect->bottom - rect->top;
+	g_iDesktopWidth = rect->right - rect->left;
+	g_iDesktopHeight = rect->bottom - rect->top;
 
 	// Adjust width/height for window decoration
 	RECT decoRect = { 0, 0, 0, 0 };

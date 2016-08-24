@@ -506,6 +506,8 @@ VkResult VulkanRendererInitializer::CreateDevice()
 	deviceQueueInfo.queueFamilyIndex = m_graphicsQueueIndex;
 	deviceQueueInfo.queueCount = 1;
 	deviceQueueInfo.pQueuePriorities = queuePriorities.data();
+	deviceQueueInfo.pNext = NULL;
+	deviceQueueInfo.flags = 0;
 
 
 

@@ -171,8 +171,8 @@ void Renderer::BuildCommandBuffers()
 
 		// Update dynamic viewport state
 		VkViewport viewport = {};
-		viewport.height = (float)g_iDesktopWidth;
-		viewport.width = (float)g_iDesktopHeight;
+		viewport.height = (float)g_iDesktopHeight;
+		viewport.width = (float)g_iDesktopWidth;
 		viewport.minDepth = (float) 0.0f;
 		viewport.maxDepth = (float) 1.0f;
 		vkCmdSetViewport(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &viewport);
@@ -186,7 +186,7 @@ void Renderer::BuildCommandBuffers()
 		vkCmdSetScissor(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &scissor);
 
 		// Bind descriptor sets describing shader binding points
-		vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &m_VkFont->descriptors[0], 0, NULL);
+		vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_VkFont->pipelineLayout, 0, 1, &m_VkFont->descriptors[0], 0, NULL);
 
 		// Bind the rendering pipeline
 		// The pipeline (state object) contains all states of the rendering pipeline
@@ -200,7 +200,7 @@ void Renderer::BuildCommandBuffers()
 
 
 		// Draw indexed triangle
-		vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], 6, 1, 0, 0, 1);
+		vkCmdDraw(m_pWRenderer->m_DrawCmdBuffers[i], 6, 1, 0, 0);
 
 		vkCmdEndRenderPass(m_pWRenderer->m_DrawCmdBuffers[i]);
 
@@ -369,7 +369,7 @@ void Renderer::PreparePipeline()
 
 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	// The layout used for this pipeline
-	pipelineCreateInfo.layout = pipelineLayout;
+	pipelineCreateInfo.layout = m_VkFont->pipelineLayout;
 	// Renderpass this pipeline is attached to
 	pipelineCreateInfo.renderPass = m_pWRenderer->m_RenderPass;
 
@@ -750,8 +750,8 @@ bool GenerateEvents(MSG& msg)
 void WIN_Sizing(WORD side, RECT *rect)
 {
 	// restrict to a standard aspect ratio
-	g_iDesktopHeight = rect->right - rect->left;
-	g_iDesktopWidth = rect->bottom - rect->top;
+	g_iDesktopWidth = rect->right - rect->left;
+	g_iDesktopHeight = rect->bottom - rect->top;
 
 	// Adjust width/height for window decoration
 	RECT decoRect = { 0, 0, 0, 0 };
