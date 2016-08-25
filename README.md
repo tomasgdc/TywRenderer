@@ -33,8 +33,8 @@ The best thing is to have one texture for all glyps and point to specific char U
 to enable blending in your VkPipeline.
 First one is using signed distance field, the second one(down) does not use signed distance field.
 There are still some strange edge bleeding which I do not know really why.
--[Signed distance field shader](Assets/Shaders/FontRendering/FontRendering.frag)
--[Non Signed distance field shader](Assets/Shaders/FontRendering/NonSdf.frag)
+> [Signed distance field shader](Assets/Shaders/FontRendering/FontRendering.frag)
+> [Non Signed distance field shader](Assets/Shaders/FontRendering/NonSdf.frag)
 
 ## [Normal Mapping](Projects/NormalMapping)
 <img src="ScreenShots/NormallMapping.png" height="96px" align="right">
