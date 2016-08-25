@@ -66,7 +66,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 Some of the assets have different license
 > - [boblamp](Assets/Shaders/Geometry/boblamp)
-> - [cyberwarrior](Assets/Shaders/Geometry/cyberwarrior)
+> - [cyberwarrior](Assets/Shaders/Geometry/cyberwarrior) - https://sketchfab.com/models/86f58bf5151c410facacf0ed6a2ebd53
 > - [hellknight](Assets/Shaders/Geometry/hellknight)
 > - [nanosuit](Assets/Shaders/Geometry/nanosuit)
 > - [photosculpt](Assets/Shaders/Textures/photosculpt)
