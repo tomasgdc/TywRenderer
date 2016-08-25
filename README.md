@@ -67,6 +67,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 Some of the assets have different license
 > - [boblamp](Assets/Shaders/Geometry/boblamp)
 > - [cyberwarrior](Assets/Shaders/Geometry/cyberwarrior) - https://sketchfab.com/models/86f58bf5151c410facacf0ed6a2ebd53
-> - [hellknight](Assets/Shaders/Geometry/hellknight)
-> - [nanosuit](Assets/Shaders/Geometry/nanosuit)
+> - [hellknight](Assets/Shaders/Geometry/hellknight) Ripped and modified from Doom 3 - http://store.steampowered.com/app/9050/
+> - [nanosuit](Assets/Shaders/Geometry/nanosuit) - http://tf3dm.com/3d-model/crysis-2-nanosuit-2-97837.html
 > - [photosculpt](Assets/Shaders/Textures/photosculpt)
