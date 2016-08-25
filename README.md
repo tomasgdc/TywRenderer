@@ -26,6 +26,7 @@ Shader - [Triangle Shader](Assets/Shaders/Triangle)
 Shader - [Texture Shader](Assets/Shaders/Texture)
 
 ## [Freetype font rendering](Projects/FontRendering)
+<img src="ScreenShots/FontRendering.png" height="96px" align="right">
 Freetpye font rendering. Not finnished
 
 ## [Normal Mapping](Projects/NormalMapping)
