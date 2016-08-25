@@ -27,7 +27,11 @@ Shader - [Texture Shader](Assets/Shaders/Texture)
 
 ## [Freetype font rendering](Projects/FontRendering)
 <img src="ScreenShots/FontRendering.png" height="96px" align="right">
-Freetpye font rendering. Not finnished
+The fonts texture were generated using Freetype2 library.
+For each glyph a texture is generated and put it into descriptors list. Of course it very bad thing to do.
+The best thing is to have one texture for all glyps and point specific char UV coordinates.
+First one is using signed distance field, the second one(down) does not use signed distance field.
+There are still some strange edge bleeding which I do not know really why.
 
 ## [Normal Mapping](Projects/NormalMapping)
 <img src="ScreenShots/NormallMapping.png" height="96px" align="right">
