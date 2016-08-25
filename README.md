@@ -65,8 +65,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 
 Some of the assets have different license
-[Assets/Shaders/Geometry/boblamp]
-[Assets/Shaders/Geometry/cyberwarrior]
-[Assets/Shaders/Geometry/hellknight]
-[Assets/Shaders/Geometry/nanosuit]
-[Assets/Shaders/Textures/photosculpt]
+[boblamp](Assets/Shaders/Geometry/boblamp)
+[cyberwarrior](Assets/Shaders/Geometry/cyberwarrior)
+[hellknight](Assets/Shaders/Geometry/hellknight)
+[nanosuit](Assets/Shaders/Geometry/nanosuit)
+[photosculpt](Assets/Shaders/Textures/photosculpt)
