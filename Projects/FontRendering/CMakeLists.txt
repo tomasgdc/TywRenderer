@@ -16,6 +16,8 @@ SOURCE_GROUP("Source Files" FILES ${SOURCES})
 SET(RESOURCES
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/FontRendering/FontRendering.frag"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/FontRendering/FontRendering.vert"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/FontRendering/NonSdf.frag"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/FontRendering/NonSdf.vert"
 )
 SOURCE_GROUP("Shader Files" FILES ${RESOURCES})
 

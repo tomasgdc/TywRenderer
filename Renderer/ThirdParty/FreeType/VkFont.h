@@ -22,8 +22,8 @@ class TYWRENDERER_API VkFont
 			VkDevice device,
 			VkQueue queue,
 			std::vector<VkFramebuffer> &framebuffers,
-			//VkFormat colorformat,
-			//VkFormat depthformat,
+			VkFormat colorformat,
+			VkFormat depthformat,
 			uint32_t *framebufferwidth,
 			uint32_t *framebufferheight);
 
@@ -40,7 +40,7 @@ class TYWRENDERER_API VkFont
 		void EndTextUpdate();
 		void SubmitToQueue(VkQueue queue, uint32_t bufferindex, VkSubmitInfo submitInfo);
 
-		void PrepareResources();
+		void PrepareResources(uint32_t width, uint32_t height);
 		void PrepareRenderPass();
 		void PreparePipeline();
 		void SetupDescriptorSetLayout();

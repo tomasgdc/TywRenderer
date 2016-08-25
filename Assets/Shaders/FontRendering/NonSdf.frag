@@ -15,11 +15,11 @@ void main()
 {
 
   vec2 flipped_texcoord = vec2(inUv.x, 1.0 - inUv.y);
-  float distance = texture(samplerColor, flipped_texcoord).r;
-  float smoothWidth = fwidth(distance);
-  float alpha = smoothstep(0.5 - smoothWidth, 0.5 + smoothWidth, distance);
-  vec3 rgb = mix(vec3(alpha), addColor.rgb, alpha);	
+  //float distance = texture(samplerColor, flipped_texcoord).r;
+  //float smoothWidth = fwidth(distance);
+  //float alpha = smoothstep(0.5 - smoothWidth, 0.5 + smoothWidth, distance);
+  //vec3 rgb = mix(vec3(alpha), addColor.rgb, alpha);	
 
-  outFragColor = vec4(rgb, alpha);
+  outFragColor = vec4(texture(samplerColor, flipped_texcoord).r);
   //outFragColor = addColor;
 }

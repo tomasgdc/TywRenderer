@@ -36,8 +36,8 @@ VkFont::VkFont(VkPhysicalDevice physicalDevice,
 	VkDevice device,
 	VkQueue queue,
 	std::vector<VkFramebuffer> &framebuffers,
-	//VkFormat colorformat,
-	//VkFormat depthformat,
+	VkFormat colorformat,
+	VkFormat depthformat,
 	uint32_t *framebufferwidth,
 	uint32_t *framebufferheight)
 	:data(TYW_NEW GlyphData())
@@ -45,8 +45,8 @@ VkFont::VkFont(VkPhysicalDevice physicalDevice,
 	this->physicalDevice = physicalDevice;
 	this->device = device;
 	this->queue = queue;
-	//this->colorFormat = colorformat;
-	//this->depthFormat = depthformat;
+	this->colorFormat = colorformat;
+	this->depthFormat = depthformat;
 
 	this->frameBuffers.resize(framebuffers.size());
 	for (uint32_t i = 0; i < framebuffers.size(); i++)
@@ -98,7 +98,7 @@ void VkFont::InitializeChars(char* source, VkTools::VulkanTextureLoader& pTextur
 		{
 			VkTools::VulkanTexture* texture = TYW_NEW VkTools::VulkanTexture;
 			
-			pTextureLoader.GenerateTexture(temp.bitmap_buffer, texture, VkFormat::VK_FORMAT_B8G8R8A8_SRGB, sizeof(temp.bitmap_buffer), temp.bitmap_width, temp.bitmap_rows, 0, true, VK_IMAGE_USAGE_SAMPLED_BIT);
+			pTextureLoader.GenerateTexture(temp.bitmap_buffer, texture, VkFormat::VK_FORMAT_R8_UNORM, sizeof(temp.bitmap_buffer), temp.bitmap_width, temp.bitmap_rows, 1, false,  VK_IMAGE_USAGE_SAMPLED_BIT);
 			glyphs.insert(std::unordered_map<char, VkTools::VulkanTexture*>::value_type(source[i], texture));
 
 
@@ -295,8 +295,7 @@ void VkFont::PrepareRenderPass()
 	// Color attachment
 	attachments[0].format = colorFormat;
 	attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
-	// Don't clear the framebuffer (like the renderpass from the example does)
-	attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+	attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -306,8 +305,8 @@ void VkFont::PrepareRenderPass()
 	// Depth attachment
 	attachments[1].format = depthFormat;
 	attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
-	attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	attachments[1].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -495,7 +494,7 @@ VkPipelineShaderStageCreateInfo VkFont::LoadShader(const std::string& fileName, 
 }
 
 
-void VkFont::PrepareResources()
+void VkFont::PrepareResources(uint32_t width, uint32_t height)
 {
 	// Pool
 	VkCommandPoolCreateInfo cmdPoolInfo = {};
@@ -529,22 +528,13 @@ void VkFont::PrepareResources()
 	VK_CHECK_RESULT(vkAllocateMemory(device, &allocInfo, nullptr, &m_BufferData.memory));
 	VK_CHECK_RESULT(vkBindBufferMemory(device, m_BufferData.buffer, m_BufferData.memory, 0));
 
-	// Map persistent
-	VK_CHECK_RESULT(vkMapMemory(device, m_BufferData.memory, 0, VK_WHOLE_SIZE, 0, (void **)&pData));
+	
 
 	//Allocate descriptors
 	VkBufferObject::BindVertexUvDescriptor(m_BufferData);
 
 
-	// Pipeline layout
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo =
-		VkTools::Initializer::PipelineLayoutCreateInfo(
-			&descriptorSetLayout,
-			1);
-
-	VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
-
-	// Pipeline cache
+	//// Pipeline cache
 	VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
 	pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 	VK_CHECK_RESULT(vkCreatePipelineCache(device, &pipelineCacheCreateInfo, nullptr, &pipelineCache));
@@ -552,12 +542,16 @@ void VkFont::PrepareResources()
 
 	PrepareRenderPass();
 	PreparePipeline();
+	UpdateUniformBuffers(width, height, 0);
 }
 
 
 
 inline void VkFont::BeginTextUpdate()
 {
+	// Map persistent
+	VK_CHECK_RESULT(vkMapMemory(device, m_BufferData.memory, 0, VK_WHOLE_SIZE, 0, (void **)&pData));
+
 	pDataLocal = pData;
 	numLetters = 0;
 	text.clear();
@@ -565,10 +559,18 @@ inline void VkFont::BeginTextUpdate()
 
 void VkFont::EndTextUpdate()
 {
+	//Unmap memory
+	vkUnmapMemory(device, m_BufferData.memory);
+	pDataLocal = nullptr;
+	pData = nullptr;
+
+
+
 	VkCommandBufferBeginInfo cmdBufInfo = VkTools::Initializer::CommandBufferBeginInfo();
 
-	VkClearValue clearValues[1];
+	VkClearValue clearValues[2];
 	clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+	clearValues[1].depthStencil = { 1.0f, 0 };
 
 	VkRenderPassBeginInfo renderPassBeginInfo = {};
 	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -578,7 +580,7 @@ void VkFont::EndTextUpdate()
 	renderPassBeginInfo.renderArea.offset.y = 0;
 	renderPassBeginInfo.renderArea.extent.width = *frameBufferWidth;
 	renderPassBeginInfo.renderArea.extent.height = *frameBufferHeight;
-	renderPassBeginInfo.clearValueCount = 1;
+	renderPassBeginInfo.clearValueCount = 2;
 	renderPassBeginInfo.pClearValues = clearValues;
 
 
@@ -592,8 +594,8 @@ void VkFont::EndTextUpdate()
 
 		// Update dynamic viewport state
 		VkViewport viewport = {};
-		viewport.height = (float)*frameBufferWidth;
-		viewport.width = (float)*frameBufferHeight;
+		viewport.height = (float)*frameBufferHeight;
+		viewport.width = (float)*frameBufferWidth;
 		viewport.minDepth = (float) 0.0f;
 		viewport.maxDepth = (float) 1.0f;
 		vkCmdSetViewport(cmdBuffers[i], 0, 1, &viewport);
@@ -616,8 +618,7 @@ void VkFont::EndTextUpdate()
 		for (uint32_t j = 0; j < text.size(); j++)
 		{
 			vkCmdBindDescriptorSets(cmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptors[text[j]], 0, NULL);
-			//vkCmdDraw(cmdBuffers[i], 6, 1, j * 6, 0);
-			vkCmdDraw(cmdBuffers[i], 6, 1, 0, 0);
+			vkCmdDraw(cmdBuffers[i], 6, 1, j*6, 0);
 		}
 
 
@@ -672,7 +673,7 @@ void VkFont::UpdateUniformBuffers(uint32_t windowWidth, uint32_t windowHeight, f
 	m_uboVS.projectionMatrix = glm::perspective(glm::radians(60.0f), (float)windowWidth / (float)windowHeight, 0.1f, 256.0f);
 
 	m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, zoom));
-	m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -5.0f));
+	m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -60.0f));
 	m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
 
 	// Map uniform buffer and update it

@@ -23,6 +23,7 @@
 #include <External\glm\glm\gtc\matrix_inverse.hpp>
 
 //Font Renderer
+#include <Renderer\ThirdParty\FreeType\FreetypeLoad.h>
 #include <Renderer\ThirdParty\FreeType\VkFont.h>
 
 
@@ -96,11 +97,12 @@ class Renderer final : public VKRenderer
 	drawFont*			        mappedLocal; //during text updates
 	uint32_t					numLetters;
 	std::string					text;
+	VkPipeline					nonSdfPipeline;
 public:
 	Renderer() {}
 	~Renderer() 
 	{
-
+		vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, nonSdfPipeline, nullptr);
 	}
 
 	void BuildCommandBuffers() override;
@@ -160,13 +162,9 @@ void Renderer::BuildCommandBuffers()
 
 	for (int32_t i = 0; i < m_pWRenderer->m_DrawCmdBuffers.size(); ++i)
 	{
-		// Set target frame buffer
+
 		renderPassBeginInfo.framebuffer = m_pWRenderer->m_FrameBuffers[i];
-
 		VK_CHECK_RESULT(vkBeginCommandBuffer(m_pWRenderer->m_DrawCmdBuffers[i], &cmdBufInfo));
-
-		// Start the first sub pass specified in our default render pass setup by the base class
-		// This will clear the color and depth attachment
 		vkCmdBeginRenderPass(m_pWRenderer->m_DrawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		// Update dynamic viewport state
@@ -185,22 +183,32 @@ void Renderer::BuildCommandBuffers()
 		scissor.offset.y = 0;
 		vkCmdSetScissor(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &scissor);
 
-		// Bind descriptor sets describing shader binding points
-		vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_VkFont->pipelineLayout, 0, 1, &m_VkFont->descriptors[0], 0, NULL);
 
-		// Bind the rendering pipeline
-		// The pipeline (state object) contains all states of the rendering pipeline
-		// So once we bind a pipeline all states that were set upon creation of that
-		// pipeline will be set
-		vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-		// Bind triangle vertex buffer (contains position and colors)
+		//Singed distance font
 		VkDeviceSize offsets[1] = { 0 };
+		vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+		vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &m_BufferData.buffer, offsets);
+		
+		for (int j = 0; j < text.size(); j++)
+		{
+			if (text[j] == ' ')continue;
+			vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_VkFont->pipelineLayout, 0, 1, &m_VkFont->descriptors[text[j]], 0, NULL);
+			vkCmdDraw(m_pWRenderer->m_DrawCmdBuffers[i], 6, 1, 6 * j, 0);
+		}
+
+		//Non signed distance font
+		viewport.y = (float)g_iDesktopHeight / 2.0f;
+		vkCmdSetViewport(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &viewport);
+		vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, nonSdfPipeline);
 		vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &m_BufferData.buffer, offsets);
 
+		for (int j = 0; j < text.size(); j++)
+		{
+			if (text[j] == ' ')continue;
+			vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_VkFont->pipelineLayout, 0, 1, &m_VkFont->descriptors[text[j]], 0, NULL);
+			vkCmdDraw(m_pWRenderer->m_DrawCmdBuffers[i], 6, 1, 6 * j, 0);
+		}
 
-		// Draw indexed triangle
-		vkCmdDraw(m_pWRenderer->m_DrawCmdBuffers[i], 6, 1, 0, 0);
 
 		vkCmdEndRenderPass(m_pWRenderer->m_DrawCmdBuffers[i]);
 
@@ -310,7 +318,7 @@ void Renderer::PrepareUniformBuffers()
 void Renderer::PrepareVertices(bool useStagingBuffers)
 {
 	
-	m_VkFont->CreateFontVk((GetAssetPath() + "Textures/freetype/mario.ttf"), 64, 96);
+	m_VkFont->CreateFontVk((GetAssetPath() + "Textures/freetype/AmazDooMLeft.ttf"), 64, 96);
 
 	m_VkFont->SetupDescriptorPool();
 	m_VkFont->SetupDescriptorSetLayout();
@@ -333,77 +341,147 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &allocInfo, nullptr, &m_BufferData.memory));
 	VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, m_BufferData.buffer, m_BufferData.memory, 0));
 
-	// Map persistent
-	VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, m_BufferData.memory, 0, VK_WHOLE_SIZE, 0, (void **)&mapped));
+
 
 	//Allocate descriptors
 	VkBufferObject::BindVertexUvDescriptor(m_BufferData);
 
+	//Map memory
+	VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, m_BufferData.memory, 0, VK_WHOLE_SIZE, 0, (void **)&mapped))
 
 	mappedLocal = mapped;
 	numLetters = 0;
 	text.clear();
+
+
+	//Add text
+	float x = -30;
+	float y = -40;  
+	float ws = 0.5;
+	float hs = 0.5;
+
+	text = "vulkan";
+	for (int i = 0; i < text.size(); i++)
+	{
+
+		if (text[i] == ' ')
+		{
+			x += 32 * ws;
+			continue;
+		}
+
+		Data currentGlyph = m_VkFont->data->getChar(text[i]);
+		if (currentGlyph.c != text[i])
+		{
+			printf("Could not find char %c \n", text[i]);
+			return;
+		}
+
+		float vx = x + currentGlyph.bitmap_left * ws;
+		float vy = y + currentGlyph.bitmap_top * hs;
+		float w = currentGlyph.bitmap_width * ws-1; //give some space for each letter
+		float h = currentGlyph.bitmap_rows * hs;
+
+		drawFont data[6] =
+		{
+			{ glm::vec3(vx,vy,    1),	 glm::vec2(0,0) },
+			{ glm::vec3(vx,vy - h,  1),   glm::vec2(0,1) },
+			{ glm::vec3(vx + w,vy,  1),   glm::vec2(1,0) },
+
+			{ glm::vec3(vx + w,vy,  1),   glm::vec2(1,0) },
+			{ glm::vec3(vx,vy - h,  1),   glm::vec2(0,1) },
+			{ glm::vec3(vx + w,vy - h,1),   glm::vec2(1,1) }
+		};
+
+
+		{
+			mappedLocal->tex = data[0].tex;
+			mappedLocal->vertex = data[0].vertex;
+			mappedLocal++;
+
+			mappedLocal->tex = data[1].tex;
+			mappedLocal->vertex = data[1].vertex;
+			mappedLocal++;
+
+			mappedLocal->tex = data[2].tex;
+			mappedLocal->vertex = data[2].vertex;
+			mappedLocal++;
+
+			mappedLocal->tex = data[3].tex;
+			mappedLocal->vertex = data[3].vertex;
+			mappedLocal++;
+
+			mappedLocal->tex = data[4].tex;
+			mappedLocal->vertex = data[4].vertex;
+			mappedLocal++;
+
+			mappedLocal->tex = data[5].tex;
+			mappedLocal->vertex = data[5].vertex;
+			mappedLocal++;
+
+			numLetters++;
+		}
+
+
+
+		// increment position /
+		x += (currentGlyph.advance.x >> 6) * ws;
+		y += (currentGlyph.advance.y >> 6) * hs;
+	}
+
+	// Unmap memory
+	vkUnmapMemory(m_pWRenderer->m_SwapChain.device, m_BufferData.memory);
 }
 
 
 void Renderer::PreparePipeline()
 {
 
-	// Create our rendering pipeline used in this example
-	// Vulkan uses the concept of rendering pipelines to encapsulate
-	// fixed states
-	// This replaces OpenGL's huge (and cumbersome) state machine
-	// A pipeline is then stored and hashed on the GPU making
-	// pipeline changes much faster than having to set dozens of 
-	// states
-	// In a real world application you'd have dozens of pipelines
-	// for every shader set used in a scene
-	// Note that there are a few states that are not stored with
-	// the pipeline. These are called dynamic states and the 
-	// pipeline only stores that they are used with this pipeline,
-	// but not their states
 
-	// Assign states
-	// Assign pipeline state create information
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
-
 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	// The layout used for this pipeline
 	pipelineCreateInfo.layout = m_VkFont->pipelineLayout;
-	// Renderpass this pipeline is attached to
 	pipelineCreateInfo.renderPass = m_pWRenderer->m_RenderPass;
 
 	// Vertex input state
 	// Describes the topoloy used with this pipeline
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = {};
 	inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	// This pipeline renders vertex data as triangle lists
 	inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssemblyState.flags = 0;
+	inputAssemblyState.primitiveRestartEnable = VK_FALSE;
 
 	// Rasterization state
 	VkPipelineRasterizationStateCreateInfo rasterizationState = {};
 	rasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	// Solid polygon mode
 	rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
-	// No culling
-	rasterizationState.cullMode = VK_CULL_MODE_NONE;
-	rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	rasterizationState.depthClampEnable = VK_FALSE;
-	rasterizationState.rasterizerDiscardEnable = VK_FALSE;
-	rasterizationState.depthBiasEnable = VK_FALSE;
+	rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizationState.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizationState.flags = 0;
+	rasterizationState.depthClampEnable = VK_TRUE;
 	rasterizationState.lineWidth = 1.0f;
 
+	// Enable blending
+	VkPipelineColorBlendAttachmentState blendAttachmentState = {};
+	blendAttachmentState.colorWriteMask = 0xf, VK_TRUE;
+	blendAttachmentState.blendEnable = VK_TRUE;
+
+	blendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	blendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	blendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
+	blendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	blendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	blendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
+	blendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+
 	// Color blend state
-	// Describes blend modes and color masks
 	VkPipelineColorBlendStateCreateInfo colorBlendState = {};
 	colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	// One blend attachment state
-	// Blending is not used in this example
-	VkPipelineColorBlendAttachmentState blendAttachmentState[1] = {};
-	blendAttachmentState[0].colorWriteMask = 0xf;
-	blendAttachmentState[0].blendEnable = VK_FALSE;
+	colorBlendState.pNext = NULL;
 	colorBlendState.attachmentCount = 1;
-	colorBlendState.pAttachments = blendAttachmentState;
+	colorBlendState.pAttachments = &blendAttachmentState;
+
 
 	// Viewport state
 	VkPipelineViewportStateCreateInfo viewportState = {};
@@ -453,8 +531,12 @@ void Renderer::PreparePipeline()
 	// Load shaders
 	//Shaders are loaded from the SPIR-V format, which can be generated from glsl
 	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
-	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/FontRendering/FontRendering.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/FontRendering/FontRendering.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+
+
+	shaderStages[0] = LoadShader(VKRenderer::GetAssetPath() + "Shaders/FontRendering/FontRendering.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader(VKRenderer::GetAssetPath() + "Shaders/FontRendering/FontRendering.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
 
 	// Create Pipeline state VI-IA-VS-VP-RS-FS-CB
 	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
@@ -471,6 +553,13 @@ void Renderer::PreparePipeline()
 
 	// Create rendering pipeline
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &pipeline));
+
+
+	shaderStages[0] = LoadShader(VKRenderer::GetAssetPath() + "Shaders/FontRendering/NonSdf.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader(VKRenderer::GetAssetPath() + "Shaders/FontRendering/NonSdf.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+	// Create rendering pipeline
+	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &nonSdfPipeline));
 }
 
 
@@ -545,7 +634,7 @@ void Renderer::SetupDescriptorSet()
 
 void Renderer::LoadAssets()
 {
-	m_VkFont = TYW_NEW VkFont(m_pWRenderer->m_SwapChain.physicalDevice, m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_Queue, m_pWRenderer->m_FrameBuffers, &m_WindowWidth, &m_WindowHeight);
+	m_VkFont = TYW_NEW VkFont(m_pWRenderer->m_SwapChain.physicalDevice, m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_Queue, m_pWRenderer->m_FrameBuffers, m_pWRenderer->m_SwapChain.colorFormat, m_pWRenderer->m_SwapChain.depthFormat, &m_WindowWidth, &m_WindowHeight);
 }
 
 

@@ -284,19 +284,12 @@ bool VkTools::VulkanTextureLoader::GenerateTexture(void * pImageData, VulkanText
 {
 	texture->width = width;
 	texture->height = height;
-	texture->mipLevels = miplevels;
+	texture->mipLevels = 0;
 
 
 	// Get device properites for the requested texture format
 	VkFormatProperties formatProperties;
 	vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
-
-	// Only use linear tiling if requested (and supported by the device)
-	// Support for linear tiling is mostly limited, so prefer to use
-	// optimal tiling instead
-	// On most implementations linear tiling will only support a very
-	// limited amount of formats and features (mip maps, cubemaps, arrays, etc.)
-	VkBool32 useStaging = !bForceLinear;
 
 	VkMemoryAllocateInfo memAllocInfo = VkTools::Initializer::MemoryAllocateInfo();
 	VkMemoryRequirements memReqs;
@@ -305,15 +298,13 @@ bool VkTools::VulkanTextureLoader::GenerateTexture(void * pImageData, VulkanText
 	VkCommandBufferBeginInfo cmdBufInfo = VkTools::Initializer::CommandBufferBeginInfo();
 	VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
 
-	if (useStaging)
-	{
 		// Create a host-visible staging buffer that contains the raw image data
 		VkBuffer stagingBuffer;
 		VkDeviceMemory stagingMemory;
 
 		VkBufferCreateInfo bufferCreateInfo = VkTools::Initializer::BufferCreateInfo();
 		//bufferCreateInfo.size = sizeof(pngLoader.image_data);
-		bufferCreateInfo.size = size;
+		bufferCreateInfo.size = width*height;
 
 		// This buffer is used as a transfer source for the buffer copy
 		bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -334,7 +325,7 @@ bool VkTools::VulkanTextureLoader::GenerateTexture(void * pImageData, VulkanText
 		// Copy texture data into staging buffer
 		uint8_t *data;
 		VK_CHECK_RESULT(vkMapMemory(device, stagingMemory, 0, memReqs.size, 0, (void **)&data));
-		memcpy(data, pImageData, size);
+		memcpy(data, pImageData, width*height);
 		//memcpy(data, pngLoader.image_data, sizeof(pngLoader.image_data));
 		vkUnmapMemory(device, stagingMemory);
 
@@ -342,37 +333,30 @@ bool VkTools::VulkanTextureLoader::GenerateTexture(void * pImageData, VulkanText
 		std::vector<VkBufferImageCopy> bufferCopyRegions;
 		uint32_t offset = 0;
 
-		for (uint32_t i = 0; i < texture->mipLevels; i++)
-		{
-			VkBufferImageCopy bufferCopyRegion = {};
-			bufferCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			bufferCopyRegion.imageSubresource.mipLevel = i;
-			bufferCopyRegion.imageSubresource.baseArrayLayer = 0;
-			bufferCopyRegion.imageSubresource.layerCount = 1;
-			//bufferCopyRegion.imageExtent.width = static_cast<uint32_t>(tex2D[i].extent().x);
-			//bufferCopyRegion.imageExtent.height = static_cast<uint32_t>(tex2D[i].extent().y);
 
-			//bufferCopyRegion.imageExtent.width = static_cast<uint32_t>(pngLoader.width);
-			//bufferCopyRegion.imageExtent.height = static_cast<uint32_t>(pngLoader.height);
+		VkBufferImageCopy bufferCopyRegion = {};
+		bufferCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		bufferCopyRegion.imageSubresource.mipLevel = 0;
+		bufferCopyRegion.imageSubresource.baseArrayLayer = 0;
+		bufferCopyRegion.imageSubresource.layerCount = 1;
+		bufferCopyRegion.imageExtent.width = width;
+		bufferCopyRegion.imageExtent.height = height;
 
-			bufferCopyRegion.imageExtent.depth = 1;
-			bufferCopyRegion.bufferOffset = offset;
 
-			bufferCopyRegions.push_back(bufferCopyRegion);
+		bufferCopyRegion.imageExtent.depth = 1;
+		bufferCopyRegion.bufferOffset = offset;
 
-			//offset += static_cast<uint32_t>(sizeof(pngLoader.image_data));
-			//offset += static_cast<uint32_t>(tex2D[i].size());
-		}
+		bufferCopyRegions.push_back(bufferCopyRegion);
+
 
 		// Create optimal tiled target image
 		VkImageCreateInfo imageCreateInfo = VkTools::Initializer::ImageCreateInfo();
 		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
 		imageCreateInfo.format = format;
-		imageCreateInfo.mipLevels = texture->mipLevels;
+		imageCreateInfo.mipLevels = 1;
 		imageCreateInfo.arrayLayers = 1;
 		imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 		imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-		imageCreateInfo.usage = imageUsageFlags;
 		imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		imageCreateInfo.extent = { texture->width, texture->height, 1 };
@@ -388,11 +372,6 @@ bool VkTools::VulkanTextureLoader::GenerateTexture(void * pImageData, VulkanText
 		VK_CHECK_RESULT(vkAllocateMemory(device, &memAllocInfo, nullptr, &texture->deviceMemory));
 		VK_CHECK_RESULT(vkBindImageMemory(device, texture->image, texture->deviceMemory, 0));
 
-		VkImageSubresourceRange subresourceRange = {};
-		subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		subresourceRange.baseMipLevel = 0;
-		subresourceRange.levelCount = texture->mipLevels;
-		subresourceRange.layerCount = 1;
 
 		// Image barrier for optimal image (target)
 		// Optimal image will be used as destination for the copy
@@ -401,8 +380,7 @@ bool VkTools::VulkanTextureLoader::GenerateTexture(void * pImageData, VulkanText
 			texture->image,
 			VK_IMAGE_ASPECT_COLOR_BIT,
 			VK_IMAGE_LAYOUT_UNDEFINED,
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			subresourceRange);
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 		// Copy mip levels from staging buffer
 		vkCmdCopyBufferToImage(
@@ -421,8 +399,8 @@ bool VkTools::VulkanTextureLoader::GenerateTexture(void * pImageData, VulkanText
 			texture->image,
 			VK_IMAGE_ASPECT_COLOR_BIT,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			texture->imageLayout,
-			subresourceRange);
+			texture->imageLayout);
+
 
 		// Submit command buffer containing copy and image layout commands
 		VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffer));
@@ -445,100 +423,6 @@ bool VkTools::VulkanTextureLoader::GenerateTexture(void * pImageData, VulkanText
 		// Clean up staging resources
 		vkFreeMemory(device, stagingMemory, nullptr);
 		vkDestroyBuffer(device, stagingBuffer, nullptr);
-	}
-	else
-	{
-		// Prefer using optimal tiling, as linear tiling 
-		// may support only a small set of features 
-		// depending on implementation (e.g. no mip maps, only one layer, etc.)
-
-		// Check if this support is supported for linear tiling
-		assert(formatProperties.linearTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
-
-		VkImage mappableImage;
-		VkDeviceMemory mappableMemory;
-
-		VkImageCreateInfo imageCreateInfo = VkTools::Initializer::ImageCreateInfo();
-		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-		imageCreateInfo.format = format;
-		imageCreateInfo.extent = { texture->width, texture->height, 1 };
-		imageCreateInfo.mipLevels = 1;
-		imageCreateInfo.arrayLayers = 1;
-		imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-		imageCreateInfo.tiling = VK_IMAGE_TILING_LINEAR;
-		imageCreateInfo.usage = imageUsageFlags;
-		imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
-
-		// Load mip map level 0 to linear tiling image
-		VK_CHECK_RESULT(vkCreateImage(device, &imageCreateInfo, nullptr, &mappableImage));
-
-		// Get memory requirements for this image 
-		// like size and alignment
-		vkGetImageMemoryRequirements(device, mappableImage, &memReqs);
-		// Set memory allocation size to required memory size
-		memAllocInfo.allocationSize = memReqs.size;
-
-		// Get memory type that can be mapped to host memory
-		memAllocInfo.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-		// Allocate host memory
-		VK_CHECK_RESULT(vkAllocateMemory(device, &memAllocInfo, nullptr, &mappableMemory));
-
-		// Bind allocated image for use
-		VK_CHECK_RESULT(vkBindImageMemory(device, mappableImage, mappableMemory, 0));
-
-		// Get sub resource layout
-		// Mip map count, array layer, etc.
-		VkImageSubresource subRes = {};
-		subRes.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		subRes.mipLevel = 0;
-
-		VkSubresourceLayout subResLayout;
-		void *data;
-
-		// Get sub resources layout 
-		// Includes row pitch, size offsets, etc.
-		vkGetImageSubresourceLayout(device, mappableImage, &subRes, &subResLayout);
-
-		// Map image memory
-		VK_CHECK_RESULT(vkMapMemory(device, mappableMemory, 0, memReqs.size, 0, &data));
-
-		// Copy image data into memory
-		memcpy(data, pImageData, size);
-
-		//memcpy(data, pngLoader.image_data, sizeof(pngLoader.image_data));
-
-
-		vkUnmapMemory(device, mappableMemory);
-
-		// Linear tiled images don't need to be staged
-		// and can be directly used as textures
-		texture->image = mappableImage;
-		texture->deviceMemory = mappableMemory;
-		texture->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-		// Setup image memory barrier
-		SetImageLayout(
-			cmdBuffer,
-			texture->image,
-			VK_IMAGE_ASPECT_COLOR_BIT,
-			VK_IMAGE_LAYOUT_PREINITIALIZED,
-			texture->imageLayout);
-
-		// Submit command buffer containing copy and image layout commands
-		VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffer));
-
-		VkFence nullFence = { VK_NULL_HANDLE };
-
-		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
-		submitInfo.waitSemaphoreCount = 0;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &cmdBuffer;
-
-		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, nullFence));
-		VK_CHECK_RESULT(vkQueueWaitIdle(queue));
-	}
 
 	// Create sampler
 	VkSamplerCreateInfo sampler = {};
@@ -552,8 +436,9 @@ bool VkTools::VulkanTextureLoader::GenerateTexture(void * pImageData, VulkanText
 	sampler.mipLodBias = 0.0f;
 	sampler.compareOp = VK_COMPARE_OP_NEVER;
 	sampler.minLod = 0.0f;
+
 	// Max level-of-detail should match mip level count
-	sampler.maxLod = (useStaging) ? (float)texture->mipLevels : 0.0f;
+	sampler.maxLod = 1;
 	// Enable anisotropic filtering
 	sampler.maxAnisotropy = 8;
 	sampler.anisotropyEnable = VK_TRUE;
@@ -574,7 +459,7 @@ bool VkTools::VulkanTextureLoader::GenerateTexture(void * pImageData, VulkanText
 	view.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 	// Linear tiling usually won't support mip maps
 	// Only set mip map count if optimal tiling is used
-	view.subresourceRange.levelCount = (useStaging) ? texture->mipLevels : 1;
+	view.subresourceRange.levelCount = 1;
 	view.image = texture->image;
 	VK_CHECK_RESULT(vkCreateImageView(device, &view, nullptr, &texture->view));
 
@@ -749,7 +634,7 @@ bool VkTools::VulkanTextureLoader::LoadTexture(const std::string& filename, VkFo
 		VkImageCreateInfo imageCreateInfo = VkTools::Initializer::ImageCreateInfo();
 		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
 		imageCreateInfo.format = format;
-		imageCreateInfo.mipLevels = texture->mipLevels;
+		imageCreateInfo.mipLevels = 1;
 		imageCreateInfo.arrayLayers = 1;
 		imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 		imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
