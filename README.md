@@ -29,7 +29,8 @@ Shader - [Texture Shader](Assets/Shaders/Texture)
 <img src="ScreenShots/FontRendering.png" height="96px" align="right">
 The fonts texture were generated using Freetype2 library.
 For each glyph a texture is generated and put it into descriptors list. Of course it very bad thing to do.
-The best thing is to have one texture for all glyps and point to specific char UV coordinates.
+The best thing is to have one texture for all glyps and point to specific char UV coordinates. In order to have alpha enabled you need
+to enable blending in your VkPipeline.
 First one is using signed distance field, the second one(down) does not use signed distance field.
 There are still some strange edge bleeding which I do not know really why.
 
