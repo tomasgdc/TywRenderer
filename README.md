@@ -64,7 +64,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-Some of the assets have different license
+Some of the assets have different license. Please comply to these when redistributing or using them in your own projects :
 > - [boblamp](Assets/Shaders/Geometry/boblamp) - http://www.katsbits.com/download/models/
 > - [cyberwarrior](Assets/Shaders/Geometry/cyberwarrior) - https://sketchfab.com/models/86f58bf5151c410facacf0ed6a2ebd53
 > - [hellknight](Assets/Shaders/Geometry/hellknight) Ripped and modified from Doom 3 - http://store.steampowered.com/app/9050/
