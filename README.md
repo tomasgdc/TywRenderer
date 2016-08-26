@@ -7,9 +7,15 @@ Currently works only under windows.
 Run .bat file which will build vs2015 solution
 
 #Dll and Lib dependencies
-> - Assimp
-> - LibPng
-> - Freetype
+> - Assimp - License
+> - LibPng - License https://github.com/ocornut/imgui
+> - Freetype - License https://www.freetype.org/
+
+#Please check ThirdParty Licenses
+> - Freetype -  https://www.freetype.org/
+> - ImGui -     https://github.com/ocornut/imgui
+> - Assimp -    https://github.com/assimp/assimp
+> - LibPng -    http://www.libpng.org/pub/png/libpng.html
 
 #Credits
 >- Sascha Willems - https://github.com/SaschaWillems/Vulkan
