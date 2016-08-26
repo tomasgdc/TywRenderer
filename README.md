@@ -1,7 +1,7 @@
 # TywRenderer
 
 Vulkan Renderer. Work in progress.
-Warning. The the code with grain of salt as it might violate Vulkan specs.
+- Warning. The the code with grain of salt as it might violate Vulkan specs.
 
 #How to Build
 Currently works only under windows.
