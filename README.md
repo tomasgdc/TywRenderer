@@ -6,16 +6,22 @@ Vulkan Renderer
 Currently works only under windows.
 Run .bat file which will build vs2015 solution
 
+In order to get working. You need to have working Vulkan driver and Vulkan SDK that you can download from LunarG site
+Also for glslvalidator download LunarG Vulkan SDK - https://lunarg.com/
+More information about glsllang - https://github.com/KhronosGroup/glslang
+More information about validation layer - https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers
+More information about Vulkan - https://github.com/KhronosGroup/Vulkan-Docs
+
 #Dll and Lib dependencies
-> - Assimp - License
-> - LibPng - License https://github.com/ocornut/imgui
-> - Freetype - License https://www.freetype.org/
+> - Assimp
+> - LibPng
+> - Freetype 
 
 #Please check ThirdParty Licenses
 > - Freetype -  https://www.freetype.org/
 > - ImGui -     https://github.com/ocornut/imgui
 > - Assimp -    https://github.com/assimp/assimp
-> - LibPng -    http://www.libpng.org/pub/png/libpng.html
+> - LibPng -    http://www.libpng.org/pub/png/libpng.htm
 
 #Credits
 >- Sascha Willems - https://github.com/SaschaWillems/Vulkan
