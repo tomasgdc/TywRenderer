@@ -235,8 +235,12 @@ protected:
 	// We use them to ensure that we e.g. don't present to the swap chain
 	// until all rendering has completed
 	struct {
+		// Swap chain image presentation
 		VkSemaphore presentComplete;
+		// Command buffer submission and execution
 		VkSemaphore renderComplete;
+		// Text overlay submission and execution
+		VkSemaphore textOverlayComplete;
 	} Semaphores;
 
 
@@ -298,6 +302,16 @@ protected:
 
 	uint32_t m_WindowWidth;
 	uint32_t m_WindowHeight;
+
+	// Last frame time, measured using a high performance timer (if available)
+
+public:
+	// fps timer (one second interval)
+	float fpsTimer = 0.0f;
+	float frameTimer = 1.0f;
+	// Frame counter to display fps
+	uint32_t frameCounter = 0;
+	uint32_t lastFPS = 0;
 };
 
 

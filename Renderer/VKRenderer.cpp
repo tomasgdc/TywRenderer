@@ -341,6 +341,11 @@ void VKRenderer::PrepareSemaphore()
 	// This semaphore ensures that all commands submitted
 	// have been finished before submitting the image to the queue
 	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.renderComplete));
+
+
+	// This semaphore ensures that all commands submitted
+	// have been finished before submitting the image to the queue
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.textOverlayComplete));
 }
 
 void VKRenderer::PreparePipeline()

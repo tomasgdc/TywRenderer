@@ -5,6 +5,7 @@
 */
 
 #include <RendererPch\stdafx.h>
+#include <iomanip>
 
 //Triangle Includes
 #include "Main.h"
@@ -24,6 +25,9 @@
 #include <Renderer\Vulkan\VkBufferObject.h>
 #include <Renderer\Vulkan\VulkanSwapChain.h>
 
+
+//Font Rendering
+#include <Renderer\ThirdParty\FreeType\VkFont.h>
 
 
 //math
@@ -87,7 +91,7 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 class Renderer final: public VKRenderer
 {
 	VkTools::VulkanTexture m_VkTexture;
-
+	VkFont*	m_VkFont;
 
 	struct {
 		glm::mat4 projectionMatrix;
@@ -108,7 +112,10 @@ class Renderer final: public VKRenderer
 
 public:
 	Renderer() {}
-	~Renderer(){}
+	~Renderer()
+	{
+		SAFE_DELETE(m_VkFont);
+	}
 
 	void BuildCommandBuffers() override;
 
@@ -132,7 +139,11 @@ public:
 	void LoadAssets() override;
 
 
+	void StartFrame() override;
+
+
 	void ChangeLodBias(float delta);
+	void BeginTextUpdate();
 };
 
 void Renderer::ChangeLodBias(float delta)
@@ -148,6 +159,19 @@ void Renderer::ChangeLodBias(float delta)
 	}
 
 	UpdateUniformBuffers();
+	m_VkFont->UpdateUniformBuffers(m_WindowWidth, m_WindowHeight, g_zoom);
+}
+
+
+void Renderer::BeginTextUpdate()
+{
+	m_VkFont->BeginTextUpdate();
+
+	std::stringstream ss;
+	ss << std::fixed << std::setprecision(2) << "ms-" << (frameTimer * 1000.0f) <<  "-fps-" << lastFPS;
+	m_VkFont->AddText(-25, -30, 0.1, 0.1, ss.str());
+
+	m_VkFont->EndTextUpdate();
 }
 
 
@@ -328,6 +352,19 @@ void Renderer::PrepareUniformBuffers()
 
 void Renderer::PrepareVertices(bool useStagingBuffers)
 {
+	//Create font pipeline
+	m_VkFont->CreateFontVk((GetAssetPath() + "Textures/freetype/AmazDooMLeft.ttf"), 64, 96);
+
+	m_VkFont->SetupDescriptorPool();
+	m_VkFont->SetupDescriptorSetLayout();
+	m_VkFont->PrepareUniformBuffers();
+	m_VkFont->InitializeChars("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM-:.@1234567890", *m_pTextureLoader);
+	m_VkFont->PrepareResources(g_iDesktopWidth, g_iDesktopHeight);
+
+
+	BeginTextUpdate();
+
+
 	RenderModelStatic staticModel;
 	staticModel.InitFromFile("Geometry/nanosuit/nanosuit2.obj", GetAssetPath());
 
@@ -625,12 +662,96 @@ void Renderer::SetupDescriptorSet()
 	*/
 }
 
+void Renderer::StartFrame()
+{
+
+	{
+		// Get next image in the swap chain (back/front buffer)
+		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.GetNextImage(Semaphores.presentComplete, &m_pWRenderer->m_currentBuffer));
+
+		// Submit the post present image barrier to transform the image back to a color attachment
+		// that can be used to write to by our render pass
+		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_pWRenderer->m_PostPresentCmdBuffers[m_pWRenderer->m_currentBuffer];
+
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+		// Make sure that the image barrier command submitted to the queue 
+		// has finished executing
+		VK_CHECK_RESULT(vkQueueWaitIdle(m_pWRenderer->m_Queue));
+	}
+
+
+
+	{
+
+		//Submit model
+		VkPipelineStageFlags submitPipelineStages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		VkPipelineStageFlags stageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
+
+
+		submitInfo.pWaitDstStageMask = &submitPipelineStages;
+		
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_pWRenderer->m_DrawCmdBuffers[m_pWRenderer->m_currentBuffer];
+		
+		// Wait for swap chain presentation to finish
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &Semaphores.presentComplete;
+
+		//Signal ready for model render to complete
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+
+		//Wait for color output before rendering text
+		submitInfo.pWaitDstStageMask = &stageFlags;
+
+		// Wait model rendering to finnish
+		submitInfo.pWaitSemaphores = &Semaphores.renderComplete;
+		//Signal ready for text to completeS
+		submitInfo.pSignalSemaphores = &Semaphores.textOverlayComplete;
+		
+		submitInfo.pCommandBuffers = &m_VkFont->cmdBuffers[m_pWRenderer->m_currentBuffer];
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+
+		// Reset stage mask
+		submitInfo.pWaitDstStageMask = &submitPipelineStages;
+		// Reset wait and signal semaphores for rendering next frame
+		// Wait for swap chain presentation to finish
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &Semaphores.presentComplete;
+		// Signal ready with offscreen semaphore
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
+
+	}
+
+	{
+		// Submit pre present image barrier to transform the image from color attachment to present(khr) for presenting to the swap chain
+		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_pWRenderer->m_PrePresentCmdBuffers[m_pWRenderer->m_currentBuffer];
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+
+		// Present the current buffer to the swap chain
+		// We pass the signal semaphore from the submit info
+		// to ensure that the image is not rendered until
+		// all commands have been submitted
+		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.QueuePresent(m_pWRenderer->m_Queue, m_pWRenderer->m_currentBuffer, Semaphores.textOverlayComplete));
+	}
+}
 
 
 
 void Renderer::LoadAssets()
 {
-	VLoadTexture(GetAssetPath() + "Textures/pattern_02_bc2.ktx", VK_FORMAT_BC2_UNORM_BLOCK, false);
+	m_VkFont = TYW_NEW VkFont(m_pWRenderer->m_SwapChain.physicalDevice, m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_Queue, m_pWRenderer->m_FrameBuffers, m_pWRenderer->m_SwapChain.colorFormat, m_pWRenderer->m_SwapChain.depthFormat, &m_WindowWidth, &m_WindowHeight);
 }
 
 
@@ -654,6 +775,19 @@ int main()
 		//Do something
 		g_Renderer.EndFrame(nullptr);
 		auto tEnd = std::chrono::high_resolution_clock::now();
+		
+		g_Renderer.frameCounter++;
+		auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+		g_Renderer.frameTimer = (float)tDiff / 1000.0f;
+		g_Renderer.fpsTimer += (float)tDiff;
+		if (g_Renderer.fpsTimer > 1000.0f)
+		{
+
+			g_Renderer.lastFPS = g_Renderer.frameCounter;
+			g_Renderer.BeginTextUpdate();
+			g_Renderer.fpsTimer = 0.0f;
+			g_Renderer.frameCounter = 0;
+		}
 	}
 	g_Renderer.VShutdown();
 	return 0;
@@ -803,8 +937,10 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		}
 		break;
 	case WM_EXITSIZEMOVE:
-		if (g_bPrepared) {
+		if (g_bPrepared) 
+		{
 			g_Renderer.VWindowResize(g_iDesktopHeight, g_iDesktopWidth);
+			g_Renderer.BeginTextUpdate();
 		}
 		break;
 	}

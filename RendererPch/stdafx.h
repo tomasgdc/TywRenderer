@@ -7,6 +7,7 @@
 #include <Windowsx.h>
 #include <mmsystem.h>
 
+#include <iomanip>
 #include <limits>
 #include <queue>
 #include <cassert>

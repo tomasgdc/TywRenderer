@@ -35,10 +35,10 @@ class TYWRENDERER_API VkFont
 		void InitializeChars(char* source, VkTools::VulkanTextureLoader& pTextureLoader);
 
 
-
+		void Resize(uint32_t windowWidth, uint32_t windowHeight);
 		void BeginTextUpdate();
 		void EndTextUpdate();
-		void SubmitToQueue(VkQueue queue, uint32_t bufferindex, VkSubmitInfo submitInfo);
+		void SubmitToQueue(VkQueue queue, uint32_t bufferindex);
 
 		void PrepareResources(uint32_t width, uint32_t height);
 		void PrepareRenderPass();
@@ -53,7 +53,7 @@ class TYWRENDERER_API VkFont
 		void UpdateCommandBuffers();
 
 		//Add Text
-		void AddText(float x, float y, float ws, float hs, const char* text);
+		void AddText(float x, float y, float ws, float hs, const std::string& text);
 
 
 		bool Release();

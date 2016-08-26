@@ -133,14 +133,13 @@ void VkFont::InitializeChars(char* source, VkTools::VulkanTextureLoader& pTextur
 VkFont::DisplayText()
 =======================================
 */
-void VkFont::AddText(float x, float y, float ws, float hs, const char* text)
+void VkFont::AddText(float x, float y, float ws, float hs, const std::string& text)
 {
-	this->text = text;
-	size_t size = strlen(text);
-	for (int i = 0; i < size; i++) 
+	this->text += text;
+	for (int i = 0; i < this->text.size(); i++)
 	{
 
-		if (text[i] == ' ') 
+		if (this->text[i] == ' ')
 		{
 			x += 32*ws;
 			continue;
@@ -171,29 +170,29 @@ void VkFont::AddText(float x, float y, float ws, float hs, const char* text)
 
 
 		{
-			pDataLocal[0].tex = data[0].tex;
-			pDataLocal[0].vertex = data[0].vertex;
-			//pDataLocal++;
+			pDataLocal->tex = data[0].tex;
+			pDataLocal->vertex = data[0].vertex;
+			pDataLocal++;
 
-			pDataLocal[1].tex = data[1].tex;
-			pDataLocal[1].vertex = data[1].vertex;
-			//pDataLocal++;
+			pDataLocal->tex = data[1].tex;
+			pDataLocal->vertex = data[1].vertex;
+			pDataLocal++;
 
-			pDataLocal[2].tex = data[2].tex;
-			pDataLocal[2].vertex = data[2].vertex;
-			//pDataLocal++;
+			pDataLocal->tex = data[2].tex;
+			pDataLocal->vertex = data[2].vertex;
+			pDataLocal++;
 
-			pDataLocal[3].tex = data[3].tex;
-			pDataLocal[3].vertex = data[3].vertex;
-			//pDataLocal++;
+			pDataLocal->tex = data[3].tex;
+			pDataLocal->vertex = data[3].vertex;
+			pDataLocal++;
 
-			pDataLocal[4].tex = data[4].tex;
-			pDataLocal[4].vertex = data[4].vertex;
-			//pDataLocal++;
+			pDataLocal->tex = data[4].tex;
+			pDataLocal->vertex = data[4].vertex;
+			pDataLocal++;
 
-			pDataLocal[5].tex = data[5].tex;
-			pDataLocal[5].vertex = data[5].vertex;
-			//pDataLocal++;
+			pDataLocal->tex = data[5].tex;
+			pDataLocal->vertex = data[5].vertex;
+			pDataLocal++;
 
 
 			numLetters++;
@@ -295,7 +294,8 @@ void VkFont::PrepareRenderPass()
 	// Color attachment
 	attachments[0].format = colorFormat;
 	attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
-	attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	// Don't clear the framebuffer (like the renderpass from the example does)
+	attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 	attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -305,8 +305,8 @@ void VkFont::PrepareRenderPass()
 	// Depth attachment
 	attachments[1].format = depthFormat;
 	attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
-	attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	attachments[1].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -348,61 +348,50 @@ void VkFont::PrepareRenderPass()
 
 void VkFont::PreparePipeline()
 {
-	// Create our rendering pipeline used in this example
-	// Vulkan uses the concept of rendering pipelines to encapsulate
-	// fixed states
-	// This replaces OpenGL's huge (and cumbersome) state machine
-	// A pipeline is then stored and hashed on the GPU making
-	// pipeline changes much faster than having to set dozens of 
-	// states
-	// In a real world application you'd have dozens of pipelines
-	// for every shader set used in a scene
-	// Note that there are a few states that are not stored with
-	// the pipeline. These are called dynamic states and the 
-	// pipeline only stores that they are used with this pipeline,
-	// but not their states
-
-	// Assign states
-	// Assign pipeline state create information
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
-
 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	// The layout used for this pipeline
 	pipelineCreateInfo.layout = pipelineLayout;
-	// Renderpass this pipeline is attached to
 	pipelineCreateInfo.renderPass = renderPass;
 
 	// Vertex input state
 	// Describes the topoloy used with this pipeline
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = {};
 	inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	// This pipeline renders vertex data as triangle lists
 	inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssemblyState.flags = 0;
+	inputAssemblyState.primitiveRestartEnable = VK_FALSE;
 
 	// Rasterization state
 	VkPipelineRasterizationStateCreateInfo rasterizationState = {};
 	rasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	// Solid polygon mode
 	rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
-	// No culling
-	rasterizationState.cullMode = VK_CULL_MODE_NONE;
-	rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	rasterizationState.depthClampEnable = VK_FALSE;
-	rasterizationState.rasterizerDiscardEnable = VK_FALSE;
-	rasterizationState.depthBiasEnable = VK_FALSE;
+	rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizationState.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizationState.flags = 0;
+	rasterizationState.depthClampEnable = VK_TRUE;
 	rasterizationState.lineWidth = 1.0f;
 
+	// Enable blending
+	VkPipelineColorBlendAttachmentState blendAttachmentState = {};
+	blendAttachmentState.colorWriteMask = 0xf, VK_TRUE;
+	blendAttachmentState.blendEnable = VK_TRUE;
+
+	blendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	blendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	blendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
+	blendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	blendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	blendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
+	blendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+
 	// Color blend state
-	// Describes blend modes and color masks
 	VkPipelineColorBlendStateCreateInfo colorBlendState = {};
 	colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	// One blend attachment state
-	// Blending is not used in this example
-	VkPipelineColorBlendAttachmentState blendAttachmentState[1] = {};
-	blendAttachmentState[0].colorWriteMask = 0xf;
-	blendAttachmentState[0].blendEnable = VK_FALSE;
+	colorBlendState.pNext = NULL;
 	colorBlendState.attachmentCount = 1;
-	colorBlendState.pAttachments = blendAttachmentState;
+	colorBlendState.pAttachments = &blendAttachmentState;
+
 
 	// Viewport state
 	VkPipelineViewportStateCreateInfo viewportState = {};
@@ -568,9 +557,8 @@ void VkFont::EndTextUpdate()
 
 	VkCommandBufferBeginInfo cmdBufInfo = VkTools::Initializer::CommandBufferBeginInfo();
 
-	VkClearValue clearValues[2];
+	VkClearValue clearValues[1];
 	clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
-	clearValues[1].depthStencil = { 1.0f, 0 };
 
 	VkRenderPassBeginInfo renderPassBeginInfo = {};
 	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -580,7 +568,7 @@ void VkFont::EndTextUpdate()
 	renderPassBeginInfo.renderArea.offset.y = 0;
 	renderPassBeginInfo.renderArea.extent.width = *frameBufferWidth;
 	renderPassBeginInfo.renderArea.extent.height = *frameBufferHeight;
-	renderPassBeginInfo.clearValueCount = 2;
+	renderPassBeginInfo.clearValueCount = 1;
 	renderPassBeginInfo.pClearValues = clearValues;
 
 
@@ -617,39 +605,11 @@ void VkFont::EndTextUpdate()
 		vkCmdBindVertexBuffers(cmdBuffers[i], 0, 1, &m_BufferData.buffer, &offsets);
 		for (uint32_t j = 0; j < text.size(); j++)
 		{
+			if (text[j] == ' ')continue; //skip space
+
 			vkCmdBindDescriptorSets(cmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptors[text[j]], 0, NULL);
-			vkCmdDraw(cmdBuffers[i], 6, 1, j*6, 0);
+			vkCmdDraw(cmdBuffers[i], 6, 1, j * 6, 0);
 		}
-
-
-		/*
-		// Add a present memory barrier to the end of the command buffer
-		// This will transform the frame buffer color attachment to a
-		// new layout for presenting it to the windowing system integration 
-		VkImageMemoryBarrier prePresentBarrier = {};
-		prePresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		prePresentBarrier.pNext = NULL;
-		prePresentBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		prePresentBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-		prePresentBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		prePresentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		prePresentBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		prePresentBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		prePresentBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-		prePresentBarrier.image = frameBuffers[i]->image;
-
-		VkImageMemoryBarrier *pMemoryBarrier = &prePresentBarrier;
-		vkCmdPipelineBarrier(
-			cmdBuffers[i],
-			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-			VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-			VK_FLAGS_NONE,
-			0, nullptr,
-			0, nullptr,
-			1, &prePresentBarrier);
-		*/
-
-
 		vkCmdEndRenderPass(cmdBuffers[i]);
 		VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffers[i]));
 	}
@@ -658,12 +618,15 @@ void VkFont::EndTextUpdate()
 
 
 // Submit the text command buffers to a queue
-void VkFont::SubmitToQueue(VkQueue queue, uint32_t bufferindex, VkSubmitInfo submitInfo)
+void VkFont::SubmitToQueue(VkQueue queue, uint32_t bufferindex)
 {
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; submitInfo.commandBufferCount = 1;;
 	submitInfo.pCommandBuffers = &cmdBuffers[bufferindex];
 	submitInfo.commandBufferCount = 1;
 
 	VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
+	VK_CHECK_RESULT(vkQueueWaitIdle(queue));
 }
 
 
@@ -725,4 +688,9 @@ void VkFont::PrepareUniformBuffers()
 	uniformDataVS.descriptor.buffer = uniformDataVS.buffer;
 	uniformDataVS.descriptor.offset = 0;
 	uniformDataVS.descriptor.range = sizeof(m_uboVS);
+}
+
+
+void VkFont::Resize(uint32_t windowWidth, uint32_t windowHeight)
+{
 }
