@@ -2,7 +2,7 @@
 
 Vulkan Renderer. Work in progress.
 - Warning. Take the code with grain of salt as it might violate Vulkan specs.
-Always happy to hear what could be fixed or improved.
+- Always happy to hear what could be fixed or improved.
 
 #How to Build
 Currently works only under windows.
