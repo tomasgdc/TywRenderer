@@ -7,7 +7,7 @@ Currently works only under windows.
 Run .bat file which will build vs2015 solution
 
 In order to get working. You need to have working Vulkan driver and Vulkan SDK that you can download from LunarG site
-Also for glslvalidator download LunarG Vulkan SDK - https://lunarg.com/
+LunarG Vulkan SDK - https://lunarg.com/
 More information about glsllang - https://github.com/KhronosGroup/glslang
 More information about validation layer - https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers
 More information about Vulkan - https://github.com/KhronosGroup/Vulkan-Docs
