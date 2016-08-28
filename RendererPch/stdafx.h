@@ -38,5 +38,13 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <External/gli/gli/gli.hpp>
+#include <External/glm/glm/glm.hpp>
 #include <External/glm/glm/gtc/matrix_transform.hpp>
-#include <External/glm/glm/gtc/type_ptr.hpp> 
+#include <External/glm/glm/gtc/type_ptr.hpp>
+#include <External/glm/glm/gtc/matrix_inverse.hpp>
+#include <External/glm/glm/gtx/quaternion.hpp> 
+#include <External/glm/glm/gtx/compatibility.hpp> 
+#include <External/glm/glm/gtx/euler_angles.hpp>
+#include <External/glm/glm/gtx/norm.hpp>
+#include <External/glm/glm/gtx/transform.hpp>
+#include <External/glm/glm/gtx/matrix_operation.hpp>

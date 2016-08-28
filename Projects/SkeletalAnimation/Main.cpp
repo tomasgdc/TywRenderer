@@ -28,10 +28,6 @@
 
 
 
-//math
-#include <External\glm\glm\gtc\matrix_inverse.hpp>
-
-
 //Global variables
 //====================================================================================
 
@@ -93,8 +89,8 @@ class Renderer final: public VKRenderer
 {
 	VkTools::VulkanTexture m_VkTexture;
 
-
 	struct {
+		glm::mat4 bones[110];
 		glm::mat4 projectionMatrix;
 		glm::mat4 modelMatrix;
 		glm::mat4 viewMatrix;
@@ -113,6 +109,7 @@ class Renderer final: public VKRenderer
 
 	std::vector<VkBufferObject_s> listLocalBuffers;
 	std::vector<VkBufferObject_s> listLocalIndexBuffers;
+	std::vector<VkBufferObject_s> listStagingBuffersVerts;
 
 
 	std::vector<VkDescriptorSet>  listDescriptros;
@@ -122,8 +119,8 @@ class Renderer final: public VKRenderer
 	RenderModelMD5 md5Model;
 	MD5Anim		   md5Anim;
 public:
-	Renderer() {}
-	~Renderer(){}
+	Renderer();
+	~Renderer();
 
 	void BuildCommandBuffers() override;
 
@@ -149,7 +146,20 @@ public:
 	void StartFrame() override;
 
 	void ChangeLodBias(float delta);
+
+	bool m_bViewChanged = false;
 };
+
+
+Renderer::Renderer()
+{
+	frame = { 0, 0, 0.0f };
+}
+
+Renderer::~Renderer()
+{
+
+}
 
 void Renderer::ChangeLodBias(float delta)
 {
@@ -163,16 +173,13 @@ void Renderer::ChangeLodBias(float delta)
 		m_uboVS.lodBias = m_VkTexture.mipLevels;
 	}
 
+	m_bViewChanged = true;
 	UpdateUniformBuffers();
 }
 
 
 void Renderer::StartFrame()
 {
-	/*
-		Update skeleton start
-		Not working yet due to mappping. Need to create HOST_VISIBLE instead of Local
-	*/
 
 	/*
 	md5Anim.ConvertDeltaTimeToFrame(m_fDeltaTime, frame);
@@ -182,21 +189,19 @@ void Renderer::StartFrame()
 	for (int i = 0; i < md5Model.meshes.size(); i++)
 	{
 		MD5Mesh* m = &md5Model.meshes[i];
-	//	m->UpdateMesh(m, jointFrame, nullptr, m->deformInfo);
+		m->UpdateMesh(m, jointFrame, nullptr, m->deformInfo);
 		deformInfo_t* vert = m->deformInfo;
 		drawVert* vertD = vert->verts;
 
 
+
 		// Map uniform buffer and update it
 		void *mapped;
-		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, listLocalBuffers[i].memory, 0, sizeof(vertD[0])* vert->numSourceVerts, 0, &mapped));
+		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, listStagingBuffersVerts[i].memory, 0, sizeof(vertD[0])* vert->numSourceVerts, 0, &mapped));
 		memcpy(mapped, &vertD, sizeof(vertD[0])* vert->numSourceVerts);
-		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, listLocalBuffers[i].memory);
+		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, listStagingBuffersVerts[i].memory);
 	}
-	*/
-
-	/*
-		Update skeleton end
+	BuildCommandBuffers();
 	*/
 
 
@@ -249,7 +254,6 @@ void Renderer::StartFrame()
 		// all commands have been submitted
 		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.QueuePresent(m_pWRenderer->m_Queue, m_pWRenderer->m_currentBuffer, Semaphores.renderComplete));
 	}
-
 }
 
 
@@ -325,10 +329,10 @@ void Renderer::BuildCommandBuffers()
 			vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &listLocalBuffers[j].buffer, offsets);
 
 			//Bind mesh index buffers
-			vkCmdBindIndexBuffer(m_pWRenderer->m_DrawCmdBuffers[i], listLocalIndexBuffers[i].buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindIndexBuffer(m_pWRenderer->m_DrawCmdBuffers[i], listLocalIndexBuffers[j].buffer, 0, VK_INDEX_TYPE_UINT32);
 
 			//Draw
-			vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], meshSize[i], 1, 0, 0, 0);
+			vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], meshSize[j], 1, 0, 0, 0);
 		}
 
 
@@ -366,18 +370,34 @@ void Renderer::BuildCommandBuffers()
 
 void Renderer::UpdateUniformBuffers()
 {
-	// Update matrices
-	m_uboVS.projectionMatrix = glm::perspective(glm::radians(60.0f), (float)m_WindowWidth / (float)m_WindowHeight, 0.1f, 256.0f);
+	if (m_bViewChanged)
+	{
+		// Update matrices
+		m_uboVS.projectionMatrix = glm::perspective(glm::radians(60.0f), (float)m_WindowWidth / (float)m_WindowHeight, 0.1f, 256.0f);
 
-	m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 5.0f, g_zoom));
+		m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 5.0f, g_zoom));
 
-	m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 50.0f, -200.0f));
-	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-	m_uboVS.normal = glm::inverseTranspose(m_uboVS.modelMatrix);
+		m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 50.0f, -200.0f));
+		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+		m_uboVS.normal = glm::inverseTranspose(m_uboVS.modelMatrix);
 
-	m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
+		m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
+
+		//reset to normal
+		m_bViewChanged = false;
+	}
+	
+	md5Anim.ConvertDeltaTimeToFrame(frameTimer, frame);
+	md5Anim.GetInterpolatedFrame(frame);
+	const std::vector<glm::mat4x4>& matrix = md5Anim.GetSkeletonMatrix();
+	for (int i = 0; i < matrix.size(); i++)
+	{
+		m_uboVS.bones[i] = matrix[i] * md5Model.inverseBindPose[i];
+	}
+
+
 
 	// Map uniform buffer and update it
 	uint8_t *pData;
@@ -433,13 +453,6 @@ void Renderer::PrepareUniformBuffers()
 
 void Renderer::PrepareVertices(bool useStagingBuffers)
 {
-	
-	md5Model.InitFromFile("Geometry/hellknight/hellknight.md5mesh", GetAssetPath());
-	md5Anim.LoadAnim("Animation/hellknight/idle2.md5anim", GetAssetPath());
-
-
-	
-	std::vector<VkBufferObject_s> listStagingBuffersVerts;
 	std::vector<VkBufferObject_s> listStagingBuffersIndex;
 
 	//Verts
@@ -463,18 +476,19 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	SetupDescriptorPool();
 	VkDescriptorSetAllocateInfo allocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &descriptorSetLayout, 1);
 
+
+
 	for (int i = 0; i < md5Model.meshes.size(); i++)
 	{
 		//Get triangles
-		deformInfo_t* tr = md5Model.meshes[i].deformInfo;
+		//deformInfo_t* tr = md5Model.meshes[i].deformInfo;
 
-		
-		VkTools::VulkanTexture* vkDiffuseTexture = md5Model.meshes[i].shader->getTexture();
+		std::vector<MD5Mesh::meshStructure>&	 deformInfosVec = md5Model.meshes[i].deformInfosVec;
+		std::vector<uint32_t>& indexes = md5Model.meshes[i].tri;
 		uint32_t numVerts = md5Model.meshes[i].verts.size();
 
-		//VkTools::VulkanTexture* vkDiffuseTexture = md5Model.surfaces[i].material[1].getTexture();
 
-
+		VkTools::VulkanTexture* vkDiffuseTexture = md5Model.meshes[i].shader->getTexture();
 		/*
 			=================================================================================================================
 			START SETUP DESCRIPTOR SET
@@ -505,8 +519,6 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		=================================================================================================================
 		*/
 
-
-
 		//Create stagign buffer
 		//Verts
 		VkBufferObject::CreateBuffer(
@@ -514,9 +526,9 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 			m_pWRenderer->m_DeviceMemoryProperties,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-			static_cast<uint32_t>(sizeof(drawVert) * numVerts),
+			static_cast<uint32_t>(sizeof(MD5Mesh::meshStructure) * numVerts),
 			listStagingBuffersVerts[i],
-			tr->verts);
+			deformInfosVec.data());
 
 		//Index
 		VkBufferObject::CreateBuffer(
@@ -524,9 +536,9 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 			m_pWRenderer->m_DeviceMemoryProperties,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-			static_cast<uint32_t>(sizeof(uint32_t) * tr->numIndexes),
+			static_cast<uint32_t>(sizeof(uint32_t) * indexes.size()),
 			listStagingBuffersIndex[i],
-			tr->indexes);
+			indexes.data());
 
 
 		//Create Local Copy
@@ -536,7 +548,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 			m_pWRenderer->m_DeviceMemoryProperties,
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			static_cast<uint32_t>(sizeof(drawVert) * numVerts),
+			static_cast<uint32_t>(sizeof(MD5Mesh::meshStructure) * numVerts),
 			listLocalBuffers[i]);
 
 		//Index
@@ -545,7 +557,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 			m_pWRenderer->m_DeviceMemoryProperties,
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			static_cast<uint32_t>(sizeof(uint32_t) * tr->numIndexes),
+			static_cast<uint32_t>(sizeof(uint32_t) * indexes.size()),
 			listLocalIndexBuffers[i]);
 
 
@@ -558,9 +570,59 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 			copyCmd,
 			m_pWRenderer->m_Queue,
 			*m_pWRenderer,
-			static_cast<uint32_t>(sizeof(drawVert) * numVerts),
+			static_cast<uint32_t>(sizeof(MD5Mesh::meshStructure) * numVerts),
 				listStagingBuffersVerts[i],
-				listLocalBuffers[i], (drawVertFlags::Vertex | drawVertFlags::Normal | drawVertFlags::Uv | drawVertFlags::Tangent | drawVertFlags::Binormal));
+				listLocalBuffers[i], drawVertFlags::None);
+
+
+
+		// Binding description
+		listLocalBuffers[i].bindingDescriptions.resize(1);
+		listLocalBuffers[i].bindingDescriptions[0].binding = 0;
+		listLocalBuffers[i].bindingDescriptions[0].stride = sizeof(MD5Mesh::meshStructure);
+		listLocalBuffers[i].bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+		// Attribute descriptions
+		// Describes memory layout and shader attribute locations
+		listLocalBuffers[i].attributeDescriptions.resize(3);
+
+		// Location 0 : Position
+		listLocalBuffers[i].attributeDescriptions[0].binding = 0;
+		listLocalBuffers[i].attributeDescriptions[0].location = 0;
+		listLocalBuffers[i].attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+		listLocalBuffers[i].attributeDescriptions[0].offset = offsetof(MD5Mesh::meshStructure, vertex);
+
+		// Location 1 : Uv
+		listLocalBuffers[i].attributeDescriptions[1].binding = 0;
+		listLocalBuffers[i].attributeDescriptions[1].location = 1;
+		listLocalBuffers[i].attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
+		listLocalBuffers[i].attributeDescriptions[1].offset = offsetof(MD5Mesh::meshStructure, tex);
+
+		// Location 2 : BoneWeight
+		listLocalBuffers[i].attributeDescriptions[2].binding = 0;
+		listLocalBuffers[i].attributeDescriptions[2].location = 2;
+		listLocalBuffers[i].attributeDescriptions[2].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		listLocalBuffers[i].attributeDescriptions[2].offset = offsetof(MD5Mesh::meshStructure, boneWeight);
+
+
+		// Location 2 : BoneWeight
+		listLocalBuffers[i].attributeDescriptions[2].binding = 0;
+		listLocalBuffers[i].attributeDescriptions[2].location = 3;
+		listLocalBuffers[i].attributeDescriptions[2].format = VK_FORMAT_R32G32B32A32_SINT;
+		listLocalBuffers[i].attributeDescriptions[2].offset = offsetof(MD5Mesh::meshStructure, boneId);
+
+
+
+
+		// Assign to vertex input state
+		listLocalBuffers[i].inputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		listLocalBuffers[i].inputState.pNext = NULL;
+		listLocalBuffers[i].inputState.flags = VK_FLAGS_NONE;
+		listLocalBuffers[i].inputState.vertexBindingDescriptionCount = static_cast<uint32_t>(listLocalBuffers[i].bindingDescriptions.size());
+		listLocalBuffers[i].inputState.pVertexBindingDescriptions = listLocalBuffers[i].bindingDescriptions.data();
+		listLocalBuffers[i].inputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(listLocalBuffers[i].attributeDescriptions.size());
+		listLocalBuffers[i].inputState.pVertexAttributeDescriptions = listLocalBuffers[i].attributeDescriptions.data();
+
 
 
 		copyCmd = GetCommandBuffer(true);
@@ -568,12 +630,12 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 			copyCmd,
 			m_pWRenderer->m_Queue,
 			*m_pWRenderer,
-			static_cast<uint32_t>(sizeof(uint32_t) * tr->numIndexes),
+			static_cast<uint32_t>(sizeof(uint32_t) * indexes.size()),
 			listStagingBuffersIndex[i],
 			listLocalIndexBuffers[i], drawVertFlags::None);
 
 
-		meshSize.push_back(tr->numIndexes);
+		meshSize.push_back(indexes.size());
 	}
 }
 
@@ -777,7 +839,8 @@ void Renderer::SetupDescriptorSet()
 
 void Renderer::LoadAssets()
 {
-	//VLoadTexture(GetAssetPath() + "Textures/pattern_02_bc2.ktx", VK_FORMAT_BC2_UNORM_BLOCK, false);
+	md5Model.InitFromFile("Geometry/hellknight/hellknight.md5mesh", GetAssetPath());
+	md5Anim.LoadAnim("Animation/hellknight/idle2.md5anim", GetAssetPath());
 }
 
 
@@ -797,10 +860,22 @@ int main()
 		if (!GenerateEvents(msg))break;
 
 		auto tStart = std::chrono::high_resolution_clock::now();
+		g_Renderer.UpdateUniformBuffers();
 		g_Renderer.StartFrame();
-		//Do something
 		g_Renderer.EndFrame(nullptr);
 		auto tEnd = std::chrono::high_resolution_clock::now();
+
+		g_Renderer.frameCounter++;
+		auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+		g_Renderer.frameTimer = (float)tDiff / 1000.0f;
+		g_Renderer.fpsTimer += (float)tDiff;
+		if (g_Renderer.fpsTimer > 1000.0f)
+		{
+
+			g_Renderer.lastFPS = g_Renderer.frameCounter;
+			g_Renderer.fpsTimer = 0.0f;
+			g_Renderer.frameCounter = 0;
+		}
 	}
 	g_Renderer.VShutdown();
 	return 0;
@@ -907,6 +982,8 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		short wheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
 		g_zoom += (float)wheelDelta * 0.005f * g_ZoomSpeed;
 		//camera.translate(glm::vec3(0.0f, 0.0f, (float)wheelDelta * 0.005f * zoomSpeed));
+		
+		g_Renderer.m_bViewChanged = true;
 		g_Renderer.UpdateUniformBuffers();
 		break;
 	}
@@ -918,6 +995,8 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			g_zoom += (g_MousePos.y - (float)posy) * .005f * g_ZoomSpeed;
 			//camera.translate(glm::vec3(-0.0f, 0.0f, (mousePos.y - (float)posy) * .005f * zoomSpeed));
 			g_MousePos = glm::vec2((float)posx, (float)posy);
+
+			g_Renderer.m_bViewChanged = true;
 			g_Renderer.UpdateUniformBuffers();
 		}
 		if (wParam & MK_LBUTTON)
@@ -928,6 +1007,8 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			g_Rotation.y -= (g_MousePos.x - (float)posx) * 1.25f * g_RotationSpeed;
 			//camera.rotate(glm::vec3((mousePos.y - (float)posy), -(mousePos.x - (float)posx), 0.0f));
 			g_MousePos = glm::vec2((float)posx, (float)posy);
+
+			g_Renderer.m_bViewChanged = true;
 			g_Renderer.UpdateUniformBuffers();
 		}
 		if (wParam & MK_MBUTTON)

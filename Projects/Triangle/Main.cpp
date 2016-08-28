@@ -571,7 +571,7 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 	{
 		short wheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
 		g_ZoomSpeed += (float)wheelDelta * 0.005f * g_ZoomSpeed;
-		//camera.translate(glm::vec3(0.0f, 0.0f, (float)wheelDelta * 0.005f * zoomSpeed));
+		//camera.translate(glm::vec3(0.0f, 0.0f, (float)wheelDelta * 0.005f * zoomSpeed))
 		g_Renderer.UpdateUniformBuffers();
 		break;
 	}

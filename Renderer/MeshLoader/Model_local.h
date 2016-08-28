@@ -87,7 +87,7 @@ public:
 	MD5Mesh();
 	~MD5Mesh();
 
-	void						ParseMesh(FILE* file, int numJoints, std::vector<JointMat>& joints);
+	void						ParseMesh(FILE* file, int numJoints, std::vector<JointQuat>& joints);//std::vector<JointMat>& joints);
 
 	int							NumVerts() const { return numVerts; }
 	int							NumTris() const { return numTris; }
@@ -97,10 +97,20 @@ public:
 	//int							NearestJoint(int a, int b, int c) const;
 
 public:
+	struct meshStructure
+	{
+		//At the moment we only have v/uv
+		glm::vec4   boneWeight;
+		glm::ivec4	boneId;
+		glm::vec3   vertex;
+		glm::vec2   tex;
+	};
+
+
 	std::vector<vertIndex_t>	 verts;
 	std::vector<vertexWeight_t>  weight;
-	//std::vector<triangleIndex_t> tri;
-	std::vector<uint32_t>		tri;
+	std::vector<meshStructure>	 deformInfosVec;		//replacement for deforminto_t*
+	std::vector<uint32_t>		 tri;
 
 	uint32_t					numVerts;			// number of vertices
 	uint32_t					numTris;			// number of triangles
@@ -137,9 +147,11 @@ public:
 	//virtual bool				SupportsBinaryModel() { return true; }
 
 public:
-	std::vector<MD5Joint>	joints;
-	std::vector<JointQuat>	defaultPose;
-	std::vector<MD5Mesh>	meshes;
+	std::vector<MD5Joint>	 joints;
+	std::vector<JointQuat>	 defaultPose;
+	std::vector<MD5Mesh>	 meshes;
+	std::vector<glm::mat4x4> inverseBindPose;
+	
 	
 
 	//void						DrawJoints(const renderEntity_t *ent, const viewDef_t *view) const;

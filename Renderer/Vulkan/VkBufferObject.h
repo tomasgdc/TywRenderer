@@ -55,4 +55,7 @@ public:
 
 	//Vertex, Norma, Uv, Tangent, Binormal
 	static void BindVertexNormalUvTangentBinormalDescriptor(VkBufferObject_s& localBuffer);
+
+	//Vertex, Uv, BoneWeight, BoneId
+	static void BindVertUvBoneWeightBoneId(VkBufferObject_s& localBuffer);
 };

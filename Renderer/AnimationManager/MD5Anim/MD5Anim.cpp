@@ -136,6 +136,7 @@ bool	MD5Anim::LoadAnim(std::string fileName, std::string filePath)
 
 			m_baseFrame.reserve(m_numJoints);
 			m_animatedSkeleton.joints.reserve(m_numJoints);
+			m_animatedSkeleton.jointMatrix.resize(m_numJoints);
 			for (int i = 0; i < m_numJoints; i++)
 			{
 				std::getline(file, line);
@@ -307,11 +308,16 @@ void MD5Anim::BlendJoints(FrameSkeleton& finalSkeleton, const FrameSkeleton& fra
 	for (int i = 0; i < m_numJoints; i++)
 	{
 		JointQuat& finalJoint	= finalSkeleton.joints[i];
+		glm::mat4x4& finalMatrix = finalSkeleton.jointMatrix[i];
+
 		const JointQuat& joint0 = frame0.joints[i];
 		const JointQuat& joint1 = frame1.joints[i];
 
 		finalJoint.t =  glm::lerp(joint0.t, joint1.t, lerp);
 		finalJoint.q =  glm::mix(joint0.q, joint1.q, lerp);
+
+		//build bone matrix, gpu skinning
+		finalMatrix = glm::translate(finalJoint.t) * glm::toMat4(finalJoint.q);
 	}
 }
 

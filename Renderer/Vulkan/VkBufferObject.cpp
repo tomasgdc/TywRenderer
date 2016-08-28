@@ -328,3 +328,10 @@ void VkBufferObject::BindVertexNormalUvTangentBinormalDescriptor(VkBufferObject_
 	localBuffer.inputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(localBuffer.attributeDescriptions.size());
 	localBuffer.inputState.pVertexAttributeDescriptions = localBuffer.attributeDescriptions.data();
 }
+
+
+
+void VkBufferObject::BindVertUvBoneWeightBoneId(VkBufferObject_s& localBuffer)
+{
+
+}

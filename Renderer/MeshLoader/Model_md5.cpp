@@ -116,7 +116,7 @@ void MD5_ParseMaterial(FILE* ptrFile, std::string& name)
 	}
 }
 
-void MD5Mesh::ParseMesh(FILE* ptrFile, int numJoints, std::vector<JointMat>& joints) 
+void MD5Mesh::ParseMesh(FILE* ptrFile, int numJoints, std::vector<JointQuat>& joints)//std::vector<JointMat>& joints) 
 {
 	char shaderName[128];
 	uint32_t numVerts(0);
@@ -164,42 +164,55 @@ void MD5Mesh::ParseMesh(FILE* ptrFile, int numJoints, std::vector<JointMat>& joi
 	}
 
 
-	deformInfo = TYW_NEW deformInfo_t;
-	deformInfo->verts = TYW_NEW drawVert[verts.size()];
-	deformInfo->indexes = TYW_NEW uint32_t[tri.size()];
+//	deformInfo = TYW_NEW deformInfo_t;
+//	deformInfo->verts = TYW_NEW drawVert[verts.size()];
+//	deformInfo->indexes = TYW_NEW uint32_t[tri.size()];
 
-	deformInfo->numSourceVerts = verts.size();
-	deformInfo->numIndexes = tri.size();
+//	deformInfo->numSourceVerts = verts.size();
+//	deformInfo->numIndexes = tri.size();
+
+	deformInfosVec.resize(verts.size());
 
 	int b = 0;
 	for (auto& i : verts)
 	{
 
+		glm::vec4 boneWeight(0);
+		glm::ivec4 boneId(0);
 		glm::vec3 v(0.0f, 0.0f, 0.0f);
+
 		drawVert		 pose;
 		for (int j = 0; j < i.numWeightsForVertex; j++)
 		{
 			//Engine::getInstance().Sys_Printf("tempWeight i = %i \n", i.firstWeightForVertex + j);
 			vertexWeight_t& tempWeight = weight[i.firstWeightForVertex + j];
-			JointMat& joint = joints[tempWeight.jointId];
+			
+			//JointMat& joint = joints[tempWeight.jointId];
+			JointQuat& joint = joints[tempWeight.jointId];
 
 			// Convert the weight position from Joint local space to object space
-			glm::vec3 rotPos = joint * tempWeight.pos;
+			glm::vec3 rotPos = joint.q * tempWeight.pos;
 
-			v += (joint.GetTranslation() + rotPos)  * tempWeight.jointWeight;
+			v += (joint.t + rotPos)  * tempWeight.jointWeight;
+
+			if (j < 4)
+			{
+				boneWeight[j] = tempWeight.jointWeight;
+				boneId[j] = static_cast<float>(i.firstWeightForVertex);
+			}
 		}
-		deformInfo->verts[b].Clear();
-		deformInfo->verts[b].vertex =  v;
-		deformInfo->verts[b].SetTexCoords(i.texCoord.x, i.texCoord.y);
+		deformInfosVec[b].vertex = v;
+		deformInfosVec[b].tex = glm::vec2(i.texCoord.x, i.texCoord.y);
+		deformInfosVec[b].boneWeight = boneWeight;
+		deformInfosVec[b].boneId = boneId;
+
+
+		//deformInfo->verts[b].Clear();
+		//deformInfo->verts[b].vertex =  v;
+		//deformInfo->verts[b].SetTexCoords(i.texCoord.x, i.texCoord.y);
 		b++;
 	}
-
-
-
-	for (int i = 0; i < tri.size(); i++)
-	{
-		deformInfo->indexes[i] = tri[i];
-	}
+	//std::copy(tri.begin(), tri.end(), deformInfo->indexes);
 }
 
 bool RenderModelMD5::ParseJoint(FILE* ptrFile, MD5Joint& joint, JointQuat& pose) {
@@ -229,7 +242,10 @@ void RenderModelMD5::InitFromFile(std::string fileName, std::string filePath) {
 		//Engine::getInstance().Sys_Printf("ERROR: Could not find %s", fileName.c_str());
 		return;
 	}
-	std::vector<JointMat> poseMat;
+
+	//std::vector<JointMat> poseMat;
+	std::vector<glm::mat4x4> poseMat;
+
 	uint32_t version	= 0;
 	uint32_t numJoints	= 0;
 	uint32_t numMeshes	= 0;
@@ -261,64 +277,31 @@ void RenderModelMD5::InitFromFile(std::string fileName, std::string filePath) {
 			fgets(junk, 256, file); //skip {
 
 			poseMat.reserve(numJoints);
+			joints.reserve(numJoints);
+			defaultPose.reserve(numJoints);
+			inverseBindPose.reserve(numJoints);
 			for (int i = 0; i < numJoints; i++)
 			{
 				MD5Joint joint;
 				JointQuat pose;
-				JointMat  pMat;
+				//JointMat  pMat;
 				if (ParseJoint(file, joint, pose))
 				{
 					joints.push_back(joint);
 					defaultPose.push_back(pose);
 
-					/*Convert quat to mat4*/
-					glm::mat4x4 mat;
 
-					float	wx, wy, wz;
-					float	xx, yy, yz;
-					float	xy, xz, zz;
-					float	x2, y2, z2;
+					glm::mat4x4 boneTranslation = glm::translate(pose.t);
+					glm::mat4x4 boneRotation = glm::toMat4(pose.q);
 
-					x2 = pose.q.x + pose.q.x;
-					y2 = pose.q.y + pose.q.y;
-					z2 = pose.q.z + pose.q.z;
+					glm::mat4x4 boneMatrix = boneTranslation * boneRotation;
+					glm::mat4x4 inverseBoneMatrix = glm::inverse(boneMatrix);
 
-					xx = pose.q.x * x2;
-					xy = pose.q.x * y2;
-					xz = pose.q.x * z2;
-
-					yy = pose.q.y * y2;
-					yz = pose.q.y * z2;
-					zz = pose.q.z * z2;
-
-					wx = pose.q.w * x2;
-					wy = pose.q.w * y2;
-					wz = pose.q.w * z2;
-
-					mat[0][0] = 1.0f - (yy + zz);
-					mat[0][1] = xy - wz;
-					mat[0][2] = xz + wy;
-					mat[0][3] = 0.0f;
-
-					mat[1][0] = xy + wz;
-					mat[1][1] = 1.0f - (xx + zz);
-					mat[1][2] = yz - wx;
-					mat[1][3] = 0.0f;
-
-					mat[2][0] = xz - wy;
-					mat[2][1] = yz + wx;
-					mat[2][2] = 1.0f - (xx + yy);
-					mat[2][3] = 0.0f;
-
-					mat[3][0] = 0.0f;
-					mat[3][1] = 0.0f;
-					mat[3][2] = 0.0f;
-					mat[3][3] = 1.0f;
-					/*Convert end*/
-
-					pMat.SetRotation(mat);
-					pMat.SetTranslation(pose.t);
-					poseMat.push_back(pMat);
+					//pMat.SetRotation(bonem);
+					//pMat.SetTranslation(pose.t);
+					//poseMat.push_back(pMat);
+					poseMat.push_back(boneMatrix);
+					inverseBindPose.push_back(inverseBoneMatrix);
 				}
 			}
 			
@@ -330,7 +313,7 @@ void RenderModelMD5::InitFromFile(std::string fileName, std::string filePath) {
 			{
 				MD5Mesh mesh;
 				meshes.push_back(mesh);
-				meshes[i].ParseMesh(file, numJoints, poseMat);
+				meshes[i].ParseMesh(file, numJoints, defaultPose);
 			}
 		}
 	}

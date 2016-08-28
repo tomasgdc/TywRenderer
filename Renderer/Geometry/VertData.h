@@ -17,7 +17,9 @@ enum drawVertFlags
 	Tangent  = 1 << 3,
 	Binormal = 1 << 4,
 	Uv       = 1 << 5,
-	None     = 1 << 6
+	BoneWeight = 1 << 6,
+	BoneId =  1 << 7,
+	None     = 1 << 8
 };
 
 inline drawVertFlags operator|(const drawVertFlags& a, const drawVertFlags& b)

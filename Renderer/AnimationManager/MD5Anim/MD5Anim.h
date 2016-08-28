@@ -35,7 +35,8 @@ public:
 	// A frame skeleton stores the joints of the skeleton for a single frame.
 	struct FrameSkeleton
 	{
-		std::vector<JointQuat>  joints;
+		std::vector<JointQuat>   joints;
+		std::vector<glm::mat4x4> jointMatrix;
 	};
 	typedef std::vector<FrameSkeleton> FrameSkeletonList;
 
@@ -57,6 +58,7 @@ public:
 	void					ConvertDeltaTimeToFrame(float fDeltaTime, frameBlend_t &frame);
 
 	const FrameSkeleton&	GetSkeleton() const { return m_animatedSkeleton; }
+	const std::vector<glm::mat4x4>& GetSkeletonMatrix() const { return m_animatedSkeleton.jointMatrix; }
 
 private:
 	void					BuildFrameSkeleton(FrameSkeletonList& skeletons, std::vector<JointQuat>& baseFrame, std::vector<float> & frameData, std::vector<jointAnimInfo_t>& jointInfo);
