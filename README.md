@@ -1,18 +1,32 @@
 # TywRenderer
 
-Vulkan Renderer
+Vulkan Renderer. Work in progress.
+- Warning. Take the code with grain of salt as it might violate Vulkan specs.
+- Always happy to hear what could be fixed or improved.
 
 #How to Build
 Currently works only under windows.
 Run .bat file which will build vs2015 solution
 
+In order to get working. You need to have working Vulkan driver and Vulkan SDK that you can download from LunarG site
+- LunarG Vulkan SDK - https://lunarg.com/
+- More information about glsllang - https://github.com/KhronosGroup/glslang
+- More information about validation layer - https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers
+- More information about Vulkan - https://github.com/KhronosGroup/Vulkan-Docs
+
 #Dll and Lib dependencies
-> - Assimp
-> - LibPng
-> - Freetype
+- Assimp
+- LibPng
+- Freetype 
+
+#Please check ThirdParty Licenses
+- Freetype -  https://www.freetype.org/
+- ImGui -     https://github.com/ocornut/imgui
+- Assimp -    https://github.com/assimp/assimp
+- LibPng -    http://www.libpng.org/pub/png/libpng.htm
 
 #Credits
->- Sascha Willems - https://github.com/SaschaWillems/Vulkan
+- Sascha Willems - https://github.com/SaschaWillems/Vulkan
 
 
 #Projects
@@ -65,9 +79,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 
 Some of the assets have different license. Please comply to these when redistributing or using them in your own projects :
-> - [boblamp](Assets//Geometry/boblamp) - http://www.katsbits.com/download/models/
-> - [cyberwarrior](Assets/Geometry/cyberwarrior) - https://sketchfab.com/models/86f58bf5151c410facacf0ed6a2ebd53
-> - [hellknight](Assets/Geometry/hellknight) Ripped and modified from Doom 3 - http://store.steampowered.com/app/9050/
-> - [nanosuit](Assets/Geometry/nanosuit) - Modiffied version from  http://tf3dm.com/3d-model/crysis-2-nanosuit-2-97837.html
-> - [photosculpt](Assets/Textures/photosculpt) - http://photosculpt.net/free-textures/
-> - [doom freetype](Assets/Textures/freetype/AmazDooMLeft.ttf) http://www.dafont.com/amazdoom.font
+- [boblamp](Assets//Geometry/boblamp) - http://www.katsbits.com/download/models/
+- [cyberwarrior](Assets/Geometry/cyberwarrior) - https://sketchfab.com/models/86f58bf5151c410facacf0ed6a2ebd53
+- [hellknight](Assets/Geometry/hellknight) Ripped and modified from Doom 3 - http://store.steampowered.com/app/9050/
+- [nanosuit](Assets/Geometry/nanosuit) - Modiffied version from  http://tf3dm.com/3d-model/crysis-2-nanosuit-2-97837.html
+- [photosculpt](Assets/Textures/photosculpt) - http://photosculpt.net/free-textures/
+- [doom freetype](Assets/Textures/freetype/AmazDooMLeft.ttf) http://www.dafont.com/amazdoom.font
