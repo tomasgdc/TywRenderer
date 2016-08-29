@@ -2,6 +2,7 @@
 
 Vulkan Renderer. Work in progress.
 - Warning. Take the code with grain of salt as it might violate Vulkan specs.
+- Big Warning. Some of resources are not freed correctly. Work in progress...
 - Always happy to hear what could be fixed or improved.
 
 #How to Build
