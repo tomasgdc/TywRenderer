@@ -31,12 +31,12 @@ In order to get working. You need to have working Vulkan driver and Vulkan SDK t
 
 #Projects
 ## [Triangle](Projects/Triangle)
-<img src="ScreenShots/Triangle.png" height="126px" align="right">
+<img src="ScreenShots/Triangle.png" height="96px" align="right">
 Shader - [Triangle Shader](Assets/Shaders/Triangle)
 
 
 ## [Texture](Projects/Texture)
-<img src="ScreenShots/Texture.png" height="126px" align="right">
+<img src="ScreenShots/Texture.png" height="96px" align="right">
 Shader - [Texture Shader](Assets/Shaders/Texture)
 
 ## [Freetype font rendering](Projects/FontRendering)
