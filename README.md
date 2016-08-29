@@ -31,12 +31,12 @@ In order to get working. You need to have working Vulkan driver and Vulkan SDK t
 
 #Projects
 ## [Triangle](Projects/Triangle)
-<img src="ScreenShots/Triangle.png" height="96px" align="right">
+<img src="ScreenShots/Triangle.png" height="126px" align="right">
 Shader - [Triangle Shader](Assets/Shaders/Triangle)
 
 
 ## [Texture](Projects/Texture)
-<img src="ScreenShots/Texture.png" height="96px" align="right">
+<img src="ScreenShots/Texture.png" height="126px" align="right">
 Shader - [Texture Shader](Assets/Shaders/Texture)
 
 ## [Freetype font rendering](Projects/FontRendering)
@@ -51,12 +51,12 @@ There are still some strange edge bleeding which I do not know really why.
 > - [Non Signed distance field shader](Assets/Shaders/FontRendering/NonSdf.frag)
 
 ## [Normal Mapping](Projects/NormalMapping)
-<img src="ScreenShots/NormallMapping.png" height="96px" align="right">
+<img src="ScreenShots/NormallMapping.png" height="126px" align="right">
 Shader - [Normal Mapping Shader](Assets/Shaders/NormalMapping)
 
 
 ## [Static Model](Projects/StaticModel)
-<img src="ScreenShots/StaticModel.png" height="96px" align="right">
+<img src="ScreenShots/StaticModel.png" height="126px" align="right">
 Shader - [Static Model Shader](Assets/Shaders/StaticModel)
 There are issues with normal mapping. Shader is not complete.
 Using TBN Matrix convert view vector and light vector to tangent space. Doing this results in black model.
@@ -64,7 +64,7 @@ Using my own wavefront parser.
 
 
 ## [Skeletal Animation](Projects/SkeletalAnimation)
-<img src="ScreenShots/SkeletalAnimation.gif" height="96px" align="right">
+<img src="ScreenShots/SkeletalAnimation.gif" height="126px" align="right">
 Shader - [Static Model Shader](Assets/Shaders/StaticModel)
 GPU skinning of MD5 file. The biggest trick that MD5 file usually have less then 9 bones per vertex, so had to setup second vec4 for boneWeight and jointId. Also, glm does not handle well small angles so had to use different version of slerp which would handle small angles.
 
