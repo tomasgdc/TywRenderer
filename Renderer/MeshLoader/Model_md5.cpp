@@ -177,13 +177,19 @@ void MD5Mesh::ParseMesh(FILE* ptrFile, int numJoints, std::vector<JointQuat>& jo
 	for (auto& i : verts)
 	{
 
-		glm::vec4 boneWeight(0);
-		glm::ivec4 boneId(0);
+		glm::mat3 boneWeight(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		glm::mat3 boneId(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 		glm::vec3 v(0.0f, 0.0f, 0.0f);
-
 		drawVert		 pose;
+
+		float* pBoneIndices = &boneId[0][0];
+		float* pBoneWeights = &boneWeight[0][0];
 		for (int j = 0; j < i.numWeightsForVertex; j++)
 		{
+			//MD5 have usually les than 9 bones per vertex. But usually in industry they use 4 bones per vertex
+			//cant have more than 9 bones
+			assert(j < 9);
+
 			//Engine::getInstance().Sys_Printf("tempWeight i = %i \n", i.firstWeightForVertex + j);
 			vertexWeight_t& tempWeight = weight[i.firstWeightForVertex + j];
 			
@@ -195,16 +201,17 @@ void MD5Mesh::ParseMesh(FILE* ptrFile, int numJoints, std::vector<JointQuat>& jo
 
 			v += (joint.t + rotPos)  * tempWeight.jointWeight;
 
-			if (j < 4)
-			{
-				boneWeight[j] = tempWeight.jointWeight;
-				boneId[j] = static_cast<float>(i.firstWeightForVertex);
-			}
+
+			pBoneWeights[j] = tempWeight.jointWeight;
+			pBoneIndices[j] = static_cast<float>(tempWeight.jointId);
 		}
 		deformInfosVec[b].vertex = v;
 		deformInfosVec[b].tex = glm::vec2(i.texCoord.x, i.texCoord.y);
-		deformInfosVec[b].boneWeight = boneWeight;
-		deformInfosVec[b].boneId = boneId;
+		
+		deformInfosVec[b].boneWeight1 = glm::vec4(pBoneWeights[0], pBoneWeights[1], pBoneWeights[2], pBoneWeights[3]);
+		deformInfosVec[b].boneWeight2 = glm::vec4(pBoneWeights[4], pBoneWeights[5], pBoneWeights[6], pBoneWeights[7]);
+		deformInfosVec[b].boneId1 =		glm::ivec4(pBoneIndices[0], pBoneIndices[1], pBoneIndices[2], pBoneIndices[3]);
+		deformInfosVec[b].boneId2 =     glm::ivec4(pBoneIndices[4], pBoneIndices[5], pBoneIndices[6], pBoneIndices[7]);
 
 
 		//deformInfo->verts[b].Clear();
@@ -244,7 +251,7 @@ void RenderModelMD5::InitFromFile(std::string fileName, std::string filePath) {
 	}
 
 	//std::vector<JointMat> poseMat;
-	std::vector<glm::mat4x4> poseMat;
+	//std::vector<glm::mat4x4> poseMat;
 
 	uint32_t version	= 0;
 	uint32_t numJoints	= 0;
@@ -276,7 +283,7 @@ void RenderModelMD5::InitFromFile(std::string fileName, std::string filePath) {
 			char junk[256];
 			fgets(junk, 256, file); //skip {
 
-			poseMat.reserve(numJoints);
+			//poseMat.reserve(numJoints);
 			joints.reserve(numJoints);
 			defaultPose.reserve(numJoints);
 			inverseBindPose.reserve(numJoints);
@@ -300,7 +307,7 @@ void RenderModelMD5::InitFromFile(std::string fileName, std::string filePath) {
 					//pMat.SetRotation(bonem);
 					//pMat.SetTranslation(pose.t);
 					//poseMat.push_back(pMat);
-					poseMat.push_back(boneMatrix);
+					//poseMat.push_back(boneMatrix);
 					inverseBindPose.push_back(inverseBoneMatrix);
 				}
 			}

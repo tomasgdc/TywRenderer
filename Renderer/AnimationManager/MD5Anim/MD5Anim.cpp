@@ -301,6 +301,34 @@ void MD5Anim::ConvertDeltaTimeToFrame(float fDeltaTime, frameBlend_t &frame)
 	frame.fLerp	  = fInterpolate;
 }
 
+template<typename T>
+T Lerp(const T& from, const T& to, float delta) {
+	return (from * (1.0f - delta)) + (to * delta);
+}
+
+//glm does not handle well small angles so we use our own slerp function
+glm::quat Slerp(const glm::quat& q1, const glm::quat& q2, float t) {
+	glm::quat q3;
+	float dot = q1.x*q2.x + q1.y*q2.y + q1.z*q2.z + q1.w*q2.w;
+
+	if (dot < 0) {
+		dot = -dot;
+		q3 = q2 * -1.0f;
+	}
+	else {
+		q3 = q2;
+	}
+
+	if (dot < 0.95f) {
+		float angle = acosf(dot);
+		return (q1*sinf(angle*(1 - t))) + (q3*sinf(angle*t)) * (1.0f / sinf(angle));
+	}
+	else { // if the angle is small, use linear interpolation
+		return Lerp<glm::quat>(q1, q3, t);
+	}
+}
+
+
 //========================================================================================================================================
 void MD5Anim::BlendJoints(FrameSkeleton& finalSkeleton, const FrameSkeleton& frame0, const FrameSkeleton& frame1, float lerp)
 //========================================================================================================================================
@@ -313,8 +341,9 @@ void MD5Anim::BlendJoints(FrameSkeleton& finalSkeleton, const FrameSkeleton& fra
 		const JointQuat& joint0 = frame0.joints[i];
 		const JointQuat& joint1 = frame1.joints[i];
 
-		finalJoint.t =  glm::lerp(joint0.t, joint1.t, lerp);
-		finalJoint.q =  glm::mix(joint0.q, joint1.q, lerp);
+		
+		finalJoint.t =	Lerp<glm::vec3>(joint0.t, joint1.t, lerp);
+		finalJoint.q =  Slerp(joint0.q, joint1.q, lerp);
 
 		//build bone matrix, gpu skinning
 		finalMatrix = glm::translate(finalJoint.t) * glm::toMat4(finalJoint.q);

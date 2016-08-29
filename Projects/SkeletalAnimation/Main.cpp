@@ -22,9 +22,17 @@
 #include <Renderer\MeshLoader\Material.h>
 #include <Renderer\AnimationManager\MD5Anim\MD5Anim.h>
 
+
 //Vulkan Includes
 #include <Renderer\Vulkan\VkBufferObject.h>
 #include <Renderer\Vulkan\VulkanSwapChain.h>
+
+
+//Font Rendering
+#include <Renderer\ThirdParty\FreeType\VkFont.h>
+
+
+
 
 
 
@@ -88,6 +96,7 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 class Renderer final: public VKRenderer
 {
 	VkTools::VulkanTexture m_VkTexture;
+	VkFont*	m_VkFont;
 
 	struct {
 		glm::mat4 bones[110];
@@ -148,6 +157,8 @@ public:
 	void ChangeLodBias(float delta);
 
 	bool m_bViewChanged = false;
+
+	void BeginTextUpdate();
 };
 
 
@@ -158,7 +169,7 @@ Renderer::Renderer()
 
 Renderer::~Renderer()
 {
-
+	SAFE_DELETE(m_VkFont);
 }
 
 void Renderer::ChangeLodBias(float delta)
@@ -180,32 +191,6 @@ void Renderer::ChangeLodBias(float delta)
 
 void Renderer::StartFrame()
 {
-
-	/*
-	md5Anim.ConvertDeltaTimeToFrame(m_fDeltaTime, frame);
-	md5Anim.GetInterpolatedFrame(frame);
-
-	std::vector<JointQuat> jointFrame = md5Anim.GetSkeleton().joints;
-	for (int i = 0; i < md5Model.meshes.size(); i++)
-	{
-		MD5Mesh* m = &md5Model.meshes[i];
-		m->UpdateMesh(m, jointFrame, nullptr, m->deformInfo);
-		deformInfo_t* vert = m->deformInfo;
-		drawVert* vertD = vert->verts;
-
-
-
-		// Map uniform buffer and update it
-		void *mapped;
-		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, listStagingBuffersVerts[i].memory, 0, sizeof(vertD[0])* vert->numSourceVerts, 0, &mapped));
-		memcpy(mapped, &vertD, sizeof(vertD[0])* vert->numSourceVerts);
-		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, listStagingBuffersVerts[i].memory);
-	}
-	BuildCommandBuffers();
-	*/
-
-
-
 	{
 		// Get next image in the swap chain (back/front buffer)
 		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.GetNextImage(Semaphores.presentComplete, &m_pWRenderer->m_currentBuffer));
@@ -226,33 +211,65 @@ void Renderer::StartFrame()
 
 
 	{
-		// The submit infor strcuture contains a list of
-		// command buffers and semaphores to be submitted to a queue
-		// If you want to submit multiple command buffers, pass an array
-		VkPipelineStageFlags pipelineStages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+		//Submit model
+		VkPipelineStageFlags submitPipelineStages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		VkPipelineStageFlags stageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
-		submitInfo.pWaitDstStageMask = &pipelineStages;
-		// The wait semaphore ensures that the image is presented 
-		// before we start submitting command buffers agein
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &Semaphores.presentComplete;
-		// Submit the currently active command buffer
+
+
+		submitInfo.pWaitDstStageMask = &submitPipelineStages;
+
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &m_pWRenderer->m_DrawCmdBuffers[m_pWRenderer->m_currentBuffer];
-		// The signal semaphore is used during queue presentation
-		// to ensure that the image is not rendered before all
-		// commands have been submitted
+
+		// Wait for swap chain presentation to finish
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &Semaphores.presentComplete;
+
+		//Signal ready for model render to complete
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+
+		//Wait for color output before rendering text
+		submitInfo.pWaitDstStageMask = &stageFlags;
+
+		// Wait model rendering to finnish
+		submitInfo.pWaitSemaphores = &Semaphores.renderComplete;
+		//Signal ready for text to completeS
+		submitInfo.pSignalSemaphores = &Semaphores.textOverlayComplete;
+
+		submitInfo.pCommandBuffers = &m_VkFont->cmdBuffers[m_pWRenderer->m_currentBuffer];
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+
+		// Reset stage mask
+		submitInfo.pWaitDstStageMask = &submitPipelineStages;
+		// Reset wait and signal semaphores for rendering next frame
+		// Wait for swap chain presentation to finish
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &Semaphores.presentComplete;
+		// Signal ready with offscreen semaphore
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
 
-		// Submit to the graphics queue
+	}
+
+	{
+		// Submit pre present image barrier to transform the image from color attachment to present(khr) for presenting to the swap chain
+		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_pWRenderer->m_PrePresentCmdBuffers[m_pWRenderer->m_currentBuffer];
 		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
 
 		// Present the current buffer to the swap chain
 		// We pass the signal semaphore from the submit info
 		// to ensure that the image is not rendered until
 		// all commands have been submitted
-		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.QueuePresent(m_pWRenderer->m_Queue, m_pWRenderer->m_currentBuffer, Semaphores.renderComplete));
+		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.QueuePresent(m_pWRenderer->m_Queue, m_pWRenderer->m_currentBuffer, Semaphores.textOverlayComplete));
 	}
 }
 
@@ -368,6 +385,19 @@ void Renderer::BuildCommandBuffers()
 	}
 }
 
+
+void Renderer::BeginTextUpdate()
+{
+	m_VkFont->BeginTextUpdate();
+
+	std::stringstream ss;
+	ss << std::fixed << std::setprecision(2) << "ms-" << (frameTimer * 1000.0f) << "-fps-" << lastFPS;
+	m_VkFont->AddText(-25, -30, 0.1, 0.1, ss.str());
+
+	m_VkFont->EndTextUpdate();
+}
+
+
 void Renderer::UpdateUniformBuffers()
 {
 	if (m_bViewChanged)
@@ -376,14 +406,18 @@ void Renderer::UpdateUniformBuffers()
 		m_uboVS.projectionMatrix = glm::perspective(glm::radians(60.0f), (float)m_WindowWidth / (float)m_WindowHeight, 0.1f, 256.0f);
 
 		m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 5.0f, g_zoom));
+		//m_uboVS.viewMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+		//m_uboVS.viewMatrix *= glm::rotate(m_uboVS.modelMatrix, glm::radians(-91.25f), glm::vec3(0.0f, 1.0f, 0.0f));
+		//m_uboVS.viewMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
-		m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 50.0f, -200.0f));
-		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+		m_uboVS.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.7f));
+		m_uboVS.modelMatrix *= glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, -5.0f));
+	    m_uboVS.modelMatrix *= glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+		m_uboVS.modelMatrix *= glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+		m_uboVS.modelMatrix *= glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
 		m_uboVS.normal = glm::inverseTranspose(m_uboVS.modelMatrix);
-
-		m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
+		m_uboVS.viewPos =  glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
 
 		//reset to normal
 		m_bViewChanged = false;
@@ -453,6 +487,16 @@ void Renderer::PrepareUniformBuffers()
 
 void Renderer::PrepareVertices(bool useStagingBuffers)
 {
+	//Create font pipeline
+	m_VkFont->CreateFontVk((GetAssetPath() + "Textures/freetype/AmazDooMLeft.ttf"), 64, 96);
+
+	m_VkFont->SetupDescriptorPool();
+	m_VkFont->SetupDescriptorSetLayout();
+	m_VkFont->PrepareUniformBuffers();
+	m_VkFont->InitializeChars("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM-:.@1234567890", *m_pTextureLoader);
+	m_VkFont->PrepareResources(g_iDesktopWidth, g_iDesktopHeight);
+	BeginTextUpdate();
+
 	std::vector<VkBufferObject_s> listStagingBuffersIndex;
 
 	//Verts
@@ -584,7 +628,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 
 		// Attribute descriptions
 		// Describes memory layout and shader attribute locations
-		listLocalBuffers[i].attributeDescriptions.resize(3);
+		listLocalBuffers[i].attributeDescriptions.resize(6);
 
 		// Location 0 : Position
 		listLocalBuffers[i].attributeDescriptions[0].binding = 0;
@@ -598,18 +642,34 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		listLocalBuffers[i].attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
 		listLocalBuffers[i].attributeDescriptions[1].offset = offsetof(MD5Mesh::meshStructure, tex);
 
-		// Location 2 : BoneWeight
+		// Location 2 : BoneWeight 1
 		listLocalBuffers[i].attributeDescriptions[2].binding = 0;
 		listLocalBuffers[i].attributeDescriptions[2].location = 2;
 		listLocalBuffers[i].attributeDescriptions[2].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-		listLocalBuffers[i].attributeDescriptions[2].offset = offsetof(MD5Mesh::meshStructure, boneWeight);
+		listLocalBuffers[i].attributeDescriptions[2].offset = offsetof(MD5Mesh::meshStructure, boneWeight1);
+
+		
+		// Location 3 : BoneWeight 2
+		listLocalBuffers[i].attributeDescriptions[3].binding = 0;
+		listLocalBuffers[i].attributeDescriptions[3].location = 3;
+		listLocalBuffers[i].attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		listLocalBuffers[i].attributeDescriptions[3].offset = offsetof(MD5Mesh::meshStructure, boneWeight2);
+		
 
 
-		// Location 2 : BoneWeight
-		listLocalBuffers[i].attributeDescriptions[2].binding = 0;
-		listLocalBuffers[i].attributeDescriptions[2].location = 3;
-		listLocalBuffers[i].attributeDescriptions[2].format = VK_FORMAT_R32G32B32A32_SINT;
-		listLocalBuffers[i].attributeDescriptions[2].offset = offsetof(MD5Mesh::meshStructure, boneId);
+		// Location 4 : jointId 1
+		listLocalBuffers[i].attributeDescriptions[4].binding = 0;
+		listLocalBuffers[i].attributeDescriptions[4].location = 4;
+		listLocalBuffers[i].attributeDescriptions[4].format = VK_FORMAT_R32G32B32A32_SINT;
+		listLocalBuffers[i].attributeDescriptions[4].offset = offsetof(MD5Mesh::meshStructure, boneId1);
+
+		
+		// Location 5 : jointId 2
+		listLocalBuffers[i].attributeDescriptions[5].binding = 0;
+		listLocalBuffers[i].attributeDescriptions[5].location = 5;
+		listLocalBuffers[i].attributeDescriptions[5].format = VK_FORMAT_R32G32B32A32_SINT;
+		listLocalBuffers[i].attributeDescriptions[5].offset = offsetof(MD5Mesh::meshStructure, boneId2);
+		
 
 
 
@@ -839,6 +899,7 @@ void Renderer::SetupDescriptorSet()
 
 void Renderer::LoadAssets()
 {
+	m_VkFont = TYW_NEW VkFont(m_pWRenderer->m_SwapChain.physicalDevice, m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_Queue, m_pWRenderer->m_FrameBuffers, m_pWRenderer->m_SwapChain.colorFormat, m_pWRenderer->m_SwapChain.depthFormat, &m_WindowWidth, &m_WindowHeight);
 	md5Model.InitFromFile("Geometry/hellknight/hellknight.md5mesh", GetAssetPath());
 	md5Anim.LoadAnim("Animation/hellknight/idle2.md5anim", GetAssetPath());
 }
@@ -860,8 +921,8 @@ int main()
 		if (!GenerateEvents(msg))break;
 
 		auto tStart = std::chrono::high_resolution_clock::now();
-		g_Renderer.UpdateUniformBuffers();
 		g_Renderer.StartFrame();
+		g_Renderer.UpdateUniformBuffers();
 		g_Renderer.EndFrame(nullptr);
 		auto tEnd = std::chrono::high_resolution_clock::now();
 
@@ -871,7 +932,7 @@ int main()
 		g_Renderer.fpsTimer += (float)tDiff;
 		if (g_Renderer.fpsTimer > 1000.0f)
 		{
-
+			g_Renderer.BeginTextUpdate();
 			g_Renderer.lastFPS = g_Renderer.frameCounter;
 			g_Renderer.fpsTimer = 0.0f;
 			g_Renderer.frameCounter = 0;

@@ -100,8 +100,10 @@ public:
 	struct meshStructure
 	{
 		//At the moment we only have v/uv
-		glm::vec4   boneWeight;
-		glm::ivec4	boneId;
+		glm::vec4   boneWeight1;
+		glm::vec4   boneWeight2;
+		glm::ivec4	boneId1;
+		glm::ivec4	boneId2;
 		glm::vec3   vertex;
 		glm::vec2   tex;
 	};

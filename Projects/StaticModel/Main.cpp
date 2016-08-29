@@ -782,9 +782,8 @@ int main()
 		g_Renderer.fpsTimer += (float)tDiff;
 		if (g_Renderer.fpsTimer > 1000.0f)
 		{
-
-			g_Renderer.lastFPS = g_Renderer.frameCounter;
 			g_Renderer.BeginTextUpdate();
+			g_Renderer.lastFPS = g_Renderer.frameCounter;
 			g_Renderer.fpsTimer = 0.0f;
 			g_Renderer.frameCounter = 0;
 		}
@@ -940,7 +939,6 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		if (g_bPrepared) 
 		{
 			g_Renderer.VWindowResize(g_iDesktopHeight, g_iDesktopWidth);
-			g_Renderer.BeginTextUpdate();
 		}
 		break;
 	}
