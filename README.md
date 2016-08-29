@@ -51,7 +51,7 @@ There are still some strange edge bleeding which I do not know really why.
 > - [Non Signed distance field shader](Assets/Shaders/FontRendering/NonSdf.frag)
 
 ## [Normal Mapping](Projects/NormalMapping)
-<img src="ScreenShots/NormallMapping.png" height="126px" align="right">
+<img src="ScreenShots/NormallMapping.png" height="96px" align="right">
 Shader - [Normal Mapping Shader](Assets/Shaders/NormalMapping)
 
 
