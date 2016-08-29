@@ -64,7 +64,7 @@ Using my own wavefront parser.
 
 
 ## [Skeletal Animation](Projects/SkeletalAnimation)
-![alt tag]("ScreenShots/SkeletalAnimation.gif)
+<img src="ScreenShots/SkeletalAnimation.gif" height="96px" align="right">
 Shader - [Static Model Shader](Assets/Shaders/StaticModel)
 Project is not finnished
 Using my own MD5 parser.
