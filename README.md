@@ -66,7 +66,7 @@ Using my own wavefront parser.
 ## [Skeletal Animation](Projects/SkeletalAnimation)
 <img src="ScreenShots/SkeletalAnimation.gif" height="126px" align="right">
 Shader (should be renamed to gpu instead of cpu... cuz gpu skinning it is) - [Static Model Shader](Assets/Shaders/StaticModel)
-GPU skinning of MD5 file. The biggest trick that MD5 file usually have less then 9 bones per vertex, so had to setup second vec4 for boneWeight and jointId. Also, glm does not handle well small angles so had to use different version of slerp which would handle small angles.
+GPU skinning of MD5 file. MD5 file usually have less then 9 bones per vertex (in other file version usually max is 4), so had to setup second vec4 for boneWeight and jointId. Also, glm does not handle well small angles so had to use different version of slerp which would handle small angles.
 
 ## License
 Copyright (c) 2016 Tomas Mikalauskas
