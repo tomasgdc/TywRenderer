@@ -17,16 +17,16 @@
 
 
 
-//Animation Includes
-//#include <TywAnimation\MD5Anim\MD5Anim.h>
-
-
 #define MD5VERSION 10
 static uint32_t	 c_numVerts = 0;
 static uint32_t	 c_numWeights = 0;
 static uint32_t	 c_numWeightJoints = 0;
 
 
+//Functions for normal, tangent, bitangent calculation
+glm::vec3 CalculateNormalsMD5(const std::vector<uint32_t>& vertexIndices, const std::vector<MD5Mesh::meshStructure>& deformInfo, const int currentIndex);
+glm::vec3 CalculateSmoothNormalsMD5(const std::vector<uint32_t>& vertexIndices, const std::vector<glm::vec3>& vertices, const int currentIndex);
+void CalculateTangentAndBinormalMD5();//objMesh_t& pMesh, const int currentIndex);
 
 MD5Mesh::MD5Mesh():
 	shader(nullptr), 
@@ -149,9 +149,9 @@ void MD5Mesh::ParseMesh(FILE* ptrFile, int numJoints, std::vector<JointQuat>& jo
 		else if (strcmp(lineHeader, "numtris") == 0) 
 		{
 			fscanf(ptrFile, "%i\n", &numTris);
-			tri.reserve(numTris*3);
+			indexes.reserve(numTris*3);
 
-			MD5_ParseTriangles(ptrFile, tri, numTris);
+			MD5_ParseTriangles(ptrFile, indexes, numTris);
 		}
 		else if (strcmp(lineHeader, "numweights") == 0)
 		{
@@ -164,13 +164,11 @@ void MD5Mesh::ParseMesh(FILE* ptrFile, int numJoints, std::vector<JointQuat>& jo
 	}
 
 
-//	deformInfo = TYW_NEW deformInfo_t;
-//	deformInfo->verts = TYW_NEW drawVert[verts.size()];
-//	deformInfo->indexes = TYW_NEW uint32_t[tri.size()];
-
-//	deformInfo->numSourceVerts = verts.size();
-//	deformInfo->numIndexes = tri.size();
-
+	//Instead if doing searching and sorting for vertex normals
+	//I use first [] access as duplicates
+	//Each time [vertexIndices[i]] is the same. I keep adding duplicate vertices position
+	std::vector <std::vector<uint32_t>> duplicateVertices;
+	duplicateVertices.resize(verts.size());
 	deformInfosVec.resize(verts.size());
 
 	int b = 0;
@@ -210,16 +208,96 @@ void MD5Mesh::ParseMesh(FILE* ptrFile, int numJoints, std::vector<JointQuat>& jo
 		
 		deformInfosVec[b].boneWeight1 = glm::vec4(pBoneWeights[0], pBoneWeights[1], pBoneWeights[2], pBoneWeights[3]);
 		deformInfosVec[b].boneWeight2 = glm::vec4(pBoneWeights[4], pBoneWeights[5], pBoneWeights[6], pBoneWeights[7]);
-		deformInfosVec[b].boneId1 =		glm::ivec4(pBoneIndices[0], pBoneIndices[1], pBoneIndices[2], pBoneIndices[3]);
-		deformInfosVec[b].boneId2 =     glm::ivec4(pBoneIndices[4], pBoneIndices[5], pBoneIndices[6], pBoneIndices[7]);
-
-
-		//deformInfo->verts[b].Clear();
-		//deformInfo->verts[b].vertex =  v;
-		//deformInfo->verts[b].SetTexCoords(i.texCoord.x, i.texCoord.y);
+		deformInfosVec[b].boneId1     =	glm::ivec4(pBoneIndices[0], pBoneIndices[1], pBoneIndices[2], pBoneIndices[3]);
+		deformInfosVec[b].boneId2     = glm::ivec4(pBoneIndices[4], pBoneIndices[5], pBoneIndices[6], pBoneIndices[7]);
 		b++;
 	}
-	//std::copy(tri.begin(), tri.end(), deformInfo->indexes);
+	
+
+	
+	//Calculate Normasl
+	for (uint32_t i = 0; i < indexes.size(); i += 3)
+	{
+		uint32_t& v0 = indexes[i];
+		uint32_t& v1 = indexes[i+1];
+		uint32_t& v2 = indexes[i+2];
+
+		deformInfosVec[v0].normal = CalculateNormalsMD5(indexes, deformInfosVec, i);
+		duplicateVertices[v0].push_back(v0);
+
+		deformInfosVec[v1].normal = deformInfosVec[v0].normal;
+		duplicateVertices[v1].push_back(v1);
+
+		deformInfosVec[v2].normal = deformInfosVec[v0].normal;
+		duplicateVertices[v2].push_back(v2);
+	}
+	
+
+	
+	//Create new smooth normals
+	glm::vec3 newNormal;
+	for (uint32_t i = 0; i < indexes.size(); i++)
+	{
+		glm::vec3 newNormal(0, 0, 0);
+		const std::vector<uint32_t>& duplicates = duplicateVertices[indexes[i]];
+		for (auto& duplicatePos : duplicates)
+		{
+			newNormal += deformInfosVec[duplicatePos].normal;
+		}
+		deformInfosVec[indexes[i]].normal = glm::normalize(newNormal);
+	}
+
+
+
+
+	//Calculate Tangent and Bittangent
+	for (int i = 0; i < indexes.size(); i += 3)
+	{
+		uint32_t& index1 = indexes[i];
+		uint32_t& index2 = indexes[i+1];
+		uint32_t& index3 = indexes[i+2];
+
+
+		const glm::vec3& v1 = deformInfosVec[index1].vertex;
+		const glm::vec3& v2 = deformInfosVec[index2].vertex;
+		const glm::vec3& v3 = deformInfosVec[index3].vertex;
+
+
+		const glm::vec2& uv1 = deformInfosVec[index1].tex;
+		const glm::vec2& uv2 = deformInfosVec[index2].tex;
+		const glm::vec2& uv3 = deformInfosVec[index3].tex;
+
+		//calculate edges
+		glm::vec3 Edge1 = v2 - v1;
+		glm::vec3 Edge2 = v3 - v1;
+
+		//calculate uv edges
+		glm::vec2 Edge1Uv = uv2 - uv1;
+		glm::vec2 Edge2Uv = uv3 - uv1;
+
+
+		float r = 1.0f / (Edge1Uv.x * Edge2Uv.y - Edge1Uv.y * Edge2Uv.x);
+		glm::vec3 tangent = (Edge1 * Edge2Uv.y - Edge2 * Edge1Uv.y)*r;
+		glm::vec3 bitangent = (Edge2 * Edge1Uv.x - Edge1 * Edge2Uv.x)*r;
+
+		deformInfosVec[index1].tangent = tangent;
+		deformInfosVec[index2].tangent = tangent;
+		deformInfosVec[index3].tangent = tangent;
+
+		deformInfosVec[index1].binormal = bitangent;
+		deformInfosVec[index2].binormal = bitangent;
+		deformInfosVec[index3].binormal = bitangent;
+	}
+
+	
+	for (auto meshData: deformInfosVec)
+	{
+		const glm::vec3 & n = meshData.normal;
+		const glm::vec3 & t = meshData.tangent;
+		meshData.tangent = glm::orthonormalize(t, n);
+
+		meshData.binormal = glm::cross(meshData.tangent, n);
+	}
 }
 
 bool RenderModelMD5::ParseJoint(FILE* ptrFile, MD5Joint& joint, JointQuat& pose) {
@@ -241,7 +319,58 @@ bool RenderModelMD5::ParseJoint(FILE* ptrFile, MD5Joint& joint, JointQuat& pose)
 	return true;
 }
 
+glm::vec3 CalculateNormalsMD5(const std::vector<uint32_t>& vertexIndices, const std::vector<MD5Mesh::meshStructure>& deformInfo, const int currentIndex)
+{
+	glm::vec3 Edge1 = deformInfo[vertexIndices[(currentIndex + 1)]].vertex - deformInfo[vertexIndices[currentIndex]].vertex;
+	glm::vec3 Edge2 = deformInfo[vertexIndices[(currentIndex + 2)]].vertex - deformInfo[vertexIndices[currentIndex]].vertex;
 
+	return glm::normalize(glm::cross(Edge1, Edge2));
+}
+
+
+void CalculateTangentAndBinormalMD5()//objMesh_t& pMesh, const int currentIndex)
+{
+	/*
+	//calculate edges
+	glm::vec3 Edge1 = pMesh.vertices[currentIndex + 1] - pMesh.vertices[currentIndex];
+	glm::vec3 Edge2 = pMesh.vertices[currentIndex + 2] - pMesh.vertices[currentIndex];
+
+
+	//calculate uv edges
+	glm::vec2 Edge1Uv = pMesh.uvs[currentIndex + 1] - pMesh.uvs[currentIndex];
+	glm::vec2 Edge2Uv = pMesh.uvs[currentIndex + 2] - pMesh.uvs[currentIndex];
+
+
+	pMesh.tangent[currentIndex] = glm::vec3(0, 0, 0);
+	pMesh.binormal[currentIndex] = glm::vec3(0, 0, 0);
+
+	float r = 1.0f / (Edge1Uv.x * Edge2Uv.y - Edge1Uv.y * Edge2Uv.x);
+	glm::vec3 tangent = (Edge1 * Edge2Uv.y - Edge2 * Edge1Uv.y)*r;
+	glm::vec3 bitangent = (Edge2 * Edge1Uv.x - Edge1 * Edge2Uv.x)*r;
+
+	//t = tangent;
+	//b = bitangent;
+	TangentAndBinormalCalculator(Edge1, Edge2, Edge1Uv, Edge2Uv, pMesh.normals[currentIndex], pMesh.tangent[currentIndex], pMesh.binormal[currentIndex]);
+	*/
+}
+
+
+glm::vec3 CalculateSmoothNormalsMD5(const std::vector<uint32_t>& vertexIndices, const std::vector<glm::vec3>& vertices, const int currentIndex)
+{
+	//calculate smooth normals
+	glm::vec3 normal(0, 0, 0);
+	for (int j = currentIndex; j < vertexIndices.size(); j += 3)
+	{
+		if (vertexIndices[j] == vertexIndices[currentIndex] && (j + 2) < vertexIndices.size())
+		{
+			glm::vec3 Edge1 = vertices[vertexIndices[j + 1]] - vertices[vertexIndices[j]];
+			glm::vec3 Edge2 = vertices[vertexIndices[j + 2]] - vertices[vertexIndices[j]];
+
+			normal += glm::normalize(glm::cross(Edge1, Edge2));
+		}
+	}
+	return glm::normalize(normal);
+}
 
 void RenderModelMD5::InitFromFile(std::string fileName, std::string filePath) {
 	FILE* file = fopen((filePath + fileName).c_str(), "r");

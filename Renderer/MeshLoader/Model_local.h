@@ -105,6 +105,9 @@ public:
 		glm::ivec4	boneId1;
 		glm::ivec4	boneId2;
 		glm::vec3   vertex;
+		glm::vec3	normal;
+		glm::vec3	tangent;
+		glm::vec3	binormal;
 		glm::vec2   tex;
 	};
 
@@ -112,7 +115,7 @@ public:
 	std::vector<vertIndex_t>	 verts;
 	std::vector<vertexWeight_t>  weight;
 	std::vector<meshStructure>	 deformInfosVec;		//replacement for deforminto_t*
-	std::vector<uint32_t>		 tri;
+	std::vector<uint32_t>		 indexes;
 
 	uint32_t					numVerts;			// number of vertices
 	uint32_t					numTris;			// number of triangles

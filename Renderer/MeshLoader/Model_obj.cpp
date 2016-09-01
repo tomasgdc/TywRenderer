@@ -11,9 +11,6 @@
 //Geometry Includes
 #include "Geometry\TangentAndBinormalCalculator.hpp"
 
-//math
-#include <External\glm\glm\gtx\orthonormalize.hpp>
-
 typedef struct {
 	objModel_t	*model;
 	objObject_t *currentObject;
@@ -301,7 +298,7 @@ int OBJ_ParseObject(FILE* file, const char* objectName,
 		{
 			newNormals[i] += pMesh->normals[duplicatePos];
 		}
-		glm::normalize(newNormals[i]);
+		newNormals[i] = glm::normalize(newNormals[i]);
 	}
 
 	//Delete old normals and assign new ones
@@ -318,8 +315,8 @@ int OBJ_ParseObject(FILE* file, const char* objectName,
 
 
 		glm::vec2& uv0 = pMesh->uvs[i];
-		glm::vec2& uv1 = pMesh->uvs[i];
-		glm::vec2& uv2 = pMesh->uvs[i];
+		glm::vec2& uv1 = pMesh->uvs[i+1];
+		glm::vec2& uv2 = pMesh->uvs[i+2];
 
 		glm::vec3 Edge1 = v1 - v0;
 		glm::vec3 Edge2 = v2 - v0;
@@ -340,36 +337,23 @@ int OBJ_ParseObject(FILE* file, const char* objectName,
 		Bitangent.x = f * (-DeltaU2 * Edge1.x - DeltaU1 * Edge2.x);
 		Bitangent.y = f * (-DeltaU2 * Edge1.y - DeltaU1 * Edge2.y);
 		Bitangent.z = f * (-DeltaU2 * Edge1.z - DeltaU1 * Edge2.z);
-
-		pMesh->tangent[0] += Tangent;
-		pMesh->tangent[1] += Tangent;
-		pMesh->tangent[2] += Tangent;
+			
+		pMesh->tangent[i]	= Tangent;
+		pMesh->tangent[i+1] = Tangent;
+		pMesh->tangent[i+2] = Tangent;
 	}
 
+	
+	
+	//Normalize tangents and bitangent
 	for (int i = 0; i < pMesh->numVertexes; i++)
 	{
 		const glm::vec3 & n = pMesh->normals[i];
 		const glm::vec3 & t = pMesh->tangent[i];
 		pMesh->tangent[i] = glm::orthonormalize(t, n);
 
-		pMesh->binormal[i] = glm::cross(pMesh->tangent[i], n);
+		pMesh->binormal[i] = (glm::cross(pMesh->tangent[i], n));
 	}
-
-	/*
-	//Normalize tangents and bitangent
-	for (int i = 0; i < pMesh->numVertexes; i++)
-	{
-		const glm::vec3 & n = pMesh->normals[i];
-		const glm::vec3 & t = pMesh->tangent[i];
-		const glm::vec3 & b = pMesh->binormal[i];
-
-		// Gram-Schmidt orthogonalize
-		pMesh->tangent[i] = glm::orthonormalize(n, t);
-
-		//Calculate bitangent;
-		pMesh->binormal[i] =  glm::normalize(glm::cross(n, pMesh->tangent[i]));
-	}
-	*/
 	return res;
 }
 

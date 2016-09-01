@@ -96,7 +96,7 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 class Renderer final: public VKRenderer
 {
 	VkTools::VulkanTexture m_VkTexture;
-	VkFont*	m_VkFont;
+	
 
 	struct {
 		glm::mat4 bones[110];
@@ -158,7 +158,9 @@ public:
 
 	bool m_bViewChanged = false;
 
+public:
 	void BeginTextUpdate();
+	VkFont*	m_VkFont;
 };
 
 
@@ -232,7 +234,7 @@ void Renderer::StartFrame()
 		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
 		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
 
-
+		
 		//Wait for color output before rendering text
 		submitInfo.pWaitDstStageMask = &stageFlags;
 
@@ -263,7 +265,6 @@ void Renderer::StartFrame()
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &m_pWRenderer->m_PrePresentCmdBuffers[m_pWRenderer->m_currentBuffer];
 		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
-
 
 		// Present the current buffer to the swap chain
 		// We pass the signal semaphore from the submit info
@@ -528,7 +529,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		//deformInfo_t* tr = md5Model.meshes[i].deformInfo;
 
 		std::vector<MD5Mesh::meshStructure>&	 deformInfosVec = md5Model.meshes[i].deformInfosVec;
-		std::vector<uint32_t>& indexes = md5Model.meshes[i].tri;
+		std::vector<uint32_t>& indexes = md5Model.meshes[i].indexes;
 		uint32_t numVerts = md5Model.meshes[i].verts.size();
 
 
@@ -628,7 +629,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 
 		// Attribute descriptions
 		// Describes memory layout and shader attribute locations
-		listLocalBuffers[i].attributeDescriptions.resize(6);
+		listLocalBuffers[i].attributeDescriptions.resize(9);
 
 		// Location 0 : Position
 		listLocalBuffers[i].attributeDescriptions[0].binding = 0;
@@ -636,39 +637,60 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		listLocalBuffers[i].attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		listLocalBuffers[i].attributeDescriptions[0].offset = offsetof(MD5Mesh::meshStructure, vertex);
 
-		// Location 1 : Uv
+		// Location 1 : Normal
 		listLocalBuffers[i].attributeDescriptions[1].binding = 0;
 		listLocalBuffers[i].attributeDescriptions[1].location = 1;
-		listLocalBuffers[i].attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
-		listLocalBuffers[i].attributeDescriptions[1].offset = offsetof(MD5Mesh::meshStructure, tex);
+		listLocalBuffers[i].attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+		listLocalBuffers[i].attributeDescriptions[1].offset = offsetof(MD5Mesh::meshStructure, normal);
 
-		// Location 2 : BoneWeight 1
+
+		// Location 2 : Tangent
 		listLocalBuffers[i].attributeDescriptions[2].binding = 0;
 		listLocalBuffers[i].attributeDescriptions[2].location = 2;
-		listLocalBuffers[i].attributeDescriptions[2].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-		listLocalBuffers[i].attributeDescriptions[2].offset = offsetof(MD5Mesh::meshStructure, boneWeight1);
+		listLocalBuffers[i].attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+		listLocalBuffers[i].attributeDescriptions[2].offset = offsetof(MD5Mesh::meshStructure, tangent);
 
-		
-		// Location 3 : BoneWeight 2
+
+		// Location 3 : Binormal
 		listLocalBuffers[i].attributeDescriptions[3].binding = 0;
 		listLocalBuffers[i].attributeDescriptions[3].location = 3;
-		listLocalBuffers[i].attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-		listLocalBuffers[i].attributeDescriptions[3].offset = offsetof(MD5Mesh::meshStructure, boneWeight2);
-		
+		listLocalBuffers[i].attributeDescriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
+		listLocalBuffers[i].attributeDescriptions[3].offset = offsetof(MD5Mesh::meshStructure, binormal);
 
 
-		// Location 4 : jointId 1
+		// Location 4 : Uv
 		listLocalBuffers[i].attributeDescriptions[4].binding = 0;
 		listLocalBuffers[i].attributeDescriptions[4].location = 4;
-		listLocalBuffers[i].attributeDescriptions[4].format = VK_FORMAT_R32G32B32A32_SINT;
-		listLocalBuffers[i].attributeDescriptions[4].offset = offsetof(MD5Mesh::meshStructure, boneId1);
+		listLocalBuffers[i].attributeDescriptions[4].format = VK_FORMAT_R32G32_SFLOAT;
+		listLocalBuffers[i].attributeDescriptions[4].offset = offsetof(MD5Mesh::meshStructure, tex);
 
-		
-		// Location 5 : jointId 2
+		// Location 5 : BoneWeight 1
 		listLocalBuffers[i].attributeDescriptions[5].binding = 0;
 		listLocalBuffers[i].attributeDescriptions[5].location = 5;
-		listLocalBuffers[i].attributeDescriptions[5].format = VK_FORMAT_R32G32B32A32_SINT;
-		listLocalBuffers[i].attributeDescriptions[5].offset = offsetof(MD5Mesh::meshStructure, boneId2);
+		listLocalBuffers[i].attributeDescriptions[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		listLocalBuffers[i].attributeDescriptions[5].offset = offsetof(MD5Mesh::meshStructure, boneWeight1);
+
+		
+		// Location 6 : BoneWeight 2
+		listLocalBuffers[i].attributeDescriptions[6].binding = 0;
+		listLocalBuffers[i].attributeDescriptions[6].location = 6;
+		listLocalBuffers[i].attributeDescriptions[6].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		listLocalBuffers[i].attributeDescriptions[6].offset = offsetof(MD5Mesh::meshStructure, boneWeight2);
+		
+
+
+		// Location 7 : jointId 1
+		listLocalBuffers[i].attributeDescriptions[7].binding = 0;
+		listLocalBuffers[i].attributeDescriptions[7].location = 7;
+		listLocalBuffers[i].attributeDescriptions[7].format = VK_FORMAT_R32G32B32A32_SINT;
+		listLocalBuffers[i].attributeDescriptions[7].offset = offsetof(MD5Mesh::meshStructure, boneId1);
+
+		
+		// Location 8 : jointId 2
+		listLocalBuffers[i].attributeDescriptions[8].binding = 0;
+		listLocalBuffers[i].attributeDescriptions[8].location = 8;
+		listLocalBuffers[i].attributeDescriptions[8].format = VK_FORMAT_R32G32B32A32_SINT;
+		listLocalBuffers[i].attributeDescriptions[8].offset = offsetof(MD5Mesh::meshStructure, boneId2);
 		
 
 
@@ -845,9 +867,6 @@ void Renderer::SetupDescriptorSetLayout()
 
 		// Binding 1 : Fragment shader image sampler
 		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,1),
-
-		// Binding 2 : Fragment shader image sampler
-		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,2)
 	};
 
 	VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());
@@ -1092,8 +1111,10 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		}
 		break;
 	case WM_EXITSIZEMOVE:
-		if (g_bPrepared) {
+		if (g_bPrepared) 
+		{
 			g_Renderer.VWindowResize(g_iDesktopHeight, g_iDesktopWidth);
+			g_Renderer.m_VkFont->UpdateUniformBuffers(g_iDesktopWidth, g_iDesktopHeight, 0.0f);
 		}
 		break;
 	}

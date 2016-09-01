@@ -35,7 +35,6 @@ void main()
   float diffuse = clamp(dot(lVec, N), 0.0, 1.0);
   
 
-
-     outFragColor = vec4(diffuse*diffuseTex.rgb + 0.5 * specular * specularColor.rgb, 1.0);
+ outFragColor = vec4(diffuse*diffuseTex.rgb + 0.5 * specular * specularColor.rgb, 1.0);
     //outFragColor = vec4(diffuseTex.rgb + 0.5 * specular*specularColor.rgb, 1.0);
 }

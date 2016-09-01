@@ -25,10 +25,11 @@ void main()
 
 	vec3 diffuseTexture = texture(samplerDiffuse, flipped_texcoord, fs_in.loadBias).rgb;
 	vec3 normalTexture  =   normalize(texture(samplerNormal, flipped_texcoord)).rgb * 2.0 - vec3(1.0);
+
 	
-    // Normalize our incomming view and light direction vectors.
-    vec3 V = normalize(fs_in.eyeDir);
-    vec3 L = normalize(fs_in.lightDir);
+    
+    vec3 V = (fs_in.eyeDir);
+    vec3 L = (fs_in.lightDir);
 
 
     // Calculate R ready for use in Phong lighting.
@@ -36,7 +37,8 @@ void main()
 
 
     // Calculate diffuse color with simple N dot L.
-    vec3 diffuse = max(dot(normalTexture, L), 0.0) * diffuseTexture.rgb;
+	//vec3 diffuse = max(dot(normalTexture, V), 0.0) * diffuseTexture.rgb;
+    vec3 diffuse = max(dot(fs_in.normal, V), 0.0) * diffuseTexture.rgb;
     // Uncomment this to turn off diffuse shading
     // diffuse = vec3(0.0);
 
@@ -44,10 +46,12 @@ void main()
     vec3 specular_albedo = vec3(1.0);
 
     // Calculate Phong specular highlight
-    vec3 specular = max(pow(dot(R, V), 5.0), 0.0) * specular_albedo;
+    vec3 specular =  max(pow(dot(R, V), 20.0), 0.0) * specular_albedo;
 
 
     // Final color is diffuse + specular
     outFragColor = vec4(diffuse + specular, 1.0);
-	//outFragColor = vec4(diffuseTexture.rgb, 1.0);
+	//outFragColor = vec4(normalTexture.rgb, 1.0);
+	//outFragColor = vec4(normalTexture.rgb, 1.0);
+	//outFragColor = vec4(fs_in.normal.rgb, 1.0);
 }

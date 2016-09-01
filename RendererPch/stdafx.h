@@ -48,3 +48,4 @@
 #include <External/glm/glm/gtx/norm.hpp>
 #include <External/glm/glm/gtx/transform.hpp>
 #include <External/glm/glm/gtx/matrix_operation.hpp>
+#include <External\glm\glm\gtx\orthonormalize.hpp>
