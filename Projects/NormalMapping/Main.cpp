@@ -313,7 +313,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 
 #define DIM 1.0f
 #define NORMAL { 0.0f, 0.0f, 1.0f }
-	drawVert vertData[4] =
+	std::vector<drawVert> vertData =
 	{
 		{ glm::vec3(DIM,DIM,    0),	   glm::vec3(0,0,1),  glm::vec3(0,0,0), glm::vec3(0,0,0),  glm::vec2(1,1) },
 		{ glm::vec3(-DIM,DIM,  0),     glm::vec3(0,0,1),  glm::vec3(0,0,0), glm::vec3(0,0,0),  glm::vec2(0,1) },
@@ -429,7 +429,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &memAlloc, nullptr, &stagingBuffers.vertices.memory));
 		// Map and copy
 		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, stagingBuffers.vertices.memory, 0, memAlloc.allocationSize, 0, &data));
-		memcpy(data, vertData, sizeof(drawVert) * 4);
+		memcpy(data, vertData.data(), sizeof(drawVert) * vertData.size());
 		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, stagingBuffers.vertices.memory);
 		VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, stagingBuffers.vertices.buffer, stagingBuffers.vertices.memory, 0));
 
@@ -529,7 +529,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		memAlloc.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, m_pWRenderer->m_DeviceMemoryProperties);
 		VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &memAlloc, nullptr, &vertices.mem));
 		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, vertices.mem, 0, memAlloc.allocationSize, 0, &data));
-		memcpy(data, vertData, sizeof(drawVert) * 4);
+		memcpy(data, vertData.data(), sizeof(drawVert) * vertData.size());
 		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, vertices.mem);
 		VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, vertices.buf, vertices.mem, 0));
 

@@ -637,7 +637,6 @@ void VkFont::UpdateUniformBuffers(uint32_t windowWidth, uint32_t windowHeight, f
 
 	m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, zoom));
 	m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -60.0f));
-	m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
 
 	// Map uniform buffer and update it
 	uint8_t *pData;

@@ -411,11 +411,11 @@ void Renderer::UpdateUniformBuffers()
 		//m_uboVS.viewMatrix *= glm::rotate(m_uboVS.modelMatrix, glm::radians(-91.25f), glm::vec3(0.0f, 1.0f, 0.0f));
 		//m_uboVS.viewMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
-		m_uboVS.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.7f));
-		m_uboVS.modelMatrix *= glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, -5.0f));
-	    m_uboVS.modelMatrix *= glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-		m_uboVS.modelMatrix *= glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-		m_uboVS.modelMatrix *= glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+		m_uboVS.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
+		m_uboVS.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 54, -167));
+	    m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
 		m_uboVS.normal = glm::inverseTranspose(m_uboVS.modelMatrix);
 		m_uboVS.viewPos =  glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);

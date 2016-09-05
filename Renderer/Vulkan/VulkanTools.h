@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ctype.h>
+#include <cstdint>
 #include <External\vulkan\vulkan.h>
 
 
@@ -45,6 +45,18 @@ struct VkDepthStencil
 
 namespace VkTools
 {
+	//Objects
+	// Contains all vulkan objects
+	// required for a uniform data object
+	struct UniformData
+	{
+		VkBuffer buffer;
+		VkDeviceMemory memory;
+		VkDescriptorBufferInfo descriptor;
+		uint32_t allocSize;
+		void* mapped = nullptr;
+	};
+
 	TYWRENDERER_API std::string VkResultToString(VkResult errorCode);
 
 	TYWRENDERER_API void SetImageLayout(VkCommandBuffer cmdbuffer, VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout);
@@ -66,6 +78,8 @@ namespace VkTools
 	// Returns false if none of the depth formats in the list is supported by the device
 	TYWRENDERER_API VkBool32 GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat *depthFormat);
 
+	//Destroys uniform data that was allocated
+	TYWRENDERER_API void DestroyUniformData(VkDevice device, UniformData *uniformData);
 
 
 #if defined(__ANDROID__)
@@ -96,6 +110,15 @@ namespace VkTools
 		TYWRENDERER_API VkSamplerCreateInfo SamplerCreateInfo();
 		TYWRENDERER_API VkImageViewCreateInfo ImageViewCreateInfo();
 
+		TYWRENDERER_API VkRenderPassCreateInfo RenderPassCreateInfo();
+		TYWRENDERER_API VkFramebufferCreateInfo FramebufferCreateInfo();
+		TYWRENDERER_API VkRenderPassBeginInfo RenderPassBeginInfo();
+
+
+		TYWRENDERER_API VkViewport Viewport(float width, float height, float minDepth, float maxDepth);
+		TYWRENDERER_API VkRect2D Rect2D(int32_t width, int32_t height, int32_t offsetX, int32_t offsetY);
+
+		TYWRENDERER_API VkPipelineDynamicStateCreateInfo PipelineDynamicStateCreateInfo(const VkDynamicState * pDynamicStates, uint32_t dynamicStateCount, VkPipelineDynamicStateCreateFlags flags);
 
 		TYWRENDERER_API VkDescriptorSetLayoutBinding DescriptorSetLayoutBinding(VkDescriptorType type,VkShaderStageFlags stageFlags,uint32_t binding);
 		TYWRENDERER_API VkDescriptorSetLayoutCreateInfo DescriptorSetLayoutCreateInfo(const VkDescriptorSetLayoutBinding* pBindings,uint32_t bindingCount);

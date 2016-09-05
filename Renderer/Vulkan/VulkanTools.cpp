@@ -429,6 +429,62 @@ VkDescriptorImageInfo VkTools::Initializer::DescriptorImageInfo(VkSampler sample
 	return descriptorImageInfo;
 }
 
+VkRenderPassCreateInfo VkTools::Initializer::RenderPassCreateInfo()
+{
+	VkRenderPassCreateInfo renderPassCreateInfo = {};
+	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassCreateInfo.pNext = NULL;
+	return renderPassCreateInfo;
+}
+
+VkFramebufferCreateInfo VkTools::Initializer::FramebufferCreateInfo()
+{
+	VkFramebufferCreateInfo framebufferCreateInfo = {};
+	framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	framebufferCreateInfo.pNext = NULL;
+	return framebufferCreateInfo;
+}
+
+VkRenderPassBeginInfo VkTools::Initializer::RenderPassBeginInfo()
+{
+	VkRenderPassBeginInfo renderPassBeginInfo = {};
+	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassBeginInfo.pNext = NULL;
+	return renderPassBeginInfo;
+}
+
+VkViewport VkTools::Initializer::Viewport(float width,float height,float minDepth,float maxDepth)
+{
+	VkViewport viewport = {};
+	viewport.width = width;
+	viewport.height = height;
+	viewport.minDepth = minDepth;
+	viewport.maxDepth = maxDepth;
+	return viewport;
+}
+
+VkRect2D VkTools::Initializer::Rect2D(int32_t width, int32_t height, int32_t offsetX, int32_t offsetY)
+{
+	VkRect2D rect2D = {};
+	rect2D.extent.width = width;
+	rect2D.extent.height = height;
+	rect2D.offset.x = offsetX;
+	rect2D.offset.y = offsetY;
+	return rect2D;
+}
+
+VkPipelineDynamicStateCreateInfo VkTools::Initializer::PipelineDynamicStateCreateInfo(
+	const VkDynamicState * pDynamicStates,
+	uint32_t dynamicStateCount,
+	VkPipelineDynamicStateCreateFlags flags)
+{
+	VkPipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo = {};
+	pipelineDynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	pipelineDynamicStateCreateInfo.pDynamicStates = pDynamicStates;
+	pipelineDynamicStateCreateInfo.dynamicStateCount = dynamicStateCount;
+	return pipelineDynamicStateCreateInfo;
+}
+
 
 VkBool32 VkTools::CheckDeviceExtensionPresent(VkPhysicalDevice physicalDevice, const char* extensionName)
 {
@@ -476,6 +532,15 @@ VkBool32 VkTools::GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFor
 	return false;
 }
 
+TYWRENDERER_API void VkTools::DestroyUniformData(VkDevice device, VkTools::UniformData *uniformData)
+{
+	if (uniformData->mapped != nullptr)
+	{
+		vkUnmapMemory(device, uniformData->memory);
+	}
+	vkDestroyBuffer(device, uniformData->buffer, nullptr);
+	vkFreeMemory(device, uniformData->memory, nullptr);
+}
 
 
 #if defined(__ANDROID__)
@@ -542,4 +607,8 @@ VkShaderModule VkTools::LoadShader(const std::string& fileName, VkDevice device,
 
 	return shaderModule;
 }
+
+
+
+
 #endif

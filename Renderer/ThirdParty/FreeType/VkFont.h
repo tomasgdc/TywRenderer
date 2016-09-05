@@ -98,7 +98,6 @@ public:
 		glm::mat4 projectionMatrix;
 		glm::mat4 modelMatrix;
 		glm::mat4 viewMatrix;
-		glm::vec4 viewPos;
 		float lodBias = 0.0f;
 	}m_uboVS;
 
