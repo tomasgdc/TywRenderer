@@ -69,6 +69,9 @@ Using my own wavefront parser.
 Shader (should be renamed to gpu instead of cpu... cuz gpu skinning it is) - [Static Model Shader](Assets/Shaders/SkeletalAnimation)
 GPU skinning of MD5 file. MD5 file usually have less then 9 bones per vertex (usually max is 4 in game industry), so had to setup second vec4 for boneWeight and jointId. Also, glm does not handle well small angles so had to use different version of slerp which would handle small angles. Some info about getting MD5 rendering part is here -> https://github.com/gszauer/3DAnimation/blob/master/MD5/README.md
 
+## [Shadow Mapping](Projects/ShadowMapping)
+At the moment it is experimental. Not working properly. Have resource leaks and other problems with shadow rendering. [Shadow Maping Shader](Assets/Shaders/ShadowMapping)
+
 ## License
 Copyright (c) 2016 Tomas Mikalauskas
 
