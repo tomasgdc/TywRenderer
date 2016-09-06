@@ -79,7 +79,5 @@ void main()
 	vs_out.texcoord = inUv;
 	vs_out.loadBias = ubo.lodBias;
 	gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(inPos.xyz, 1.0);
-
-
-	vs_out.shadowCoord = ( biasMat * ubo.depthMVP *  ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix) * vec4(inPos, 1.0);	
+	vs_out.shadowCoord = ( biasMat * ubo.depthMVP *  ubo.modelMatrix) * vec4(inPos, 1.0);	
 }

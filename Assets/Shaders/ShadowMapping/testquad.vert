@@ -32,5 +32,5 @@ out gl_PerVertex
 void main() 
 {
 	gl_Position = ubo.mvp * vec4(inPos.xyz, 1.0);
-	shadowCoordinates = ( biasMat * ubo.shadowCoord * ubo.mvp ) * vec4(inPos, 1.0);	
+	shadowCoordinates = ( biasMat * ubo.shadowCoord * ubo.modelMatrix) * vec4(inPos, 1.0);	
 }
