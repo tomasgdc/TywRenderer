@@ -21,8 +21,8 @@ SET(RESOURCES
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/ShadowMapping/offscreen.vert"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/ShadowMapping/quad.frag"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/ShadowMapping/quad.vert"
-	"${CMAKE_SOURCE_DIR}/Assets/Shaders/ShadowMapping/testquad.frag"
-	"${CMAKE_SOURCE_DIR}/Assets/Shaders/ShadowMapping/testquad.vert"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/ShadowMapping/plane.frag"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/ShadowMapping/plane.vert"
 )
 SOURCE_GROUP("Shader Files" FILES ${RESOURCES})
 

@@ -109,8 +109,9 @@ class Renderer final: public VKRenderer
 
 	// Keep depth range as small as possible
 	// for better shadow map precision
+	//naah need bigger depth
 	float zNear = 1.0f;
-	float zFar = 96.0f;
+	float zFar = 256.0f; 
 
 
 	struct {
@@ -121,12 +122,12 @@ class Renderer final: public VKRenderer
 		glm::mat4 depthBiasMVP;
 		glm::vec4 viewPos;
 		float lodBias = 0.0f;
-	}m_uboVS;
+	}modelUniformData;
 
 
 	struct {
 		glm::mat4 depthMVP;
-	} uboOffscreenVS;
+	} meshOffscreenUniformData;
 
 	struct {
 		glm::mat4 mvp;
@@ -137,14 +138,15 @@ class Renderer final: public VKRenderer
 		glm::mat4 mvp;
 		glm::mat4 modelMatrix;
 		glm::mat4 shadowCoord;
-	} testquadUniformData;
+	} planeUniformData;
 
 
 	struct {
-		VkTools::UniformData offscreen;
+		VkTools::UniformData offscreenModel;
 		VkTools::UniformData offscreenPlane;
 		VkTools::UniformData quad;
-		VkTools::UniformData testquad;
+		VkTools::UniformData plane;
+		VkTools::UniformData model;
 	}  uniformData;
 
 
@@ -231,12 +233,12 @@ public:
 	float depthBiasSlope = 1.75f;
 
 
-	//quad
+	//plane and quad
 	VkPipeline quadPipeline;
-	VkPipeline testquadPipeline;
+	VkPipeline planePipeline;
 	VkPipelineLayout quadPipelineLayout;
 	VkDescriptorSet  quadDescriptorSet;
-	VkDescriptorSet  testquadDescriptorSet;
+	VkDescriptorSet  planeDescriptorSet;
 };
 
 
@@ -260,12 +262,11 @@ Renderer::~Renderer()
 	vkFreeMemory(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.depth.mem, nullptr);
 
 	vkDestroyFramebuffer(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.frameBuffer, nullptr);
-
 	vkDestroyRenderPass(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.renderPass, nullptr);
 
 	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, offscreenPipeline, nullptr);
 	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, quadPipeline, nullptr);
-	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, testquadPipeline, nullptr);
+	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, planePipeline, nullptr);
 
 	vkDestroyPipelineLayout(m_pWRenderer->m_SwapChain.device, offscreenPipelineLayout, nullptr);
 	vkDestroyPipelineLayout(m_pWRenderer->m_SwapChain.device, quadPipelineLayout, nullptr);
@@ -274,16 +275,24 @@ Renderer::~Renderer()
 
 	//vkDestroyDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, quaddes, nullptr);
 
-	// Meshes
+	//Destroy mesh data
+	VkBufferObject::FreeMeshBufferResources(m_pWRenderer->m_SwapChain.device, quadVbo);
+	VkBufferObject::FreeMeshBufferResources(m_pWRenderer->m_SwapChain.device, quadIndexVbo);
+	for (auto& rs : listLocalBuffers)
+	{
+		VkBufferObject::FreeMeshBufferResources(m_pWRenderer->m_SwapChain.device, rs);
+	}
 
 
 	// Uniform buffers
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.offscreen);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.quad);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.offscreenModel);
 	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.offscreenPlane);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.testquad);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.quad);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.plane);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.model);
 
 
+	//Destroy Semaphores
 	vkFreeCommandBuffers(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_CmdPool, 1, &offScreenCmdBuffer);
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, offscreenSemaphore, nullptr);
 }
@@ -405,7 +414,7 @@ void Renderer::UpdateLight()
 
 	// Animate the light sour
 	lightPos.x = sin(glm::radians(timer * 360.0f))*30.0f;
-	lightPos.y = 20.0f;// +sin(glm::radians(timer * 360.0f)) * 20.0f;
+	lightPos.y = -20.0f;// +sin(glm::radians(timer * 360.0f)) * 20.0f;
 	lightPos.z = 50.0f; // +sin(glm::radians(timer * 360.0f)) *20.0f;
 	//lightPos = glm::vec3(0, 0, 0);
 }
@@ -698,7 +707,7 @@ void Renderer::BuildOffscreenCommandBuffer()
 
 	//Render Plane
 	{
-		//vkCmdBindPipeline(offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, testquadPipeline);
+		//vkCmdBindPipeline(offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, planePipeline);
 		vkCmdBindDescriptorSets(offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, quadPipelineLayout, 0, 1, &offscreenPlaneDescriptorSet, 0, NULL);
 		vkCmdBindVertexBuffers(offScreenCmdBuffer, VERTEX_BUFFER_BIND_ID, 1, &quadVbo.buffer, offsets);
 		vkCmdBindIndexBuffer(offScreenCmdBuffer, quadIndexVbo.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -724,28 +733,28 @@ void Renderer::UpdateOffscreenUniformBuffers()
 {
 	// Matrix from light's point of view
 	glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(lightFOV), 1.0f, zNear, zFar);
-	glm::mat4 depthViewMatrix = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0));
+	glm::mat4 depthViewMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0, 0,1)) * glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0));
 	glm::mat4 depthModelMatrix = glm::mat4(1.0f);
 	glm::mat4 projectionViewMatrix = depthProjectionMatrix * depthViewMatrix;
-	uboOffscreenVS.depthMVP = projectionViewMatrix * uboVS.modelMatrix;
+	meshOffscreenUniformData.depthMVP = projectionViewMatrix * modelUniformData.modelMatrix;
 
 
-	m_uboVS.depthBiasMVP = projectionViewMatrix;
-	testquadUniformData.shadowCoord = projectionViewMatrix;
+	modelUniformData.depthBiasMVP = projectionViewMatrix;
+	planeUniformData.shadowCoord = projectionViewMatrix;
 	{
 		//mesh offscreen data
 		uint8_t *pData;
-		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.offscreen.memory, 0, sizeof(uboOffscreenVS), 0, (void **)&pData));
-		memcpy(pData, &uboOffscreenVS, sizeof(uboOffscreenVS));
-		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.offscreen.memory);
+		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.offscreenModel.memory, 0, sizeof(meshOffscreenUniformData), 0, (void **)&pData));
+		memcpy(pData, &meshOffscreenUniformData, sizeof(meshOffscreenUniformData));
+		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.offscreenModel.memory);
 	}
 
-	uboOffscreenVS.depthMVP = projectionViewMatrix * testquadUniformData.modelMatrix;
+	meshOffscreenUniformData.depthMVP = projectionViewMatrix * planeUniformData.modelMatrix;
 	{
 		//Plane offscreen data
 		uint8_t *pData;
-		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.offscreenPlane.memory, 0, sizeof(uboOffscreenVS), 0, (void **)&pData));
-		memcpy(pData, &uboOffscreenVS, sizeof(uboOffscreenVS));
+		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.offscreenPlane.memory, 0, sizeof(meshOffscreenUniformData), 0, (void **)&pData));
+		memcpy(pData, &meshOffscreenUniformData, sizeof(meshOffscreenUniformData));
 		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.offscreenPlane.memory);
 	}
 }
@@ -753,18 +762,15 @@ void Renderer::UpdateOffscreenUniformBuffers()
 
 void Renderer::ChangeLodBias(float delta)
 {
-	m_uboVS.lodBias += delta;
-	if (m_uboVS.lodBias < 0.0f)
+	modelUniformData.lodBias += delta;
+	if (modelUniformData.lodBias < 0.0f)
 	{
-		m_uboVS.lodBias = 0.0f;
+		modelUniformData.lodBias = 0.0f;
 	}
-	if (m_uboVS.lodBias > m_VkTexture.mipLevels)
+	if (modelUniformData.lodBias > m_VkTexture.mipLevels)
 	{
-		m_uboVS.lodBias = m_VkTexture.mipLevels;
+		modelUniformData.lodBias = m_VkTexture.mipLevels;
 	}
-
-	UpdateUniformBuffers();
-	UpdateQuadUniformData();
 	m_VkFont->UpdateUniformBuffers(m_WindowWidth, m_WindowHeight, g_zoom);
 }
 
@@ -851,8 +857,8 @@ void Renderer::BuildCommandBuffers()
 
 		//Test
 		{
-			vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, testquadPipeline);
-			vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, quadPipelineLayout, 0, 1, &testquadDescriptorSet, 0, NULL);
+			vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, planePipeline);
+			vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, quadPipelineLayout, 0, 1, &planeDescriptorSet, 0, NULL);
 			vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &quadVbo.buffer, offsets);
 			vkCmdBindIndexBuffer(m_pWRenderer->m_DrawCmdBuffers[i], quadIndexVbo.buffer, 0, VK_INDEX_TYPE_UINT32);
 			vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], 6, 1, 0, 0, 0);
@@ -922,31 +928,31 @@ void Renderer::UpdateUniformBuffers()
 
 
 	//Mesh uniform data
-	m_uboVS.projectionMatrix = glm::perspective(glm::radians(60.0f), (float)m_WindowWidth / (float)m_WindowHeight, zNear, zFar);
+	modelUniformData.projectionMatrix = glm::perspective(glm::radians(60.0f), (float)m_WindowWidth / (float)m_WindowHeight, zNear, zFar);
 	//glm::translate(rotateMatrix, glm::vec3(0.0f, 5.0f, g_zoom));
-	m_uboVS.viewMatrix = glm::translate(rotateMatrix, glm::vec3(0.0f, 5.0f, g_zoom));
-	m_uboVS.modelMatrix = rotateMesh * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 5.0f));
-	m_uboVS.normal = glm::inverseTranspose(m_uboVS.modelMatrix);
-	m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
+	modelUniformData.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 5.0f, g_zoom));
+	modelUniformData.modelMatrix = rotateMatrix * rotateMesh * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 5.0f));
+	modelUniformData.normal = glm::inverseTranspose(modelUniformData.modelMatrix);
+	modelUniformData.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
 	{
 		// Map uniform buffer and update it
 		uint8_t *pData;
-		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory, 0, sizeof(m_uboVS), 0, (void **)&pData));
-		memcpy(pData, &m_uboVS, sizeof(m_uboVS));
-		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory);
+		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.model.memory, 0, sizeof(modelUniformData), 0, (void **)&pData));
+		memcpy(pData, &modelUniformData, sizeof(modelUniformData));
+		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.model.memory);
 	}
 
 
 	//Plane uniform data
-	testquadUniformData.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(30.0f, 30.0f, 30.0f));
-	testquadUniformData.modelMatrix = rotatePlane * glm::translate(testquadUniformData.modelMatrix, glm::vec3(0.0f, 0.0f, 0.08f));
-	testquadUniformData.mvp = m_uboVS.projectionMatrix * m_uboVS.viewMatrix * testquadUniformData.modelMatrix;
+	planeUniformData.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(50.0f, 50.0f, 50.0f));
+	planeUniformData.modelMatrix = rotatePlane * glm::translate(planeUniformData.modelMatrix, glm::vec3(0.0f, 0.0f, 0.08f));
+	planeUniformData.mvp = modelUniformData.projectionMatrix * modelUniformData.viewMatrix * planeUniformData.modelMatrix;
 	{
 		// Map uniform buffer and update it
 		uint8_t *pData;
-		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.testquad.memory, 0, sizeof(testquadUniformData), 0, (void **)&pData));
-		memcpy(pData, &testquadUniformData, sizeof(testquadUniformData));
-		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.testquad.memory);
+		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.plane.memory, 0, sizeof(planeUniformData), 0, (void **)&pData));
+		memcpy(pData, &planeUniformData, sizeof(planeUniformData));
+		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.plane.memory);
 	}
 }
 
@@ -966,13 +972,13 @@ void Renderer::PrepareUniformBuffers()
 		allocInfo.memoryTypeIndex = 0;
 
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = sizeof(m_uboVS);
+		bufferInfo.size = sizeof(modelUniformData);
 		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
 		// Create a new buffer
-		VK_CHECK_RESULT(vkCreateBuffer(m_pWRenderer->m_SwapChain.device, &bufferInfo, nullptr, &uniformDataVS.buffer));
+		VK_CHECK_RESULT(vkCreateBuffer(m_pWRenderer->m_SwapChain.device, &bufferInfo, nullptr, &uniformData.model.buffer));
 		// Get memory requirements including size, alignment and memory type 
-		vkGetBufferMemoryRequirements(m_pWRenderer->m_SwapChain.device, uniformDataVS.buffer, &memReqs);
+		vkGetBufferMemoryRequirements(m_pWRenderer->m_SwapChain.device, uniformData.model.buffer, &memReqs);
 		allocInfo.allocationSize = memReqs.size;
 		// Get the memory type index that supports host visibile memory access
 		// Most implementations offer multiple memory tpyes and selecting the 
@@ -983,14 +989,14 @@ void Renderer::PrepareUniformBuffers()
 		// in a real world application that updates buffers on a regular base
 		allocInfo.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_pWRenderer->m_DeviceMemoryProperties);
 		// Allocate memory for the uniform buffer
-		VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &allocInfo, nullptr, &(uniformDataVS.memory)));
+		VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &allocInfo, nullptr, &(uniformData.model.memory)));
 		// Bind memory to buffer
-		VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.buffer, uniformDataVS.memory, 0));
+		VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, uniformData.model.buffer, uniformData.model.memory, 0));
 
 		// Store information in the uniform's descriptor
-		uniformDataVS.descriptor.buffer = uniformDataVS.buffer;
-		uniformDataVS.descriptor.offset = 0;
-		uniformDataVS.descriptor.range = sizeof(m_uboVS);
+		uniformData.model.descriptor.buffer = uniformData.model.buffer;
+		uniformData.model.descriptor.offset = 0;
+		uniformData.model.descriptor.range = sizeof(modelUniformData);
 	}
 
 
@@ -1008,13 +1014,13 @@ void Renderer::PrepareUniformBuffers()
 		allocInfo.memoryTypeIndex = 0;
 
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = sizeof(uboOffscreenVS);
+		bufferInfo.size = sizeof(meshOffscreenUniformData);
 		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
 		// Create a new buffer
-		VK_CHECK_RESULT(vkCreateBuffer(m_pWRenderer->m_SwapChain.device, &bufferInfo, nullptr, &uniformData.offscreen.buffer));
+		VK_CHECK_RESULT(vkCreateBuffer(m_pWRenderer->m_SwapChain.device, &bufferInfo, nullptr, &uniformData.offscreenModel.buffer));
 		// Get memory requirements including size, alignment and memory type 
-		vkGetBufferMemoryRequirements(m_pWRenderer->m_SwapChain.device, uniformData.offscreen.buffer, &memReqs);
+		vkGetBufferMemoryRequirements(m_pWRenderer->m_SwapChain.device, uniformData.offscreenModel.buffer, &memReqs);
 		allocInfo.allocationSize = memReqs.size;
 		// Get the memory type index that supports host visibile memory access
 		// Most implementations offer multiple memory tpyes and selecting the 
@@ -1025,14 +1031,14 @@ void Renderer::PrepareUniformBuffers()
 		// in a real world application that updates buffers on a regular base
 		allocInfo.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_pWRenderer->m_DeviceMemoryProperties);
 		// Allocate memory for the uniform buffer
-		VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &allocInfo, nullptr, &(uniformData.offscreen.memory)));
+		VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &allocInfo, nullptr, &(uniformData.offscreenModel.memory)));
 		// Bind memory to buffer
-		VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, uniformData.offscreen.buffer, uniformData.offscreen.memory, 0));
+		VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, uniformData.offscreenModel.buffer, uniformData.offscreenModel.memory, 0));
 
 		// Store information in the uniform's descriptor
-		uniformData.offscreen.descriptor.buffer = uniformData.offscreen.buffer;
-		uniformData.offscreen.descriptor.offset = 0;
-		uniformData.offscreen.descriptor.range = sizeof(uboOffscreenVS);
+		uniformData.offscreenModel.descriptor.buffer = uniformData.offscreenModel.buffer;
+		uniformData.offscreenModel.descriptor.offset = 0;
+		uniformData.offscreenModel.descriptor.range = sizeof(meshOffscreenUniformData);
 	}
 
 
@@ -1090,13 +1096,13 @@ void Renderer::PrepareUniformBuffers()
 		allocInfo.memoryTypeIndex = 0;
 
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = sizeof(testquadUniformData);
+		bufferInfo.size = sizeof(planeUniformData);
 		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
 		// Create a new buffer
-		VK_CHECK_RESULT(vkCreateBuffer(m_pWRenderer->m_SwapChain.device, &bufferInfo, nullptr, &uniformData.testquad.buffer));
+		VK_CHECK_RESULT(vkCreateBuffer(m_pWRenderer->m_SwapChain.device, &bufferInfo, nullptr, &uniformData.plane.buffer));
 		// Get memory requirements including size, alignment and memory type 
-		vkGetBufferMemoryRequirements(m_pWRenderer->m_SwapChain.device, uniformData.testquad.buffer, &memReqs);
+		vkGetBufferMemoryRequirements(m_pWRenderer->m_SwapChain.device, uniformData.plane.buffer, &memReqs);
 		allocInfo.allocationSize = memReqs.size;
 		// Get the memory type index that supports host visibile memory access
 		// Most implementations offer multiple memory tpyes and selecting the 
@@ -1107,14 +1113,14 @@ void Renderer::PrepareUniformBuffers()
 		// in a real world application that updates buffers on a regular base
 		allocInfo.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_pWRenderer->m_DeviceMemoryProperties);
 		// Allocate memory for the uniform buffer
-		VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &allocInfo, nullptr, &(uniformData.testquad.memory)));
+		VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &allocInfo, nullptr, &(uniformData.plane.memory)));
 		// Bind memory to buffer
-		VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, uniformData.testquad.buffer, uniformData.testquad.memory, 0));
+		VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, uniformData.plane.buffer, uniformData.plane.memory, 0));
 
 		// Store information in the uniform's descriptor
-		uniformData.testquad.descriptor.buffer = uniformData.testquad.buffer;
-		uniformData.testquad.descriptor.offset = 0;
-		uniformData.testquad.descriptor.range = sizeof(testquadUniformData);
+		uniformData.plane.descriptor.buffer = uniformData.plane.buffer;
+		uniformData.plane.descriptor.offset = 0;
+		uniformData.plane.descriptor.range = sizeof(planeUniformData);
 	}
 
 
@@ -1131,7 +1137,7 @@ void Renderer::PrepareUniformBuffers()
 		allocInfo.memoryTypeIndex = 0;
 
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = sizeof(uboOffscreenVS);
+		bufferInfo.size = sizeof(meshOffscreenUniformData);
 		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
 		// Create a new buffer
@@ -1155,7 +1161,7 @@ void Renderer::PrepareUniformBuffers()
 		// Store information in the uniform's descriptor
 		uniformData.offscreenPlane.descriptor.buffer = uniformData.offscreenPlane.buffer;
 		uniformData.offscreenPlane.descriptor.offset = 0;
-		uniformData.offscreenPlane.descriptor.range = sizeof(uboOffscreenVS);
+		uniformData.offscreenPlane.descriptor.range = sizeof(meshOffscreenUniformData);
 	}
 	UpdateLight();
 	UpdateUniformBuffers();
@@ -1206,13 +1212,13 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	}
 	
 	{
-		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfo, &testquadDescriptorSet));
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfo, &planeDescriptorSet));
 		std::vector<VkWriteDescriptorSet> testquadWriteDescriptorSets =
 		{
 			// Binding 0 : Vertex shader uniform buffer
-			VkTools::Initializer::WriteDescriptorSet(testquadDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.testquad.descriptor),
+			VkTools::Initializer::WriteDescriptorSet(planeDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.plane.descriptor),
 			// Binding 0 : Vertex shader uniform buffer
-			VkTools::Initializer::WriteDescriptorSet(testquadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &offscreenDescriptor)
+			VkTools::Initializer::WriteDescriptorSet(planeDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &offscreenDescriptor)
 		};
 		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, testquadWriteDescriptorSets.size(), testquadWriteDescriptorSets.data(), 0, NULL);
 	}
@@ -1223,7 +1229,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		std::vector<VkWriteDescriptorSet> offscreenWriteDescriptorSets =
 		{
 			// Binding 0 : Vertex shader uniform buffer
-			VkTools::Initializer::WriteDescriptorSet(offscreenDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.offscreen.descriptor),
+			VkTools::Initializer::WriteDescriptorSet(offscreenDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.offscreenModel.descriptor),
 		};
 		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, offscreenWriteDescriptorSets.size(), offscreenWriteDescriptorSets.data(), 0, NULL);
 	}
@@ -1292,7 +1298,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		std::vector<VkWriteDescriptorSet> writeDescriptorSets =
 		{
 			// Binding 0 : Vertex shader uniform buffer
-			VkTools::Initializer::WriteDescriptorSet(listDescriptros[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	0,&uniformDataVS.descriptor),
+			VkTools::Initializer::WriteDescriptorSet(listDescriptros[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	0,&uniformData.model.descriptor),
 
 			// Binding 1 : Fragment shader texture sampler
 			VkTools::Initializer::WriteDescriptorSet(listDescriptros[i],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,&texDescriptorDiffuse),
@@ -1493,10 +1499,10 @@ void Renderer::PreparePipeline()
 
 
 
-	//test quad pipeline
-	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/ShadowMapping/testquad.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/ShadowMapping/testquad.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &testquadPipeline));
+	//plane pipeline
+	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/ShadowMapping/plane.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/ShadowMapping/plane.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &planePipeline));
 
 
 	// Offscreen pipeline
@@ -1697,6 +1703,7 @@ Renderer g_Renderer;
 
 int main()
 {
+	//Initialize Renderer
 	g_bPrepared = g_Renderer.VInitRenderer(800, 600, false, HandleWindowMessages);
 	
 #if defined(_WIN32)
@@ -1707,13 +1714,20 @@ int main()
 	{
 		if (!GenerateEvents(msg))break;
 
+		//Start timer
 		auto tStart = std::chrono::high_resolution_clock::now();
 
+		//Update uniform data
 		g_Renderer.UpdateLight();
+		g_Renderer.UpdateUniformBuffers();
 		g_Renderer.UpdateOffscreenUniformBuffers();
+		g_Renderer.UpdateQuadUniformData();
 
+		//Do the rendering
 		g_Renderer.StartFrame();
 		g_Renderer.EndFrame(nullptr);
+
+		//End timer
 		auto tEnd = std::chrono::high_resolution_clock::now();
 		
 		g_Renderer.frameCounter++;
@@ -1728,6 +1742,8 @@ int main()
 			g_Renderer.frameCounter = 0;
 		}
 	}
+
+	//Cleanup everythingS
 	g_Renderer.VShutdown();
 	return 0;
 }
@@ -1833,8 +1849,6 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		short wheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
 		g_zoom += (float)wheelDelta * 0.005f * g_ZoomSpeed;
 		//camera.translate(glm::vec3(0.0f, 0.0f, (float)wheelDelta * 0.005f * zoomSpeed));
-		g_Renderer.UpdateUniformBuffers();
-		g_Renderer.UpdateQuadUniformData();
 		break;
 	}
 	case WM_MOUSEMOVE:
@@ -1845,9 +1859,6 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			g_zoom += (g_MousePos.y - (float)posy) * .005f * g_ZoomSpeed;
 			//camera.translate(glm::vec3(-0.0f, 0.0f, (mousePos.y - (float)posy) * .005f * zoomSpeed));
 			g_MousePos = glm::vec2((float)posx, (float)posy);
-
-			g_Renderer.UpdateUniformBuffers();
-			g_Renderer.UpdateQuadUniformData();
 		}
 		if (wParam & MK_LBUTTON)
 		{
@@ -1858,8 +1869,6 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			//camera.rotate(glm::vec3((mousePos.y - (float)posy), -(mousePos.x - (float)posx), 0.0f));
 			g_MousePos = glm::vec2((float)posx, (float)posy);
 
-			g_Renderer.UpdateUniformBuffers();
-			g_Renderer.UpdateQuadUniformData();
 		}
 		if (wParam & MK_MBUTTON)
 		{
@@ -1868,7 +1877,6 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			g_CameraPos.x -= (g_MousePos.x - (float)posx) * 0.01f;
 			g_CameraPos.y -= (g_MousePos.y - (float)posy) * 0.01f;
 			//camera.translate(glm::vec3(-(mousePos.x - (float)posx) * 0.01f, -(mousePos.y - (float)posy) * 0.01f, 0.0f));
-			//viewChanged();
 			g_MousePos.x = (float)posx;
 			g_MousePos.y = (float)posy;
 		}

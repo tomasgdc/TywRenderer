@@ -335,3 +335,12 @@ void VkBufferObject::BindVertUvBoneWeightBoneId(VkBufferObject_s& localBuffer)
 {
 
 }
+
+
+
+
+void VkBufferObject::FreeMeshBufferResources(VkDevice& device, VkBufferObject_s& meshBuffer)
+{
+	vkDestroyBuffer(device, meshBuffer.buffer, nullptr);
+	vkFreeMemory(device, meshBuffer.memory, nullptr);
+}

@@ -58,4 +58,6 @@ public:
 
 	//Vertex, Uv, BoneWeight, BoneId
 	static void BindVertUvBoneWeightBoneId(VkBufferObject_s& localBuffer);
+
+	static void FreeMeshBufferResources(VkDevice& device, VkBufferObject_s& meshBuffer);
 };
