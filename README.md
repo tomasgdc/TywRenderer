@@ -71,7 +71,10 @@ GPU skinning of MD5 file. MD5 file usually have less then 9 bones per vertex (us
 
 ## [Shadow Mapping](Projects/ShadowMapping)
 <img src="ScreenShots/ShadowMapping.gif" height="126px" align="right">
-At the moment it is experimental. Not working properly. Have resource leaks and other problems with shadow rendering. [Shadow Maping Shader](Assets/Shaders/ShadowMapping)
+[Shadow Maping Shader](Assets/Shaders/ShadowMapping). Shadow mapping with higher depth buffer range. More about shadow maps can be found on here:
+- http://outerra.blogspot.co.uk/2012/11/maximizing-depth-buffer-range-and.html
+- http://learnopengl.com/#!Advanced-Lighting/Shadows/Shadow-Mapping
+- http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-16-shadow-mapping/
 
 ## License
 Copyright (c) 2016 Tomas Mikalauskas
