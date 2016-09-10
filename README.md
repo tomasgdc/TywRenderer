@@ -25,6 +25,7 @@ In order to get working. You need to have working Vulkan driver and Vulkan SDK t
 - ImGui -     https://github.com/ocornut/imgui
 - Assimp -    https://github.com/assimp/assimp
 - LibPng -    http://www.libpng.org/pub/png/libpng.htm
+- GLI    -    http://gli.g-truc.net/0.8.1/index.html
 
 #Credits
 - Sascha Willems - https://github.com/SaschaWillems/Vulkan
