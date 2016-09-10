@@ -1,6 +1,6 @@
 # TywRenderer
 
-Vulkan Renderer. Work in progress.
+Vulkan Renderer. Work in progress. All testing was done on (r9 255 - Driver version 16.8.2)
 - Warning. Take the code with grain of salt as it might violate Vulkan specs.
 - Big Warning. Some of resources are not freed correctly. Work in progress...
 - Always happy to hear what could be fixed or improved.
@@ -22,9 +22,11 @@ In order to get working. You need to have working Vulkan driver and Vulkan SDK t
 
 #Please check ThirdParty Licenses
 - Freetype -  https://www.freetype.org/
-- ImGui -     https://github.com/ocornut/imgui
-- Assimp -    https://github.com/assimp/assimp
-- LibPng -    http://www.libpng.org/pub/png/libpng.htm
+- ImGui    -  https://github.com/ocornut/imgui
+- Assimp   -  https://github.com/assimp/assimp
+- LibPng   -  http://www.libpng.org/pub/png/libpng.htm
+- GLI      -  http://gli.g-truc.net/0.8.1/index.html
+- Cotire   -  https://github.com/sakra/cotire
 
 #Credits
 - Sascha Willems - https://github.com/SaschaWillems/Vulkan
@@ -70,7 +72,11 @@ Shader (should be renamed to gpu instead of cpu... cuz gpu skinning it is) - [St
 GPU skinning of MD5 file. MD5 file usually have less then 9 bones per vertex (usually max is 4 in game industry), so had to setup second vec4 for boneWeight and jointId. Also, glm does not handle well small angles so had to use different version of slerp which would handle small angles. Some info about getting MD5 rendering part is here -> https://github.com/gszauer/3DAnimation/blob/master/MD5/README.md
 
 ## [Shadow Mapping](Projects/ShadowMapping)
-At the moment it is experimental. Not working properly. Have resource leaks and other problems with shadow rendering. [Shadow Maping Shader](Assets/Shaders/ShadowMapping)
+<img src="ScreenShots/ShadowMapping.gif" height="126px" align="right">
+[Shadow Maping Shader](Assets/Shaders/ShadowMapping). Shadow mapping with higher depth buffer range. More about shadow maps can be found on here:
+- http://outerra.blogspot.co.uk/2012/11/maximizing-depth-buffer-range-and.html
+- http://learnopengl.com/#!Advanced-Lighting/Shadows/Shadow-Mapping
+- http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-16-shadow-mapping/
 
 ## License
 Copyright (c) 2016 Tomas Mikalauskas
