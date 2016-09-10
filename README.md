@@ -22,11 +22,11 @@ In order to get working. You need to have working Vulkan driver and Vulkan SDK t
 
 #Please check ThirdParty Licenses
 - Freetype -  https://www.freetype.org/
-- ImGui -     https://github.com/ocornut/imgui
-- Assimp -    https://github.com/assimp/assimp
-- LibPng -    http://www.libpng.org/pub/png/libpng.htm
-- GLI    -    http://gli.g-truc.net/0.8.1/index.html
-
+- ImGui    -  https://github.com/ocornut/imgui
+- Assimp   -  https://github.com/assimp/assimp
+- LibPng   -  http://www.libpng.org/pub/png/libpng.htm
+- GLI      -  http://gli.g-truc.net/0.8.1/index.html
+- Cotire   -  https://github.com/sakra/cotire
 #Credits
 - Sascha Willems - https://github.com/SaschaWillems/Vulkan
 
