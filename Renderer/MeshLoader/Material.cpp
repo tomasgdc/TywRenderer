@@ -16,7 +16,8 @@
 Material
 ========================
 */
-Material::Material():m_texture(nullptr) {
+Material::Material():m_texture(nullptr) 
+{
 
 }
 
@@ -25,8 +26,9 @@ Material::Material():m_texture(nullptr) {
 Material
 ========================
 */
-Material::Material(std::string name, std::string path):m_texture(nullptr){
-	m_texture = TYW_NEW VkTools::VulkanTexture;
+Material::Material(std::string name, std::string path):m_texture(nullptr)
+{
+
 }
 
 /*

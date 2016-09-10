@@ -121,6 +121,7 @@ class Renderer final: public VKRenderer
 		glm::mat4 normal;
 		glm::mat4 depthBiasMVP;
 		glm::vec4 viewPos;
+		glm::vec3 lightPos;
 		float lodBias = 0.0f;
 	}modelUniformData;
 
@@ -417,6 +418,8 @@ void Renderer::UpdateLight()
 	lightPos.y = -20.0f;// +sin(glm::radians(timer * 360.0f)) * 20.0f;
 	lightPos.z = 50.0f; // +sin(glm::radians(timer * 360.0f)) *20.0f;
 	//lightPos = glm::vec3(0, 0, 0);
+
+	modelUniformData.lightPos = lightPos;
 }
 
 
@@ -693,6 +696,7 @@ void Renderer::BuildOffscreenCommandBuffer()
 	// Bind triangle vertex buffer (contains position and colors)
 	VkDeviceSize offsets[1] = { 0 };
 
+
 	for (int j = 0; j < listLocalBuffers.size(); j++)
 	{
 		// Bind descriptor sets describing shader binding points
@@ -705,6 +709,7 @@ void Renderer::BuildOffscreenCommandBuffer()
 		vkCmdDraw(offScreenCmdBuffer, meshSize[j], 1, 0, 0);
 	}
 
+
 	//Render Plane
 	{
 		//vkCmdBindPipeline(offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, planePipeline);
@@ -713,6 +718,7 @@ void Renderer::BuildOffscreenCommandBuffer()
 		vkCmdBindIndexBuffer(offScreenCmdBuffer, quadIndexVbo.buffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdDrawIndexed(offScreenCmdBuffer, 6, 1, 0, 0, 0);
 	}
+
 
 
 
@@ -1205,7 +1211,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 			// Binding 0 : Vertex shader uniform buffer
 			VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.quad.descriptor),
 
-			// Binding 0 : Vertex shader uniform buffer
+			// Binding 1: Image descriptor
 			VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &offscreenDescriptor)
 		};
 		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, quadWriteDescriptorSets.size(), quadWriteDescriptorSets.data(), 0, NULL);
@@ -1217,7 +1223,8 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		{
 			// Binding 0 : Vertex shader uniform buffer
 			VkTools::Initializer::WriteDescriptorSet(planeDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.plane.descriptor),
-			// Binding 0 : Vertex shader uniform buffer
+
+			// Binding 1 : Image descriptor
 			VkTools::Initializer::WriteDescriptorSet(planeDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &offscreenDescriptor)
 		};
 		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, testquadWriteDescriptorSets.size(), testquadWriteDescriptorSets.data(), 0, NULL);
@@ -1279,44 +1286,33 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		//Get triangles
 		srfTriangles_t* tr = staticModel.surfaces[i].geometry;
 
-		
-		VkTools::VulkanTexture* vkBumpTexture = staticModel.surfaces[i].material[0].getTexture();
-		VkTools::VulkanTexture* vkDiffuseTexture = staticModel.surfaces[i].material[1].getTexture();
 
-
-		/*
-			=================================================================================================================
-			START SETUP DESCRIPTOR SET
-			=================================================================================================================
-		*/
 		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfo, &listDescriptros[i]));
-
-		// Image descriptor for the color map texture
-		VkDescriptorImageInfo texDescriptorDiffuse = VkTools::Initializer::DescriptorImageInfo(vkDiffuseTexture->sampler, vkDiffuseTexture->view, VK_IMAGE_LAYOUT_GENERAL);
-		VkDescriptorImageInfo texDescriptorNormal = VkTools::Initializer::DescriptorImageInfo(vkBumpTexture->sampler, vkBumpTexture->view, VK_IMAGE_LAYOUT_GENERAL);
-
 		std::vector<VkWriteDescriptorSet> writeDescriptorSets =
 		{
-			// Binding 0 : Vertex shader uniform buffer
-			VkTools::Initializer::WriteDescriptorSet(listDescriptros[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	0,&uniformData.model.descriptor),
-
-			// Binding 1 : Fragment shader texture sampler
-			VkTools::Initializer::WriteDescriptorSet(listDescriptros[i],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,&texDescriptorDiffuse),
-
-			// Binding 2 : Fragment shader texture sampler
-			VkTools::Initializer::WriteDescriptorSet(listDescriptros[i],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2,&texDescriptorNormal),
-
-			// Binding 3 : Fragment shader texture sampler
-			VkTools::Initializer::WriteDescriptorSet(listDescriptros[i],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3,&offscreenDescriptor)
+			//uniform descriptor
+			VkTools::Initializer::WriteDescriptorSet(listDescriptros[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	0,&uniformData.model.descriptor)
 		};
+		
+		//We need this because descriptorset will take pointer to vkDescriptorImageInfo.
+		//So if we delete it before update descriptor sets. The data will not be sented to gpu. Will pointing to memory address in which nothing exist anymore
+		//The program won't break. But you will see problems in fragment shader
+		std::vector<VkDescriptorImageInfo> descriptors;
+		descriptors.reserve(staticModel.surfaces[i].numMaterials);
+
+		//Get all materials
+		for (uint32_t j = 0; j < staticModel.surfaces[i].numMaterials; j++)
+		{
+			VkTools::VulkanTexture* pTexture = staticModel.surfaces[i].material[j].getTexture();
+			descriptors.push_back(VkTools::Initializer::DescriptorImageInfo(pTexture->sampler, pTexture->view, VK_IMAGE_LAYOUT_GENERAL));
+			writeDescriptorSets.push_back(VkTools::Initializer::WriteDescriptorSet(listDescriptros[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, j + 1, &descriptors[j]));
+		}
+
+		//Put offscreen descriptor
+		writeDescriptorSets.push_back(VkTools::Initializer::WriteDescriptorSet(listDescriptros[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &offscreenDescriptor));
+
+		//Update descriptor set
 		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, NULL);
-
-		/*
-		=================================================================================================================
-		END SETUP DESCRIPTOR SET
-		=================================================================================================================
-		*/
-
 
 
 		//Create stagging buffer first
@@ -1549,7 +1545,10 @@ void Renderer::SetupDescriptorSetLayout()
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,2),
 
 			// Binding 3 : Fragment shader image sampler
-			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,3)
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,3),
+
+			// Binding 4 : Fragment shader image sampler
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,4)
 		};
 		{
 			VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());
@@ -1576,11 +1575,11 @@ void Renderer::SetupDescriptorPool()
 	// Example uses one ubo and one image sampler
 	std::vector<VkDescriptorPoolSize> poolSizes =
 	{
-		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, (10*2)),
-		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (10*3))
+		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, (11)),
+		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (44))
 	};
 
-	VkDescriptorPoolCreateInfo descriptorPoolInfo = VkTools::Initializer::DescriptorPoolCreateInfo(poolSizes.size(),poolSizes.data(),7*2);
+	VkDescriptorPoolCreateInfo descriptorPoolInfo = VkTools::Initializer::DescriptorPoolCreateInfo(poolSizes.size(),poolSizes.data(), 11);
 	VK_CHECK_RESULT(vkCreateDescriptorPool(m_pWRenderer->m_SwapChain.device, &descriptorPoolInfo, nullptr, &m_pWRenderer->m_DescriptorPool));
 }
 

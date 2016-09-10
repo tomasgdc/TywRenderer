@@ -17,6 +17,7 @@ layout (binding = 0) uniform UBO
 	mat4 normal;
 	mat4 depthMVP;
 	vec4 viewPos;
+	vec3 lightPos;
 	float lodBias;
 } ubo;
 
@@ -40,9 +41,6 @@ const mat4 biasMat = mat4(
 
 void main() 
 {
-	//Light pos in model space
-	vec3 lightPos = vec3(0,2, 10);
-
 	//Calculate vertex position in view space
 	mat4 mvMatrix = ubo.viewMatrix * ubo.modelMatrix;
 
@@ -59,7 +57,7 @@ void main()
     
 	// The light vector (L) is the vector from the point of interest to
     // the light. Calculate that and multiply it by the TBN matrix.
-	vec3 LightVec = vec3(lightPos.xyz - vertexPosition.xyz);
+	vec3 LightVec = vec3(ubo.lightPos.xyz - vertexPosition.xyz);
 	vs_out.lightDir = normalize(vec3(LightVec * tbnMatrix));
 	//vs_out.lightDir = normalize(LightVec.xyz);
 

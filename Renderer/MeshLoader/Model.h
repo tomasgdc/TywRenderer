@@ -26,6 +26,7 @@ struct TYWRENDERER_API srfTriangles_t
 struct TYWRENDERER_API modelSurface_t 
 {
 	int					id;
+	uint32_t			numMaterials;
 	Material*			material;
 	srfTriangles_t*		geometry;
 };

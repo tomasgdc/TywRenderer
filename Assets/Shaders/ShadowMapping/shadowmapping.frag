@@ -14,10 +14,10 @@ in VS_OUT
 	float loadBias;
 } fs_in;
 
-layout (binding = 1) uniform sampler2D samplerDiffuse;
-layout (binding = 2) uniform sampler2D samplerNormal;
-//layout (binding = 3) uniform sampler2D samplerSpecular;
-layout (binding = 3) uniform sampler2D shadowMap;
+layout (binding = 1) uniform sampler2D samplerNormal;
+layout (binding = 2) uniform sampler2D samplerDiffuse;
+layout (binding = 3) uniform sampler2D samplerSpecular;
+layout (binding = 4) uniform sampler2D shadowMap;
 
 
 layout (location = 0) out vec4 outFragColor;
@@ -64,16 +64,19 @@ float filterPCF(vec4 sc)
 
 void main() 
 {
+	//Flip coordinates
 	vec2 flipped_texcoord = vec2(fs_in.texcoord.x, 1.0 - fs_in.texcoord.y);
 
-	vec3 diffuseTexture = texture(samplerDiffuse, flipped_texcoord, fs_in.loadBias).rgb;
-	vec3 normalTexture  =   normalize(texture(samplerNormal, flipped_texcoord)).rgb * 2.0 - vec3(1.0);
-	
+	//Get textures
+	vec3 diffuseTexture  =   texture(samplerDiffuse, flipped_texcoord).rgb;
+	vec3 normalTexture   =   normalize(texture(samplerNormal, flipped_texcoord)).rgb * 2.0 - vec3(1.0);
+	vec3 specularTexture =   texture(samplerSpecular, flipped_texcoord).rgb;
 
+
+	//Get shadow
 	float shadow = filterPCF(fs_in.shadowCoord / fs_in.shadowCoord.w);
 
 	
-    
     vec3 V = (fs_in.eyeDir);
     vec3 L = (fs_in.lightDir);
 
@@ -81,23 +84,28 @@ void main()
     // Calculate R ready for use in Phong lighting.
     vec3 R = reflect(-L, normalTexture);
 
-
     // Calculate diffuse color with simple N dot L.
-	//vec3 diffuse = max(dot(normalTexture, V), 0.0) * diffuseTexture.rgb;
-    vec3 diffuse = max(dot(fs_in.normal, V), 0.0) * diffuseTexture.rgb;
+	vec3 diffuse = max(dot(normalTexture, -V), 0.0) * diffuseTexture;
+
+    //vec3 diffuse = max(dot(fs_in.normal, V), 0.0) * diffuseTexture.rgb;
     // Uncomment this to turn off diffuse shading
     // diffuse = vec3(0.0);
 
-    // Assume that specular albedo is white - it could also come from a texture
-    vec3 specular_albedo = vec3(1.0);
+    //Assume that specular albedo is white - it could also come from a texture
+    //vec3 specular_albedo = vec3(1.0);
 
-    // Calculate Phong specular highlight
-    vec3 specular =  max(pow(dot(R, V), 20.0), 0.0) * specular_albedo;
+    //Calculate Phong specular highlight
+    vec3 specular =  max(pow(dot(R, V), 20.0), 0.0) * specularTexture;
 
 
     // Final color is diffuse + specular
-    outFragColor = vec4( (diffuse + specular)*shadow, 1.0);
+    //outFragColor = vec4( (diffuse + specular)*shadow, 1.0);
+
+	//Testing
 	//outFragColor = vec4(normalTexture.rgb, 1.0);
 	//outFragColor = vec4(normalTexture.rgb, 1.0);
 	//outFragColor = vec4(fs_in.normal.rgb, 1.0);
+	//outFragColor = vec4(diffuseTexture, 1.0);
+	//outFragColor = vec4(normalTexture, 1.0);
+	outFragColor = vec4(specularTexture, 1.0);
 }

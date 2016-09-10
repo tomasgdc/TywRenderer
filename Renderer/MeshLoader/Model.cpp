@@ -99,9 +99,12 @@ bool RenderModelStatic::ConvertOBJToModelSurfaces(const struct objModel_a* obj) 
 	objMesh_t*			mesh;
 	modelSurface_t		surf, *modelSurf;
 
+	//Stores number of materials loaded. Hack around till will figure out how to go around this problem.
+	std::unordered_map<std::string, uint32_t> materialSizes;
 
 	//Loads image if it was not stored in globalImage
-	for (materialNum = 0; materialNum < obj->materials.size(); materialNum++) {
+	for (materialNum = 0; materialNum < obj->materials.size(); materialNum++) 
+	{
 		material = obj->materials[materialNum];
 
 		//Create new material
@@ -145,11 +148,15 @@ bool RenderModelStatic::ConvertOBJToModelSurfaces(const struct objModel_a* obj) 
 			matNumber++;
 		}
 		m_material.insert(std::pair<std::string, Material*>(material->name, mat));
+		materialSizes.insert(std::pair<std::string, uint32_t>(material->name, matNumber));
 	}
 
+	//Reserve needed size for surfaces
+	surfaces.reserve(obj->objects.size());
 
 	//Converts OBJ mesh data to modelSurface_t data
-	for (objectNum = 0; objectNum < obj->objects.size(); objectNum++) {
+	for (objectNum = 0; objectNum < obj->objects.size(); objectNum++) 
+	{
 		surfaces.push_back(surf);
 		object = obj->objects[objectNum];
 		mesh = &object->mesh;
@@ -191,18 +198,17 @@ bool RenderModelStatic::ConvertOBJToModelSurfaces(const struct objModel_a* obj) 
 			tri->verts[i + 2].tex = mesh->uvs[i + 2];
 		}
 
-
 		modelSurf = &this->surfaces[objectNum];
 		modelSurf->geometry = tri;
 		modelSurf->material = nullptr;
 		it = m_material.find(object->mat_name);
 		if (it != m_material.end()) 
 		{
-			modelSurf->material = it->second;
+			Material * pMaterial = it->second;
+			modelSurf->material = pMaterial;
+			modelSurf->numMaterials = materialSizes[object->mat_name]; //Will give number of materials that were loaded
 			printf("Found %s \n", object->mat_name);
 		}
-
-
 	}
 	return true;
 }

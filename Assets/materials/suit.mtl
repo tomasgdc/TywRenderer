@@ -10,9 +10,9 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Bump nanosuit/arm_showroom_ddn_bc5.KTX
-map_Kd 	 nanosuit/arm_dif_bc2.KTX
-map_Ks 	 nanosuit/arm_showroom_spec_bc4.KTX
+map_Bump nanosuit/Compressed/arm_showroom_ddn_bc5.KTX
+map_Kd 	 nanosuit/Compressed/arm_dif_bc1.KTX
+map_Ks 	 nanosuit/Compressed/arm_showroom_spec_bc3.KTX
 
 
 newmtl Body
@@ -24,9 +24,9 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Bump nanosuit/body_showroom_ddn_bc5.KTX
-map_Kd 	 nanosuit/body_dif_bc2.KTX
-map_Ks   nanosuit/body_showroom_spec_bc4.KTX
+map_Bump nanosuit/Compressed/body_showroom_ddn_bc5.KTX
+map_Kd 	 nanosuit/Compressed/body_dif_bc1.KTX
+map_Ks   nanosuit/Compressed/body_showroom_spec_bc3.KTX
 
 newmtl Glass
 Ns 96.078431
@@ -37,8 +37,8 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Bump nanosuit/glass_ddn_bc5.KTX
-map_Kd   nanosuit/glass_dif_bc2.KTX
+map_Bump nanosuit/Compressed/glass_ddn_bc5.KTX
+map_Kd   nanosuit/Compressed/glass_dif_bc1.KTX
 
 newmtl Hand
 Ns 96.078431
@@ -49,9 +49,9 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Bump nanosuit/hand_showroom_ddn_bc5.KTX
-map_Kd 	 nanosuit/hand_dif_bc2.KTX
-map_Ks 	 nanosuit/hand_showroom_spec_bc4.KTX
+map_Bump nanosuit/Compressed/hand_showroom_ddn_bc5.KTX
+map_Kd 	 nanosuit/Compressed/hand_dif_bc1.KTX
+map_Ks 	 nanosuit/Compressed/hand_showroom_spec_bc3.KTX
 
 newmtl Helmet
 Ns 96.078431
@@ -62,9 +62,9 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Bump nanosuit/helmet_showroom_ddn_bc5.KTX
-map_Kd 	 nanosuit/helmet_dif_bc2.KTX
-map_Ks 	 nanosuit/helmet_showroom_spec_bc4.KTX
+map_Bump nanosuit/Compressed/helmet_showroom_ddn_bc5.KTX
+map_Kd 	 nanosuit/Compressed/helmet_dif_bc1.KTX
+map_Ks 	 nanosuit/Compressed/helmet_showroom_spec_bc3.KTX
 
 newmtl Leg
 Ns 96.078431
@@ -75,6 +75,6 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Bump nanosuit/leg_showroom_ddn_bc5.KTX
-map_Kd   nanosuit/leg_dif_bc2.KTX
-map_Ks   nanosuit/leg_showroom_spec_bc4.KTX
+map_Bump nanosuit/Compressed/leg_showroom_ddn_bc5.KTX
+map_Kd   nanosuit/Compressed/leg_dif_bc1.KTX
+map_Ks   nanosuit/Compressed/leg_showroom_spec_bc3.KTX
