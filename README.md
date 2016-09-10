@@ -27,6 +27,7 @@ In order to get working. You need to have working Vulkan driver and Vulkan SDK t
 - LibPng   -  http://www.libpng.org/pub/png/libpng.htm
 - GLI      -  http://gli.g-truc.net/0.8.1/index.html
 - Cotire   -  https://github.com/sakra/cotire
+
 #Credits
 - Sascha Willems - https://github.com/SaschaWillems/Vulkan
 
