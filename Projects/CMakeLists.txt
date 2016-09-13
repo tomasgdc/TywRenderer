@@ -10,4 +10,5 @@ ADD_SUBDIRECTORY(NormalMapping)
 ADD_SUBDIRECTORY(SkeletalAnimation)
 ADD_SUBDIRECTORY(FontRendering)
 ADD_SUBDIRECTORY(ShadowMapping)
+ADD_SUBDIRECTORY(DeferredShading)
 

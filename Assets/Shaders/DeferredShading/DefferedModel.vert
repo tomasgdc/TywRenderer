@@ -45,10 +45,9 @@ void main()
 	// Setup (t)angent-(b)inormal-(n)ormal matrix for converting
     // object coordinates into tangent space
 	mat3 tbnMatrix;
-	mat3 mNormal =  transpose(inverse(mat3(ubo.modelMatrix)));
-    tbnMatrix[0] =  mNormal * normalize(inTangent);
-	tbnMatrix[1] =  mNormal * normalize(inBinormal);
-	tbnMatrix[2] =  mNormal * normalize(inNormal);
+    tbnMatrix[0] =  normalize(mat3(mvMatrix) * inTangent);
+	tbnMatrix[1] =  normalize(mat3(mvMatrix) * inBinormal);
+	tbnMatrix[2] =  normalize(mat3(mvMatrix) * inNormal);
     
 	// The light vector (L) is the vector from the point of interest to
     // the light. Calculate that and multiply it by the TBN matrix.

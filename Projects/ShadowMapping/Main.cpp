@@ -486,7 +486,10 @@ void Renderer::PrepareOffscreenFrameBuffer()
 	offScreenFrameBuf.width = SHADOWMAP_DIM;
 	offScreenFrameBuf.height = SHADOWMAP_DIM;
 
-	VkFormat fbColorFormat = FB_COLOR_FORMAT;
+	// Find a suitable depth format
+	VkFormat fbColorFormat;
+	VkBool32 validDepthFormat = VkTools::GetSupportedDepthFormat(m_pWRenderer->m_SwapChain.physicalDevice, &fbColorFormat);
+	assert(validDepthFormat);
 
 	// Color attachment
 	VkImageCreateInfo image = VkTools::Initializer::ImageCreateInfo();

@@ -6,12 +6,11 @@
 
 in VS_OUT
 {
+	vec3 ws_coords;
+	vec3 normal;
+    vec3 tangent;
     vec2 texcoord;
-    vec3 eyeDir;
-    vec3 lightDir;
-    vec3 normal;
-	float loadBias;
-} fs_in;
+} vs_in;
 
 layout (binding = 1) uniform sampler2D samplerNormal;
 layout (binding = 2) uniform sampler2D samplerDiffuse;
@@ -26,6 +25,7 @@ void main()
 	vec3 diffuseTexture = texture(samplerDiffuse, flipped_texcoord, fs_in.loadBias).rgb;
 	vec3 normalTexture  = normalize( (1.0 - texture(samplerNormal, flipped_texcoord).rgb) * 2.0);
 	vec3 specularTexture = texture(samplerSpecular, flipped_texcoord, fs_in.loadBias).rgb;
+
 	
     
     vec3 V = (fs_in.eyeDir);
@@ -38,12 +38,9 @@ void main()
 
     // Calculate diffuse color with simple N dot L.
 	vec3 diffuse = max(dot(normalTexture, V), 0.0) * diffuseTexture.rgb;
-    //vec3 diffuse = max(dot(fs_in.normal, V), 0.0) * diffuseTexture.rgb;
-    // Uncomment this to turn off diffuse shading
-    // diffuse = vec3(0.0);
 
     // Assume that specular albedo is white - it could also come from a texture
-    vec3 specular_albedo = vec3(1.0);
+    //vec3 specular_albedo = vec3(1.0);
 
     // Calculate Phong specular highlight
     vec3 specular =  max(pow(dot(R, V), 20.0), 0.0) * specularTexture;

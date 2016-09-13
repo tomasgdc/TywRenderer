@@ -540,6 +540,7 @@ bool VkTools::VulkanTextureLoader::LoadTexture(const std::string& filename, VkFo
 		break;
 	case gli::texture::format_type::FORMAT_RGBA_DXT5_UNORM_BLOCK16:
 		format = VkFormat::VK_FORMAT_BC3_UNORM_BLOCK;
+		break;
 	case gli::texture::format_type::FORMAT_RGBA_DXT1_UNORM_BLOCK8:
 		format = VkFormat::VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
 		break;

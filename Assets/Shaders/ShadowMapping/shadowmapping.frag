@@ -69,7 +69,7 @@ void main()
 
 	//Get textures
 	vec3 diffuseTexture  =   texture(samplerDiffuse, flipped_texcoord).rgb;
-	vec3 normalTexture   =   normalize(texture(samplerNormal, flipped_texcoord)).rgb * 2.0 - vec3(1.0);
+	vec3 normalTexture  = normalize( (1.0 - texture(samplerNormal, flipped_texcoord).rgb) * 2.0);
 	vec3 specularTexture =   texture(samplerSpecular, flipped_texcoord).rgb;
 
 
@@ -85,7 +85,7 @@ void main()
     vec3 R = reflect(-L, normalTexture);
 
     // Calculate diffuse color with simple N dot L.
-	vec3 diffuse = max(dot(normalTexture, -V), 0.0) * diffuseTexture;
+	vec3 diffuse = max(dot(normalTexture, V), 0.0) * diffuseTexture;
 
     //vec3 diffuse = max(dot(fs_in.normal, V), 0.0) * diffuseTexture.rgb;
     // Uncomment this to turn off diffuse shading
@@ -99,7 +99,7 @@ void main()
 
 
     // Final color is diffuse + specular
-    //outFragColor = vec4( (diffuse + specular)*shadow, 1.0);
+	outFragColor = vec4( (diffuse + specular)*shadow, 1.0);
 
 	//Testing
 	//outFragColor = vec4(normalTexture.rgb, 1.0);
@@ -107,5 +107,5 @@ void main()
 	//outFragColor = vec4(fs_in.normal.rgb, 1.0);
 	//outFragColor = vec4(diffuseTexture, 1.0);
 	//outFragColor = vec4(normalTexture, 1.0);
-	outFragColor = vec4(specularTexture, 1.0);
+	//outFragColor = vec4(specularTexture, 1.0);
 }
