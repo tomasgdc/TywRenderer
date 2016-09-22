@@ -6,49 +6,49 @@
 
 in VS_OUT
 {
+	mat3 TBN;
 	vec3 ws_coords;
-	vec3 normal;
-    vec3 tangent;
     vec2 texcoord;
-} vs_in;
+} fs_in;
 
 layout (binding = 1) uniform sampler2D samplerNormal;
 layout (binding = 2) uniform sampler2D samplerDiffuse;
 layout (binding = 3) uniform sampler2D samplerSpecular;
 
+//Position
+layout (location = 0) out vec4 color0;
 
-layout (location = 0) out vec4 outFragColor;
+//Normal and Diffuse
+layout (location = 1) out uvec4 color1;
+
+//TODO: Deal with specular
 void main() 
-{
+{	
+	
+	//Get correct coords
 	vec2 flipped_texcoord = vec2(fs_in.texcoord.x, 1.0 - fs_in.texcoord.y);
-
-	vec3 diffuseTexture = texture(samplerDiffuse, flipped_texcoord, fs_in.loadBias).rgb;
+	vec3 diffuseTexture = texture(samplerDiffuse, flipped_texcoord).rgb;
 	vec3 normalTexture  = normalize( (1.0 - texture(samplerNormal, flipped_texcoord).rgb) * 2.0);
-	vec3 specularTexture = texture(samplerSpecular, flipped_texcoord, fs_in.loadBias).rgb;
+	//vec3 specularTexture = texture(samplerSpecular, flipped_texcoord).rgb;
+	
+	//Calculate normalTexture coords
+	normalTexture = fs_in.TBN * normalTexture;
+
+	vec4 outvec0 = vec4(0);
+    uvec4 outvec1 = uvec4(0);
+
+	//Position
+	outvec0.xyz = fs_in.ws_coords;
+	outvec0.w = 60.0;
 
 	
-    
-    vec3 V = (fs_in.eyeDir);
-    vec3 L = (fs_in.lightDir);
+
+	//Normal and diffuse packed in single texture
+    outvec1.x = packHalf2x16(diffuseTexture.xy);
+    outvec1.y = packHalf2x16(vec2(diffuseTexture.z, normalTexture.x));
+	outvec1.z = packHalf2x16(normalTexture.yz);
 
 
-    // Calculate R ready for use in Phong lighting.
-    vec3 R = reflect(-L, normalTexture);
-
-
-    // Calculate diffuse color with simple N dot L.
-	vec3 diffuse = max(dot(normalTexture, V), 0.0) * diffuseTexture.rgb;
-
-    // Assume that specular albedo is white - it could also come from a texture
-    //vec3 specular_albedo = vec3(1.0);
-
-    // Calculate Phong specular highlight
-    vec3 specular =  max(pow(dot(R, V), 20.0), 0.0) * specularTexture;
-
-
-    // Final color is diffuse + specular
-    outFragColor = vec4(diffuse + specular, 1.0);
-	//outFragColor = vec4(normalTexture.rgb, 1.0);
-	//outFragColor = vec4(normalTexture.rgb, 1.0);
-	//outFragColor = vec4(fs_in.normal.rgb, 1.0);
+    color0 = outvec0;
+    color1 = outvec1;
 }

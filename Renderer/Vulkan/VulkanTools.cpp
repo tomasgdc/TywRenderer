@@ -429,6 +429,116 @@ VkDescriptorImageInfo VkTools::Initializer::DescriptorImageInfo(VkSampler sample
 	return descriptorImageInfo;
 }
 
+VkPipelineInputAssemblyStateCreateInfo VkTools::Initializer::PipelineInputAssemblyStateCreateInfo(
+	VkPrimitiveTopology topology,
+	VkPipelineInputAssemblyStateCreateFlags flags,
+	VkBool32 primitiveRestartEnable)
+{
+	VkPipelineInputAssemblyStateCreateInfo pipelineInputAssemblyStateCreateInfo = {};
+	pipelineInputAssemblyStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	pipelineInputAssemblyStateCreateInfo.topology = topology;
+	pipelineInputAssemblyStateCreateInfo.flags = flags;
+	pipelineInputAssemblyStateCreateInfo.primitiveRestartEnable = primitiveRestartEnable;
+	return pipelineInputAssemblyStateCreateInfo;
+}
+
+VkPipelineRasterizationStateCreateInfo VkTools::Initializer::PipelineRasterizationStateCreateInfo(
+	VkPolygonMode polygonMode,
+	VkCullModeFlags cullMode,
+	VkFrontFace frontFace,
+	VkPipelineRasterizationStateCreateFlags flags)
+{
+	VkPipelineRasterizationStateCreateInfo pipelineRasterizationStateCreateInfo = {};
+	pipelineRasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	pipelineRasterizationStateCreateInfo.polygonMode = polygonMode;
+	pipelineRasterizationStateCreateInfo.cullMode = cullMode;
+	pipelineRasterizationStateCreateInfo.frontFace = frontFace;
+	pipelineRasterizationStateCreateInfo.flags = flags;
+	pipelineRasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
+	pipelineRasterizationStateCreateInfo.lineWidth = 1.0f;
+	return pipelineRasterizationStateCreateInfo;
+}
+
+VkGraphicsPipelineCreateInfo VkTools::Initializer::PipelineCreateInfo(
+	VkPipelineLayout layout,
+	VkRenderPass renderPass,
+	VkPipelineCreateFlags flags)
+{
+	VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
+	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineCreateInfo.pNext = NULL;
+	pipelineCreateInfo.layout = layout;
+	pipelineCreateInfo.renderPass = renderPass;
+	pipelineCreateInfo.flags = flags;
+	return pipelineCreateInfo;
+}
+
+
+VkPipelineMultisampleStateCreateInfo VkTools::Initializer::PipelineMultisampleStateCreateInfo(
+	VkSampleCountFlagBits rasterizationSamples,
+	VkPipelineMultisampleStateCreateFlags flags)
+{
+	VkPipelineMultisampleStateCreateInfo pipelineMultisampleStateCreateInfo = {};
+	pipelineMultisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	pipelineMultisampleStateCreateInfo.rasterizationSamples = rasterizationSamples;
+	return pipelineMultisampleStateCreateInfo;
+}
+
+
+
+VkPipelineViewportStateCreateInfo VkTools::Initializer::PipelineViewportStateCreateInfo(
+	uint32_t viewportCount,
+	uint32_t scissorCount,
+	VkPipelineViewportStateCreateFlags flags)
+{
+	VkPipelineViewportStateCreateInfo pipelineViewportStateCreateInfo = {};
+	pipelineViewportStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	pipelineViewportStateCreateInfo.viewportCount = viewportCount;
+	pipelineViewportStateCreateInfo.scissorCount = scissorCount;
+	pipelineViewportStateCreateInfo.flags = flags;
+	return pipelineViewportStateCreateInfo;
+}
+
+
+
+VkPipelineDepthStencilStateCreateInfo VkTools::Initializer::PipelineDepthStencilStateCreateInfo(
+	VkBool32 depthTestEnable,
+	VkBool32 depthWriteEnable,
+	VkCompareOp depthCompareOp)
+{
+	VkPipelineDepthStencilStateCreateInfo pipelineDepthStencilStateCreateInfo = {};
+	pipelineDepthStencilStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	pipelineDepthStencilStateCreateInfo.depthTestEnable = depthTestEnable;
+	pipelineDepthStencilStateCreateInfo.depthWriteEnable = depthWriteEnable;
+	pipelineDepthStencilStateCreateInfo.depthCompareOp = depthCompareOp;
+	pipelineDepthStencilStateCreateInfo.front = pipelineDepthStencilStateCreateInfo.back;
+	pipelineDepthStencilStateCreateInfo.back.compareOp = VK_COMPARE_OP_ALWAYS;
+	return pipelineDepthStencilStateCreateInfo;
+}
+
+
+VkPipelineColorBlendAttachmentState VkTools::Initializer::PipelineColorBlendAttachmentState(
+	VkColorComponentFlags colorWriteMask,
+	VkBool32 blendEnable)
+{
+	VkPipelineColorBlendAttachmentState pipelineColorBlendAttachmentState = {};
+	pipelineColorBlendAttachmentState.colorWriteMask = colorWriteMask;
+	pipelineColorBlendAttachmentState.blendEnable = blendEnable;
+	return pipelineColorBlendAttachmentState;
+}
+
+VkPipelineColorBlendStateCreateInfo VkTools::Initializer::PipelineColorBlendStateCreateInfo(
+	uint32_t attachmentCount,
+	const VkPipelineColorBlendAttachmentState * pAttachments)
+{
+	VkPipelineColorBlendStateCreateInfo pipelineColorBlendStateCreateInfo = {};
+	pipelineColorBlendStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	pipelineColorBlendStateCreateInfo.pNext = NULL;
+	pipelineColorBlendStateCreateInfo.attachmentCount = attachmentCount;
+	pipelineColorBlendStateCreateInfo.pAttachments = pAttachments;
+	return pipelineColorBlendStateCreateInfo;
+}
+
 VkRenderPassCreateInfo VkTools::Initializer::RenderPassCreateInfo()
 {
 	VkRenderPassCreateInfo renderPassCreateInfo = {};

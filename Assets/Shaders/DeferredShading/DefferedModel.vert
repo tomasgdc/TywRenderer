@@ -35,19 +35,16 @@ void main()
 	//Light pos in model space
 	vec3 lightPos = vec3(0,2, 10);
 
-	//Calculate vertex position in view space
-	mat4 mvMatrix = ubo.viewMatrix * ubo.modelMatrix;
-
 	//Convert vertex pos to view space
-	vec4 vertexPosition = mvMatrix *  vec4(inPos, 1.0);
+	vec4 vertexPosition = ubo.viewMatrix * ubo.modelMatrix *  vec4(inPos, 1.0);
 	
-
 	// Setup (t)angent-(b)inormal-(n)ormal matrix for converting
     // object coordinates into tangent space
 	mat3 tbnMatrix;
-    tbnMatrix[0] =  normalize(mat3(mvMatrix) * inTangent);
-	tbnMatrix[1] =  normalize(mat3(mvMatrix) * inBinormal);
-	tbnMatrix[2] =  normalize(mat3(mvMatrix) * inNormal);
+	mat3 mNormal = transpose(inverse(mat3(ubo.modelMatrix)));
+    tbnMatrix[0] =  mNormal * normalize(inTangent);
+	tbnMatrix[1] =  mNormal * normalize(inBinormal);
+	tbnMatrix[2] =  mNormal * normalize(inNormal);
     
 	// The light vector (L) is the vector from the point of interest to
     // the light. Calculate that and multiply it by the TBN matrix.

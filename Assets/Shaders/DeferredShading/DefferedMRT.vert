@@ -22,9 +22,8 @@ layout (binding = 0) uniform UBO
 
 out VS_OUT
 {
+	mat3 TBN;
 	vec3 ws_coords;
-	vec3 normal;
-    vec3 tangent;
     vec2 texcoord;
 } vs_out;
 
@@ -33,15 +32,16 @@ void main()
 {
 	gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(inPos.xyz, 1.0);
 	
+	//Calculate TBN
+	mat3 mNormal = transpose(inverse(mat3(ubo.modelMatrix)));
+	vec3 N = mNormal * normalize(inNormal);
+    vec3 T = mNormal * normalize(inTangent);
+    vec3 B = mNormal * normalize(inBinormal);
+	vs_out.TBN = mat3(T, B, N);
 	
 	// Vertex position in world space
-	vs_out.ws_coords = vec3(ubo.model * tmpPos);
+	vs_out.ws_coords = vec3(ubo.modelMatrix * ubo.modelMatrix);
 	// GL to Vulkan coord space
-	vs_out.ws_coords.y = -outWorldPos.y;
-	
-	mat3 mNormal = transpose(inverse(mat3(ubo.model)));
-    vs_out.tangent =  mNormal * normalize(inTangent);
-	vs_out.normal =   mNormal * normalize(inNormal);
+	vs_out.ws_coords.y = -vs_out.ws_coords.y;
 	vs_out.texcoord = inUv;
-	
 }

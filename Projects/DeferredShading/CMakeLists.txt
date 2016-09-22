@@ -17,6 +17,10 @@ SOURCE_GROUP("Source Files" FILES ${SOURCES})
 SET(RESOURCES
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/DeferredShading/DefferedModel.frag"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/DeferredShading/DefferedModel.vert"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/DeferredShading/DefferedMRT.frag"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/DeferredShading/DefferedMRT.vert"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/DeferredShading/DebugQuad.frag"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/DeferredShading/DebugQuad.vert"
 )
 SOURCE_GROUP("Shader Files" FILES ${RESOURCES})
 
