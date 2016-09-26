@@ -67,12 +67,12 @@ Using my own wavefront parser.
 
 
 ## [Skeletal Animation](Projects/SkeletalAnimation)
-<img src="ScreenShots/SkeletalAnimation.gif" height="126px" align="right">
+<img src="ScreenShots/SkeletalAnimation.png" height="126px" align="right">
 Shader (should be renamed to gpu instead of cpu... cuz gpu skinning it is) - [Static Model Shader](Assets/Shaders/SkeletalAnimation)
 GPU skinning of MD5 file. MD5 file usually have less then 9 bones per vertex (usually max is 4 in game industry), so had to setup second vec4 for boneWeight and jointId. Also, glm does not handle well small angles so had to use different version of slerp which would handle small angles. Some info about getting MD5 rendering part is here -> https://github.com/gszauer/3DAnimation/blob/master/MD5/README.md
 
 ## [Shadow Mapping](Projects/ShadowMapping)
-<img src="ScreenShots/ShadowMapping.gif" height="126px" align="right">
+<img src="ScreenShots/ShadowMapping.png" height="126px" align="right">
 [Shadow Maping Shader](Assets/Shaders/ShadowMapping). Shadow mapping with higher depth buffer range. More about shadow maps can be found on here:
 - http://outerra.blogspot.co.uk/2012/11/maximizing-depth-buffer-range-and.html
 - http://learnopengl.com/#!Advanced-Lighting/Shadows/Shadow-Mapping
