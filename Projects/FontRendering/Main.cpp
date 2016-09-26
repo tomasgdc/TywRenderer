@@ -354,13 +354,13 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	text.clear();
 
 
-	//Add text
-	float x = -30;
-	float y = -40;  
-	float ws = 0.5;
-	float hs = 0.5;
 
-	text = "vulkan";
+	float x = 0;
+	float y = 0;
+	float ws = 0.001;
+	float hs = 0.001;
+
+	text = "vulkandfvdfvsdvfsfdsvsdvf";
 	for (int i = 0; i < text.size(); i++)
 	{
 

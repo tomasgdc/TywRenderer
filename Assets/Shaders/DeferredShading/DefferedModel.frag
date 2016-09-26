@@ -3,53 +3,92 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+layout (location = 0) in vec2 inUV;
 
-in VS_OUT
+struct Light {
+	vec4 position;
+	vec3 color;
+	float radius;
+};
+
+layout (binding = 4) uniform UBO 
 {
-    vec2 texcoord;
-    vec3 eyeDir;
-    vec3 lightDir;
-    vec3 normal;
-	float loadBias;
-} fs_in;
+	Light lights[6];
+	vec4 viewPos;
+} ubo;
 
-layout (binding = 1) uniform sampler2D samplerNormal;
-layout (binding = 2) uniform sampler2D samplerDiffuse;
-layout (binding = 3) uniform sampler2D samplerSpecular;
+layout (binding = 1) uniform highp sampler2D samplerPosition;
+layout (binding = 2) uniform highp sampler2D packedTexture;
+
+// c_precision of 128 fits within 7 base-10 digits
+const float c_precision = 128.0;
+const float c_precisionp1 = c_precision + 1.0;
+
+/*
+\param value 3-component encoded float
+\returns normalized RGB value
+*/
+vec3 float2color(float value) 
+{
+    vec3 color;
+    color.r = mod(value, c_precisionp1) / c_precision;
+    color.b = mod(floor(value / c_precisionp1), c_precisionp1) / c_precision;
+    color.g = floor(value / (c_precisionp1 * c_precisionp1)) / c_precision;
+    return color;
+}
 
 
 layout (location = 0) out vec4 outFragColor;
 void main() 
 {
-	vec2 flipped_texcoord = vec2(fs_in.texcoord.x, 1.0 - fs_in.texcoord.y);
-
-	vec3 diffuseTexture = texture(samplerDiffuse, flipped_texcoord, fs_in.loadBias).rgb;
-	vec3 normalTexture  = normalize( (1.0 - texture(samplerNormal, flipped_texcoord).rgb) * 2.0);
-	vec3 specularTexture = texture(samplerSpecular, flipped_texcoord, fs_in.loadBias).rgb;
-
+	vec3 positionTexture = texture(samplerPosition, inUV).rgb;
+	vec3 packedData = texture(packedTexture, inUV).rgb;
+	
+	//Unpacking data
+	vec3 diffuseTexture = float2color(packedData.x);
+	vec3 normalTexture = float2color(packedData.y);
+	vec3 specularTexture = float2color(packedData.z);
 	
     
-    vec3 V = (fs_in.eyeDir);
-    vec3 L = (fs_in.lightDir);
+	#define lightCount 6
+	#define ambient 0.0
+	
+	// Ambient part
+	vec3 fragcolor  = diffuseTexture.rgb * ambient;
+	
+	for(int i = 0; i < lightCount; ++i)
+	{
+		// Vector to light
+		vec3 L = ubo.lights[i].position.xyz - positionTexture;
+		// Distance from light to fragment position
+		float dist = length(L);
 
+		// Viewer to fragment
+		vec3 V = ubo.viewPos.xyz - positionTexture;
+		V = normalize(V);
+		
+		//if(dist < ubo.lights[i].radius)
+		{
+			// Light to fragment
+			L = normalize(L);
 
-    // Calculate R ready for use in Phong lighting.
-    vec3 R = reflect(-L, normalTexture);
+			// Attenuation
+			float atten = ubo.lights[i].radius / (pow(dist, 2.0) + 1.0);
 
+			// Diffuse part
+			vec3 N = normalize(normalTexture);
+			float NdotL = max(0.0, dot(N, L));
+			vec3 diff = ubo.lights[i].color * diffuseTexture.rgb * NdotL * atten;
 
-    // Calculate diffuse color with simple N dot L.
-	vec3 diffuse = max(dot(normalTexture, V), 0.0) * diffuseTexture.rgb;
+			// Specular part
+			// Specular map values are stored in alpha of albedo mrt
+			vec3 R = reflect(-L, N);
+			float NdotR = max(0.0, dot(R, V));
+			vec3 spec = ubo.lights[i].color * specularTexture * pow(NdotR, 16.0) * atten;
 
-    // Assume that specular albedo is white - it could also come from a texture
-    //vec3 specular_albedo = vec3(1.0);
-
-    // Calculate Phong specular highlight
-    vec3 specular =  max(pow(dot(R, V), 20.0), 0.0) * specularTexture;
-
-
-    // Final color is diffuse + specular
-    outFragColor = vec4(diffuse + specular, 1.0);
-	//outFragColor = vec4(normalTexture.rgb, 1.0);
-	//outFragColor = vec4(normalTexture.rgb, 1.0);
-	//outFragColor = vec4(fs_in.normal.rgb, 1.0);
+			fragcolor += diff + spec;	
+		}	
+	}    	
+   
+  outFragColor = vec4(fragcolor, 1.0);
 }

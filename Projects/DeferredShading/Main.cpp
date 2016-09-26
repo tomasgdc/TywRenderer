@@ -98,8 +98,11 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 class Renderer final: public VKRenderer
 {
-	VkTools::VulkanTexture m_VkTexture;
+public:
 	VkFont*	m_VkFont;
+private:
+	VkTools::VulkanTexture m_VkTexture;
+	
 
 	float zNear = 1.0f;
 	float zFar = 256.0f;
@@ -110,7 +113,7 @@ class Renderer final: public VKRenderer
 		glm::mat4 viewMatrix;
 		glm::mat4 normal;
 		glm::vec4 viewPos;
-		float lodBias = 0.0f;
+		glm::vec4 instancePos[3];
 	}m_uboVS;
 
 	uint32_t numVerts = 0;
@@ -137,6 +140,7 @@ class Renderer final: public VKRenderer
 		FrameBufferAttachment position;
 		FrameBufferAttachment nm; //normal and diffuse
 		FrameBufferAttachment depth;
+		FrameBufferAttachment specular;
 		VkRenderPass renderPass;
 	} offScreenFrameBuf;
 
@@ -150,7 +154,29 @@ class Renderer final: public VKRenderer
 		VkTools::UniformData quad;
 		VkTools::UniformData plane;
 		VkTools::UniformData model;
+		VkTools::UniformData fsLights;
+		VkTools::UniformData vsFullScreen;
 	}  uniformData;
+
+	struct Light 
+	{
+		glm::vec4 position;
+		glm::vec3 color;
+		float radius;
+	};
+
+	struct 
+	{
+		Light lights[6];
+		glm::vec4 viewPos;
+	} uboFragmentLights;
+
+
+	struct
+	{
+		glm::mat4 projection;
+		glm::mat4 model;
+	} uboFullScreen;
 
 	VkPipeline			frameBufferPipeline;
 	VkCommandBuffer		GBufferScreenCmdBuffer = VK_NULL_HANDLE;
@@ -165,9 +191,11 @@ class Renderer final: public VKRenderer
 	VkPipeline quadPipeline;
 	VkPipelineLayout quadPipelineLayout;
 	VkDescriptorSet  quadDescriptorSet;
+	VkDescriptorSet  defferedModelDescriptorSet;
 
 	struct {
 		glm::mat4 mvp;
+		glm::uint32_t textureType;
 	} quadUniformData;
 public:
 	Renderer() {}
@@ -214,7 +242,11 @@ public:
 	void PrepareFramebufferCommands();
 
 	void GenerateQuad();
-	void UpdateQuadUniformData();
+	void UpdateQuadUniformData(const glm::vec3& pos = glm::vec3(1.0, 1.0, 0.0));
+
+	//Lights
+	void UpdateUniformBuffersLights();
+
 };
 
 Renderer::~Renderer()
@@ -227,6 +259,8 @@ Renderer::~Renderer()
 	//VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.model);
 	//VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.offscreenModel);
 	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.quad);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.fsLights);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.vsFullScreen);
 
 	//QUad
 	vkFreeMemory(m_pWRenderer->m_SwapChain.device, quadVbo.memory, nullptr);
@@ -261,6 +295,64 @@ Renderer::~Renderer()
 	//Destroy Command Buffer and Semaphore
 	vkFreeCommandBuffers(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_CmdPool, 1, &GBufferScreenCmdBuffer);
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, GBufferSemaphore, nullptr);
+}
+
+void Renderer::UpdateUniformBuffersLights()
+{
+	timer += timerSpeed * frameTimer;
+	if (timer > 1.0)
+	{
+		timer -= 1.0f;
+	}
+
+
+	// White
+	uboFragmentLights.lights[0].position = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
+	uboFragmentLights.lights[0].color = glm::vec3(1.5f);
+	uboFragmentLights.lights[0].radius = 15.0f * 0.25f;
+	// Red
+	uboFragmentLights.lights[1].position = glm::vec4(-2.0f, 0.0f, 0.0f, 0.0f);
+	uboFragmentLights.lights[1].color = glm::vec3(1.0f, 0.0f, 0.0f);
+	uboFragmentLights.lights[1].radius = 15.0f;
+	// Blue
+	uboFragmentLights.lights[2].position = glm::vec4(2.0f, 1.0f, 0.0f, 0.0f);
+	uboFragmentLights.lights[2].color = glm::vec3(0.0f, 0.0f, 2.5f);
+	uboFragmentLights.lights[2].radius = 5.0f;
+	// Yellow
+	uboFragmentLights.lights[3].position = glm::vec4(0.0f, 0.9f, 0.5f, 0.0f);
+	uboFragmentLights.lights[3].color = glm::vec3(1.0f, 1.0f, 0.0f);
+	uboFragmentLights.lights[3].radius = 2.0f;
+	// Green
+	uboFragmentLights.lights[4].position = glm::vec4(0.0f, 0.5f, 0.0f, 0.0f);
+	uboFragmentLights.lights[4].color = glm::vec3(0.0f, 1.0f, 0.2f);
+	uboFragmentLights.lights[4].radius = 5.0f;
+	// Yellow
+	uboFragmentLights.lights[5].position = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
+	uboFragmentLights.lights[5].color = glm::vec3(1.0f, 0.7f, 0.3f);
+	uboFragmentLights.lights[5].radius = 25.0f;
+
+	uboFragmentLights.lights[0].position.x = sin(glm::radians(360.0f * timer)) * 5.0f;
+	uboFragmentLights.lights[0].position.z = cos(glm::radians(360.0f * timer)) * 5.0f;
+
+	uboFragmentLights.lights[1].position.x = -4.0f + sin(glm::radians(360.0f * timer) + 45.0f) * 2.0f;
+	uboFragmentLights.lights[1].position.z = 0.0f + cos(glm::radians(360.0f * timer) + 45.0f) * 2.0f;
+
+	uboFragmentLights.lights[2].position.x = 4.0f + sin(glm::radians(360.0f * timer)) * 2.0f;
+	uboFragmentLights.lights[2].position.z = 0.0f + cos(glm::radians(360.0f * timer)) * 2.0f;
+
+	uboFragmentLights.lights[4].position.x = 0.0f + sin(glm::radians(360.0f * timer + 90.0f)) * 5.0f;
+	uboFragmentLights.lights[4].position.z = 0.0f - cos(glm::radians(360.0f * timer + 45.0f)) * 5.0f;
+
+	uboFragmentLights.lights[5].position.x = 0.0f + sin(glm::radians(-360.0f * timer + 135.0f)) * 10.0f;
+	uboFragmentLights.lights[5].position.z = 0.0f - cos(glm::radians(-360.0f * timer - 45.0f)) * 10.0f;
+
+	// Current view position
+	uboFragmentLights.viewPos = glm::vec4(glm::vec3(10, 10,0), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
+
+	uint8_t *pData;
+	VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.fsLights.memory, 0, sizeof(uboFragmentLights), 0, (void **)&pData));
+	memcpy(pData, &uboFragmentLights, sizeof(uboFragmentLights));
+	vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.fsLights.memory);
 }
 
 
@@ -349,15 +441,16 @@ void Renderer::GenerateQuad()
 		quadIndexVbo, drawVertFlags::None);
 }
 
-void Renderer::UpdateQuadUniformData()
+void Renderer::UpdateQuadUniformData(const glm::vec3& pos)
 {
 	static glm::mat4 perspective, modelMatrix;
 	float AR = (float)g_iDesktopHeight / (float)g_iDesktopWidth;
 
 	perspective = glm::ortho(2.5f / AR, 0.0f, 0.0f, 2.5f, -1.0f, 1.0f);
 	modelMatrix = glm::scale(glm::mat4(), glm::vec3(0.3f, 0.3f, 0.3f));
-	modelMatrix = glm::translate(modelMatrix, glm::vec3(1, 1, 0));
+	modelMatrix = glm::translate(modelMatrix, pos);
 	quadUniformData.mvp = perspective  * modelMatrix;
+	quadUniformData.textureType = 3;
 
 	// Map uniform buffer and update it
 	uint8_t *pData;
@@ -424,7 +517,8 @@ void Renderer::PrepareFramebufferCommands()
 		vkCmdBindVertexBuffers(GBufferScreenCmdBuffer, VERTEX_BUFFER_BIND_ID, 1, &listLocalBuffers[j].buffer, offsets);
 
 		//Draw
-		vkCmdDraw(GBufferScreenCmdBuffer, meshSize[j], 1, 0, 0);
+		vkCmdDrawIndexed(GBufferScreenCmdBuffer, meshSize[j], 3, 0, 0, 0);
+		//vkCmdDraw(GBufferScreenCmdBuffer, meshSize[j], 1, 0, 0);
 	}
 	vkCmdEndRenderPass(GBufferScreenCmdBuffer);
 
@@ -524,11 +618,10 @@ void Renderer::CreateFrameBuffer()
 		layoutCmd);
 
 	//Position
-	CreateAttachement(VK_FORMAT_R32G32B32A32_SFLOAT,
+	CreateAttachement(VK_FORMAT_R16G16B16A16_SFLOAT,
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		&offScreenFrameBuf.position,
 		layoutCmd);
-
 
 
 	// Find a suitable depth format
@@ -587,7 +680,6 @@ void Renderer::CreateFrameBuffer()
 	std::vector<VkAttachmentReference> colorReferences;
 	colorReferences.push_back({ 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
 	colorReferences.push_back({ 1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
-	//colorReferences.push_back({ 2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
 
 	VkAttachmentReference depthReference = {};
 	depthReference.attachment = 2;
@@ -664,19 +756,8 @@ void Renderer::CreateFrameBuffer()
 
 void Renderer::ChangeLodBias(float delta)
 {
-	m_uboVS.lodBias += delta;
-	if (m_uboVS.lodBias < 0.0f)
-	{
-		m_uboVS.lodBias = 0.0f;
-	}
-	if (m_uboVS.lodBias > m_VkTexture.mipLevels)
-	{
-		m_uboVS.lodBias = m_VkTexture.mipLevels;
-	}
 
-	UpdateUniformBuffers();
-	UpdateQuadUniformData();
-	m_VkFont->UpdateUniformBuffers(m_WindowWidth, m_WindowHeight, g_zoom);
+
 }
 
 
@@ -686,7 +767,7 @@ void Renderer::BeginTextUpdate()
 
 	std::stringstream ss;
 	ss << std::fixed << std::setprecision(2) << "ms-" << (frameTimer * 1000.0f) <<  "-fps-" << lastFPS;
-	m_VkFont->AddText(-25, -30, 0.1, 0.1, ss.str());
+	m_VkFont->AddText(-0.22, -0.25, 0.001, 0.001, ss.str());
 
 	m_VkFont->EndTextUpdate();
 }
@@ -751,6 +832,18 @@ void Renderer::BuildCommandBuffers()
 
 		VkDeviceSize offsets[1] = { 0 };
 
+		
+		// Final composition as full screen quad
+		{
+			vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+			vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &defferedModelDescriptorSet, 0, NULL);
+			vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &quadVbo.buffer, offsets);
+			vkCmdBindIndexBuffer(m_pWRenderer->m_DrawCmdBuffers[i], quadIndexVbo.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], 6, 1, 0, 0, 1);
+		}
+		
+
+
 		//quad debug
 		{
 			vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, quadPipeline);
@@ -758,20 +851,6 @@ void Renderer::BuildCommandBuffers()
 			vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &quadVbo.buffer, offsets);
 			vkCmdBindIndexBuffer(m_pWRenderer->m_DrawCmdBuffers[i], quadIndexVbo.buffer, 0, VK_INDEX_TYPE_UINT32);
 			vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], 6, 1, 0, 0, 0);
-		}
-
-		//Model Pipeline
-		vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-		for (int j = 0; j < listLocalBuffers.size(); j++)
-		{
-			// Bind descriptor sets describing shader binding points
-			vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &listDescriptros[j], 0, NULL);
-
-			//Bind Buffer
-			vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &listLocalBuffers[j].buffer, offsets);
-
-			//Draw
-			vkCmdDraw(m_pWRenderer->m_DrawCmdBuffers[i], meshSize[j], 1, 0, 0);
 		}
 
 
@@ -814,19 +893,29 @@ void Renderer::UpdateUniformBuffers()
 
 	m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 5.0f, g_zoom));
 
-	m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 5.0f));
+	m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(4, 3.0f, 7.0f));
 	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
 	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
 	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 	m_uboVS.normal = glm::inverseTranspose(m_uboVS.modelMatrix);
-
 	m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
+	{
+		// Map uniform buffer and update it
+		uint8_t *pData;
+		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory, 0, sizeof(m_uboVS), 0, (void **)&pData));
+		memcpy(pData, &m_uboVS, sizeof(m_uboVS));
+		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory);
+	}
 
-	// Map uniform buffer and update it
-	uint8_t *pData;
-	VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory, 0, sizeof(m_uboVS), 0, (void **)&pData));
-	memcpy(pData, &m_uboVS, sizeof(m_uboVS));
-	vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory);
+	//FullScreen
+	uboFullScreen.projection = glm::ortho(0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f);
+	uboFullScreen.model = glm::mat4();
+	{
+		uint8_t *pData;
+		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.vsFullScreen.memory, 0, sizeof(uboFullScreen), 0, (void **)&pData));
+		memcpy(pData, &uboFullScreen, sizeof(uboFullScreen));
+		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.vsFullScreen.memory);
+	}
 }
 
 void Renderer::PrepareUniformBuffers()
@@ -913,8 +1002,94 @@ void Renderer::PrepareUniformBuffers()
 		uniformData.quad.descriptor.range = sizeof(quadUniformData);
 	}
 
+	//prepare light
+	{
+		VkMemoryRequirements memReqs;
+
+		// Vertex shader uniform buffer block
+		VkBufferCreateInfo bufferInfo = {};
+		VkMemoryAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.pNext = NULL;
+		allocInfo.allocationSize = 0;
+		allocInfo.memoryTypeIndex = 0;
+
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = sizeof(uboFragmentLights);
+		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+		// Create a new buffer
+		VK_CHECK_RESULT(vkCreateBuffer(m_pWRenderer->m_SwapChain.device, &bufferInfo, nullptr, &uniformData.fsLights.buffer));
+		// Get memory requirements including size, alignment and memory type 
+		vkGetBufferMemoryRequirements(m_pWRenderer->m_SwapChain.device, uniformData.fsLights.buffer, &memReqs);
+		allocInfo.allocationSize = memReqs.size;
+		// Get the memory type index that supports host visibile memory access
+		// Most implementations offer multiple memory tpyes and selecting the 
+		// correct one to allocate memory from is important
+		// We also want the buffer to be host coherent so we don't have to flush 
+		// after every update. 
+		// Note that this may affect performance so you might not want to do this 
+		// in a real world application that updates buffers on a regular base
+		allocInfo.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_pWRenderer->m_DeviceMemoryProperties);
+		// Allocate memory for the uniform buffer
+		VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &allocInfo, nullptr, &(uniformData.fsLights.memory)));
+		// Bind memory to buffer
+		VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, uniformData.fsLights.buffer, uniformData.fsLights.memory, 0));
+
+		// Store information in the uniform's descriptor
+		uniformData.fsLights.descriptor.buffer = uniformData.fsLights.buffer;
+		uniformData.fsLights.descriptor.offset = 0;
+		uniformData.fsLights.descriptor.range = sizeof(uboFragmentLights);
+	}
+
+	//prepare fullscreen
+	{
+		VkMemoryRequirements memReqs;
+
+		// Vertex shader uniform buffer block
+		VkBufferCreateInfo bufferInfo = {};
+		VkMemoryAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.pNext = NULL;
+		allocInfo.allocationSize = 0;
+		allocInfo.memoryTypeIndex = 0;
+
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = sizeof(uboFullScreen);
+		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+		// Create a new buffer
+		VK_CHECK_RESULT(vkCreateBuffer(m_pWRenderer->m_SwapChain.device, &bufferInfo, nullptr, &uniformData.vsFullScreen.buffer));
+		// Get memory requirements including size, alignment and memory type 
+		vkGetBufferMemoryRequirements(m_pWRenderer->m_SwapChain.device, uniformData.vsFullScreen.buffer, &memReqs);
+		allocInfo.allocationSize = memReqs.size;
+		// Get the memory type index that supports host visibile memory access
+		// Most implementations offer multiple memory tpyes and selecting the 
+		// correct one to allocate memory from is important
+		// We also want the buffer to be host coherent so we don't have to flush 
+		// after every update. 
+		// Note that this may affect performance so you might not want to do this 
+		// in a real world application that updates buffers on a regular base
+		allocInfo.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_pWRenderer->m_DeviceMemoryProperties);
+		// Allocate memory for the uniform buffer
+		VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &allocInfo, nullptr, &(uniformData.vsFullScreen.memory)));
+		// Bind memory to buffer
+		VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, uniformData.vsFullScreen.buffer, uniformData.vsFullScreen.memory, 0));
+
+		// Store information in the uniform's descriptor
+		uniformData.vsFullScreen.descriptor.buffer = uniformData.vsFullScreen.buffer;
+		uniformData.vsFullScreen.descriptor.offset = 0;
+		uniformData.vsFullScreen.descriptor.range = sizeof(uboFullScreen);
+	}
+
+	// Init some values
+	m_uboVS.instancePos[0] = glm::vec4(0.0f);
+	m_uboVS.instancePos[1] = glm::vec4(-4.0f, 0.0, -4.0f, 0.0f);
+	m_uboVS.instancePos[2] = glm::vec4(4.0f, 0.0, -4.0f, 0.0f);
+
 	UpdateUniformBuffers();
 	UpdateQuadUniformData();
+	UpdateUniformBuffersLights();
 }
 
 void Renderer::PrepareVertices(bool useStagingBuffers)
@@ -957,6 +1132,14 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 			offScreenFrameBuf.position.view,
 			VK_IMAGE_LAYOUT_GENERAL);
 
+	//Normal, Diffuse and Specular packed texture
+	VkDescriptorImageInfo GBufferNM =
+		VkTools::Initializer::DescriptorImageInfo(
+			colorSampler,
+			offScreenFrameBuf.nm.view,
+			VK_IMAGE_LAYOUT_GENERAL);
+
+
 	// Debug Descriptor
 	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfo, &quadDescriptorSet));
 	std::vector<VkWriteDescriptorSet> quadWriteDescriptorSets =
@@ -965,10 +1148,30 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.quad.descriptor),
 
 		// Binding 1: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &GBufferPosition)
+		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &GBufferPosition),
+
+		// Binding 2: Image descriptor
+		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &GBufferNM),
 	};
 	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, quadWriteDescriptorSets.size(), quadWriteDescriptorSets.data(), 0, NULL);
 
+	// FullScreen Descriptor
+	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfo, &defferedModelDescriptorSet));
+	std::vector<VkWriteDescriptorSet> defferedWriteModelDescriptorSet =
+	{
+		// Binding 0 : Vertex shader uniform buffer
+		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.vsFullScreen.descriptor),
+
+		// Binding 1: Image descriptor
+		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &GBufferPosition),
+
+		// Binding 2: Image descriptor
+		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &GBufferNM),
+
+		//Binding 4
+		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4, &uniformData.fsLights.descriptor),
+	};
+	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, defferedWriteModelDescriptorSet.size(), defferedWriteModelDescriptorSet.data(), 0, NULL);
 
 	for (int i = 0; i < staticModel.surfaces.size(); i++) 
 	{
@@ -1106,7 +1309,7 @@ void Renderer::PreparePipeline()
 
 	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 	pipelineCreateInfo.pStages = shaderStages.data();
-	pipelineCreateInfo.pVertexInputState = &listLocalBuffers[0].inputState;
+	pipelineCreateInfo.pVertexInputState = &quadVbo.inputState;
 	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
 	pipelineCreateInfo.pRasterizationState = &rasterizationState;
 	pipelineCreateInfo.pColorBlendState = &colorBlendState;
@@ -1147,7 +1350,9 @@ void Renderer::PreparePipeline()
 	// Blend attachment states required for all color attachments
 	// This is important, as color write mask will otherwise be 0x0 and you
 	// won't see anything rendered to the attachment
-	std::array<VkPipelineColorBlendAttachmentState, 2> blendAttachmentStates = {
+	std::array<VkPipelineColorBlendAttachmentState, 3> blendAttachmentStates = 
+	{
+		VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
 		VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
 		VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
 	};
@@ -1189,7 +1394,10 @@ void Renderer::SetupDescriptorSetLayout()
 		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,2),
 
 		// Binding 3 : Fragment shader image sampler
-		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,3)
+		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,3),
+
+		// Binding 4 : Fragment shader uniform buffer
+		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT,4),
 	};
 
 	VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());
@@ -1207,11 +1415,11 @@ void Renderer::SetupDescriptorPool()
 	// Example uses one ubo and one image sampler
 	std::vector<VkDescriptorPoolSize> poolSizes =
 	{
-		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 8),
-		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 8*3)
+		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 21),
+		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 8*4)
 	};
 
-	VkDescriptorPoolCreateInfo descriptorPoolInfo = VkTools::Initializer::DescriptorPoolCreateInfo(poolSizes.size(),poolSizes.data(),8);
+	VkDescriptorPoolCreateInfo descriptorPoolInfo = VkTools::Initializer::DescriptorPoolCreateInfo(poolSizes.size(),poolSizes.data(),9);
 	VK_CHECK_RESULT(vkCreateDescriptorPool(m_pWRenderer->m_SwapChain.device, &descriptorPoolInfo, nullptr, &m_pWRenderer->m_DescriptorPool));
 }
 
@@ -1354,8 +1562,8 @@ int main()
 		if (!GenerateEvents(msg))break;
 
 		auto tStart = std::chrono::high_resolution_clock::now();
+		g_Renderer.UpdateUniformBuffersLights();
 		g_Renderer.StartFrame();
-		//Do something
 		g_Renderer.EndFrame(nullptr);
 		auto tEnd = std::chrono::high_resolution_clock::now();
 		
@@ -1525,6 +1733,7 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		if (g_bPrepared) 
 		{
 			g_Renderer.VWindowResize(g_iDesktopHeight, g_iDesktopWidth);
+			g_Renderer.m_VkFont->UpdateUniformBuffers(g_iDesktopWidth, g_iDesktopHeight, g_zoom);
 		}
 		break;
 	}

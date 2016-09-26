@@ -27,6 +27,6 @@ out gl_PerVertex
 void main() 
 {
 	vs_out.uv = inUV;
-	vs_out.textureType = ubo.textureType;
+	vs_out.textureType = 3;
 	gl_Position = ubo.mvp * vec4(inPos.xyz, 1.0);
 }

@@ -790,7 +790,7 @@ void Renderer::BeginTextUpdate()
 
 	std::stringstream ss;
 	ss << std::fixed << std::setprecision(2) << "ms-" << (frameTimer * 1000.0f) <<  "-fps-" << lastFPS;
-	m_VkFont->AddText(-25, -30, 0.1, 0.1, ss.str());
+	m_VkFont->AddText(-0.22, -0.25, 0.001, 0.001, ss.str());
 
 	m_VkFont->EndTextUpdate();
 }

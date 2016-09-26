@@ -9,39 +9,55 @@ in VS_OUT
 	uint textureType;
 } fs_in;
 
-layout (binding = 1) uniform sampler2D samplerColor;
+layout (binding = 1) uniform highp  sampler2D  positionColor;
+layout (binding = 2) uniform highp  sampler2D  packedTexture; //packed normal, diffuse, specular
+
 layout (location = 0) out vec4 outFragColor;
+
+
+// c_precision of 128 fits within 7 base-10 digits
+const float c_precision = 128.0;
+const float c_precisionp1 = c_precision + 1.0;
+
+
+/*
+\param value 3-component encoded float
+\returns normalized RGB value
+*/
+vec3 float2color(float value) 
+{
+    vec3 color;
+    color.r = mod(value, c_precisionp1) / c_precision;
+    color.b = mod(floor(value / c_precisionp1), c_precisionp1) / c_precision;
+    color.g = floor(value / (c_precisionp1 * c_precisionp1)) / c_precision;
+    return color;
+}
 
 
 void main() 
 {
 	vec3 color = vec3(1.0);
+	uint i = 0;
 
 	//if world position texture
-	if(fs_in.textureType == 0)
+	if(i == 0)
 	{
-		color  = texture(samplerColor, fs_in.uv).rgb;
+		color  = texture(positionColor, fs_in.uv).rgb;
 	}
-	else if(fs_in.textureType == 1) //if compressed diffuse and normal. Use diffuse texture only now
+	else if(i == 1) //if compressed diffuse and normal. Use diffuse texture only now
 	{
-		uvec4 data = texelFetch(samplerColor, fs_in.uv, 0);
-		vec2 temp = unpackHalf2x16(data.y);
-
-		//unpacked diffuse
-		color  = vec3(unpackHalf2x16(data.x), temp.x);
+		vec3 data = texture(packedTexture, fs_in.uv).rgb;
+		color = float2color(data.x);
 	}
-	else if(fs_in.textureType == 2) //if compressed diffuse and normal. Use normal texture only now
+	else if(i == 2) //if compressed diffuse and normal. Use normal texture only now
 	{
-		uvec4 data = texelFetch(samplerColor, fs_in.uv, 0);
-		vec2 temp = unpackHalf2x16(data.y);
-
-		//unpacked normal
-		color  = normalize(vec3(temp.y, unpackHalf2x16(data.z)));
+		vec3 data = texture(packedTexture, fs_in.uv).rgb;
+		color = float2color(data.y);
 	}
-	else if(fs_in.textureType == 3) //if specular texture
+	else if(i == 3) //if specular texture
 	{
-		
-		color  = texture(samplerColor, fs_in.uv).rgb;
+	    vec3 data = texture(packedTexture, fs_in.uv).rgb;
+		color = float2color(data.z);
 	}
 
 	outFragColor = vec4(color, 1.0);
