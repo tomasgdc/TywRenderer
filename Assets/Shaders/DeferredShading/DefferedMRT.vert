@@ -16,7 +16,7 @@ layout (binding = 0) uniform UBO
 	mat4 viewMatrix;
 	mat4 normal;
 	vec4 viewPos;
-	vec3 instancePos[3];
+	vec4 instancePos[3];
 } ubo;
 
 
@@ -30,7 +30,9 @@ out VS_OUT
 
 void main() 
 {
-	gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(inPos.xyz, 1.0);
+	vec4 tmpPos = vec4(inPos,1.0) + ubo.instancePos[gl_InstanceIndex];
+
+	gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * tmpPos;
 	
 	//Calculate TBN
 	mat3 mNormal = transpose(inverse(mat3(ubo.modelMatrix)));
@@ -40,7 +42,7 @@ void main()
 	vs_out.TBN = mat3(T, B, N);
 	
 	// Vertex position in world space
-	vs_out.ws_coords =  vec3(ubo.modelMatrix * vec4(inPos.xyz, 1.0));
+	vs_out.ws_coords =  vec3(ubo.modelMatrix * tmpPos);
 	// GL to Vulkan coord space
 	vs_out.ws_coords.y = -vs_out.ws_coords.y;
 	vs_out.texcoord = inUv;

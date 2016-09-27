@@ -104,6 +104,7 @@ private:
 	VkTools::VulkanTexture m_VkTexture;
 	
 
+
 	float zNear = 1.0f;
 	float zFar = 256.0f;
 
@@ -198,7 +199,7 @@ private:
 		glm::uint32_t textureType;
 	} quadUniformData;
 public:
-	Renderer() {}
+	Renderer();
 	~Renderer();
 
 	void BuildCommandBuffers() override;
@@ -246,8 +247,11 @@ public:
 
 	//Lights
 	void UpdateUniformBuffersLights();
-
 };
+
+Renderer::Renderer()
+{
+}
 
 Renderer::~Renderer()
 {
@@ -307,11 +311,11 @@ void Renderer::UpdateUniformBuffersLights()
 
 
 	// White
-	uboFragmentLights.lights[0].position = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
+	uboFragmentLights.lights[0].position = glm::vec4(0.0f, 10.0f, 1.0f, 0.0f);
 	uboFragmentLights.lights[0].color = glm::vec3(1.5f);
 	uboFragmentLights.lights[0].radius = 15.0f * 0.25f;
 	// Red
-	uboFragmentLights.lights[1].position = glm::vec4(-2.0f, 0.0f, 0.0f, 0.0f);
+	uboFragmentLights.lights[1].position = glm::vec4(-2.0f, 10.0f, 0.0f, 0.0f);
 	uboFragmentLights.lights[1].color = glm::vec3(1.0f, 0.0f, 0.0f);
 	uboFragmentLights.lights[1].radius = 15.0f;
 	// Blue
@@ -319,15 +323,15 @@ void Renderer::UpdateUniformBuffersLights()
 	uboFragmentLights.lights[2].color = glm::vec3(0.0f, 0.0f, 2.5f);
 	uboFragmentLights.lights[2].radius = 5.0f;
 	// Yellow
-	uboFragmentLights.lights[3].position = glm::vec4(0.0f, 0.9f, 0.5f, 0.0f);
+	uboFragmentLights.lights[3].position = glm::vec4(0.0f, 10.0f, 0.5f, 0.0f);
 	uboFragmentLights.lights[3].color = glm::vec3(1.0f, 1.0f, 0.0f);
 	uboFragmentLights.lights[3].radius = 2.0f;
 	// Green
-	uboFragmentLights.lights[4].position = glm::vec4(0.0f, 0.5f, 0.0f, 0.0f);
+	uboFragmentLights.lights[4].position = glm::vec4(0.0f, 10.0f, 0.0f, 0.0f);
 	uboFragmentLights.lights[4].color = glm::vec3(0.0f, 1.0f, 0.2f);
 	uboFragmentLights.lights[4].radius = 5.0f;
 	// Yellow
-	uboFragmentLights.lights[5].position = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
+	uboFragmentLights.lights[5].position = glm::vec4(0.0f, 10.0f, 0.0f, 0.0f);
 	uboFragmentLights.lights[5].color = glm::vec3(1.0f, 0.7f, 0.3f);
 	uboFragmentLights.lights[5].radius = 25.0f;
 
@@ -347,7 +351,7 @@ void Renderer::UpdateUniformBuffersLights()
 	uboFragmentLights.lights[5].position.z = 0.0f - cos(glm::radians(-360.0f * timer - 45.0f)) * 10.0f;
 
 	// Current view position
-	uboFragmentLights.viewPos = glm::vec4(glm::vec3(10, 10,0), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
+	uboFragmentLights.viewPos = glm::vec4(g_CameraPos, 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
 
 	uint8_t *pData;
 	VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.fsLights.memory, 0, sizeof(uboFragmentLights), 0, (void **)&pData));
@@ -517,8 +521,8 @@ void Renderer::PrepareFramebufferCommands()
 		vkCmdBindVertexBuffers(GBufferScreenCmdBuffer, VERTEX_BUFFER_BIND_ID, 1, &listLocalBuffers[j].buffer, offsets);
 
 		//Draw
-		vkCmdDrawIndexed(GBufferScreenCmdBuffer, meshSize[j], 3, 0, 0, 0);
-		//vkCmdDraw(GBufferScreenCmdBuffer, meshSize[j], 1, 0, 0);
+		//vkCmdDrawIndirect(GBufferScreenCmdBuffer, nullptr , 0, 3, 0);
+		vkCmdDraw(GBufferScreenCmdBuffer, meshSize[j], 3, 0, 0);
 	}
 	vkCmdEndRenderPass(GBufferScreenCmdBuffer);
 
@@ -890,13 +894,14 @@ void Renderer::UpdateUniformBuffers()
 {
 	// Update matrices
 	m_uboVS.projectionMatrix = glm::perspective(glm::radians(60.0f), (float)m_WindowWidth / (float)m_WindowHeight, zNear, zFar);
+	m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 5.0f, g_zoom) + g_CameraPos);
 
-	m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 5.0f, g_zoom));
-
-	m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(4, 3.0f, 7.0f));
+	m_uboVS.modelMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.25f, 0.0f));
 	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
 	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
 	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+	
+
 	m_uboVS.normal = glm::inverseTranspose(m_uboVS.modelMatrix);
 	m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
 	{
@@ -1562,7 +1567,11 @@ int main()
 		if (!GenerateEvents(msg))break;
 
 		auto tStart = std::chrono::high_resolution_clock::now();
+
+		g_Renderer.UpdateUniformBuffers();
+		g_Renderer.UpdateQuadUniformData();
 		g_Renderer.UpdateUniformBuffersLights();
+
 		g_Renderer.StartFrame();
 		g_Renderer.EndFrame(nullptr);
 		auto tEnd = std::chrono::high_resolution_clock::now();
@@ -1652,26 +1661,25 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		//keyPressed((uint32_t)wParam);
 		break;
 	case WM_KEYUP:
-		/*
-		if (camera.firstperson)
-		{
 		switch (wParam)
 		{
 		case 0x57:
-		camera.keys.up = false;
+		//camera.keys.up = false;
+			g_CameraPos.y += 0.5;
 		break;
 		case 0x53:
-		camera.keys.down = false;
+			g_CameraPos.y -= 0.5;
+		//camera.keys.down = false;
 		break;
 		case 0x41:
-		camera.keys.left = false;
+			g_CameraPos.x -= 0.5;
+		//camera.keys.left = false;
 		break;
 		case 0x44:
-		camera.keys.right = false;
+			g_CameraPos.x += 0.5;
+		//camera.keys.right = false;
 		break;
 		}
-		}
-		*/
 		break;
 	case WM_RBUTTONDOWN:
 	case WM_LBUTTONDOWN:
@@ -1684,8 +1692,6 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		short wheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
 		g_zoom += (float)wheelDelta * 0.005f * g_ZoomSpeed;
 		//camera.translate(glm::vec3(0.0f, 0.0f, (float)wheelDelta * 0.005f * zoomSpeed));
-		g_Renderer.UpdateUniformBuffers();
-		g_Renderer.UpdateQuadUniformData();
 		break;
 	}
 	case WM_MOUSEMOVE:
@@ -1696,8 +1702,6 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			g_zoom += (g_MousePos.y - (float)posy) * .005f * g_ZoomSpeed;
 			//camera.translate(glm::vec3(-0.0f, 0.0f, (mousePos.y - (float)posy) * .005f * zoomSpeed));
 			g_MousePos = glm::vec2((float)posx, (float)posy);
-			g_Renderer.UpdateUniformBuffers();
-			g_Renderer.UpdateQuadUniformData();
 		}
 		if (wParam & MK_LBUTTON)
 		{
@@ -1707,8 +1711,6 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			g_Rotation.y -= (g_MousePos.x - (float)posx) * 1.25f * g_RotationSpeed;
 			//camera.rotate(glm::vec3((mousePos.y - (float)posy), -(mousePos.x - (float)posx), 0.0f));
 			g_MousePos = glm::vec2((float)posx, (float)posy);
-			g_Renderer.UpdateUniformBuffers();
-			g_Renderer.UpdateQuadUniformData();
 		}
 		if (wParam & MK_MBUTTON)
 		{
