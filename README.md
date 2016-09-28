@@ -83,7 +83,10 @@ GPU skinning of MD5 file. MD5 file usually have less then 9 bones per vertex (us
 <img src="ScreenShots/DeferredRendering.png" height="126px" align="right">
 [Deferred Rendering Shader](Assets/Shaders/DeferredShading)
 It uses only two textures. One texture is compressed in which encoded diffuse, normal and specular. Other one is world position coords.
-The compressed texture format is 32UI and the world coord texture is 16SFLOAT.
+The compressed texture format is 32UI and the world coord texture is 16SFLOAT. The compression algorithm I got somewhere from website. If you going to look Encoding floats to RGBA. You will definetily find something.
+Some usefull links on this thing:
+> http://aras-p.info/blog/2009/07/30/encoding-floats-to-rgba-the-final/
+> http://stackoverflow.com/questions/6893302/decode-rgb-value-to-single-float-without-bit-shift-in-glsl
 
 
 ## License
