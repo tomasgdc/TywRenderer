@@ -4,6 +4,7 @@ Vulkan Renderer. Work in progress. All testing was done on (r9 255 - Driver vers
 - Warning. Take the code with grain of salt as it might violate Vulkan specs.
 - Big Warning. Some of resources are not freed correctly. Work in progress...
 - Always happy to hear what could be fixed or improved.
+- Still have validation errors on some projects. Work in progress....
 
 #How to Build
 Currently works only under windows.
