@@ -78,6 +78,9 @@ GPU skinning of MD5 file. MD5 file usually have less then 9 bones per vertex (us
 - http://learnopengl.com/#!Advanced-Lighting/Shadows/Shadow-Mapping
 - http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-16-shadow-mapping/
 
+## [Deferred Rendering](Projects/DeferredShading)
+<img src="ScreenShots/DeferredRendering.png" height="126px" align="right">
+[Deferred Rendering Shader](Assets/Shaders/DeferredShading)
 ## License
 Copyright (c) 2016 Tomas Mikalauskas
 
