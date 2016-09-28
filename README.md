@@ -82,6 +82,10 @@ GPU skinning of MD5 file. MD5 file usually have less then 9 bones per vertex (us
 ## [Deferred Rendering](Projects/DeferredShading)
 <img src="ScreenShots/DeferredRendering.png" height="126px" align="right">
 [Deferred Rendering Shader](Assets/Shaders/DeferredShading)
+It uses only two textures. One texture is compressed in which encoded diffuse, normal and specular. Other one is world position coords.
+The compressed texture format is 32UI and the world coord texture is 16SFLOAT.
+
+
 ## License
 Copyright (c) 2016 Tomas Mikalauskas
 
