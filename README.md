@@ -56,6 +56,7 @@ There are still some strange edge bleeding which I do not know really why.
 ## [Normal Mapping](Projects/NormalMapping)
 <img src="ScreenShots/NormallMapping.png" height="96px" align="right">
 Shader - [Normal Mapping Shader](Assets/Shaders/NormalMapping)
+This deferred renering uses two texture. One texture is compressed Diffuse, Normal and Specular combination and other one is world position. The compressed texture is 32UI bit and world position is 16SFLOAT bit.
 
 
 ## [Static Model](Projects/StaticModel)
