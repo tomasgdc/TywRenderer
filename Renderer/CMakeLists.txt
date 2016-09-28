@@ -118,6 +118,7 @@ SOURCE_GROUP("Vulkan\\Header Files" FILES ${HEADERS_VULKAN})
 SOURCE_GROUP("Vulkan\\Source Files" FILES ${SOURCES_VULKAN})
 
 SET(HEADERS
+	"Camera.h"
 	"VulkanRendererInitializer.h"
 	"VKRenderer.h"
 	"IRendererInitializer.h"
@@ -130,7 +131,8 @@ SET(SOURCES
 	"VKRenderer.cpp"
 	"IRendererInitializer.cpp"
 	"VertexCache.cpp"
-	tri_trisurf.cpp
+	"tri_trisurf.cpp"
+	"Camera.cpp"
 )
 SOURCE_GROUP("Header Files" FILES ${HEADERS})
 SOURCE_GROUP("Source Files" FILES ${SOURCES})

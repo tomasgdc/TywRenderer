@@ -37,7 +37,7 @@ vec3 float2color(float value)
 void main() 
 {
 	vec3 color = vec3(1.0);
-	uint i = 0;
+	uint i = 1;
 
 	//if world position texture
 	if(i == 0)
