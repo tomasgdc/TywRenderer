@@ -38,9 +38,10 @@ void RenderModelStatic::InitFromFile(std::string fileName, std::string filePath)
 	bool loaded = false;
 
 	loaded = OBJLoad(fileName, filePath);
-	if (!loaded) {
-		//engine->Sys_Printf("Could not load model: %s", fileName.c_str());
+	if (!loaded) 
+	{
 		printf("Could not load model: %s \n", fileName.c_str());
+		assert(loaded && "Could not load model");
 	}
 }
 

@@ -36,9 +36,9 @@ void main()
 	
 	//Calculate TBN
 	mat3 mNormal = transpose(inverse(mat3(ubo.modelMatrix)));
-	vec3 N = mNormal * normalize(inNormal);
-    vec3 T = mNormal * normalize(inTangent);
-    vec3 B = mNormal * normalize(inBinormal);
+	vec3 N = normalize(mNormal * inNormal);
+    vec3 T = normalize(mNormal * inTangent);
+    vec3 B = normalize(mNormal * inBinormal);
 	vs_out.TBN = mat3(T, B, N);
 	
 	// Vertex position in world space

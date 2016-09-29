@@ -46,9 +46,9 @@ void main()
     // object coordinates into tangent space
 	mat3 tbnMatrix;
 	mat3 mNormal =  transpose(inverse(mat3(ubo.modelMatrix)));
-    tbnMatrix[0] =  mNormal * normalize(inTangent);
-	tbnMatrix[1] =  mNormal * normalize(inBinormal);
-	tbnMatrix[2] =  mNormal * normalize(inNormal);
+    tbnMatrix[0] =  normalize(mNormal * inTangent);
+	tbnMatrix[1] =  normalize(mNormal * inBinormal);
+	tbnMatrix[2] =  normalize(mNormal * inNormal);
     
 	// The light vector (L) is the vector from the point of interest to
     // the light. Calculate that and multiply it by the TBN matrix.
@@ -60,8 +60,8 @@ void main()
 	// The view vector is the vector from the point of interest to the
     // viewer, which in view space is simply the negative of the position.
     // Calculate that and multiply it by the TBN matrix.
-    vs_out.eyeDir =   normalize(vec3(-vertexPosition.xyz * tbnMatrix));
-    //vs_out.eyeDir = vec3(-vertexPosition);
+    //vs_out.eyeDir =   normalize(vec3(-vertexPosition.xyz * tbnMatrix));
+    vs_out.eyeDir = vec3(-vertexPosition);
 
 	
     // Pass the per-vertex normal so that the fragment shader can

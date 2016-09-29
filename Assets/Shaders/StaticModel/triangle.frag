@@ -28,8 +28,8 @@ void main()
 	vec3 specularTexture = texture(samplerSpecular, flipped_texcoord, fs_in.loadBias).rgb;
 	
     
-    vec3 V = (fs_in.eyeDir);
-    vec3 L = (fs_in.lightDir);
+    vec3 V = normalize(fs_in.eyeDir);
+    vec3 L = normalize(fs_in.lightDir);
 
 
     // Calculate R ready for use in Phong lighting.

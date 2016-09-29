@@ -17,8 +17,8 @@ layout (binding = 0) uniform UBO
 	mat4 normal;
 	mat4 depthMVP;
 	vec4 viewPos;
+	vec4 instancePos[3];
 	vec3 lightPos;
-	float lodBias;
 } ubo;
 
 
@@ -29,7 +29,6 @@ out VS_OUT
     vec3 lightDir;
     vec3 normal;
 	vec4 shadowCoord;
-	float loadBias;
 } vs_out;
 
 
@@ -41,20 +40,22 @@ const mat4 biasMat = mat4(
 
 void main() 
 {
+	vec4 tmpPos = vec4(inPos,1.0) + ubo.instancePos[gl_InstanceIndex];
+
 	//Calculate vertex position in view space
 	mat4 mvMatrix = ubo.viewMatrix * ubo.modelMatrix;
 
 	//Convert vertex pos to view space
-	vec4 vertexPosition = mvMatrix *  vec4(inPos, 1.0);
+	vec4 vertexPosition = mvMatrix *  tmpPos;
 	
 
 	// Setup (t)angent-(b)inormal-(n)ormal matrix for converting
     // object coordinates into tangent space
 	mat3 tbnMatrix;
 	mat3 mNormal =  transpose(inverse(mat3(ubo.modelMatrix)));
-    tbnMatrix[0] =  mNormal * normalize(inTangent);
-	tbnMatrix[1] =  mNormal * normalize(inBinormal);
-	tbnMatrix[2] =  mNormal * normalize(inNormal);
+    tbnMatrix[0] =  normalize(mNormal * inTangent);
+	tbnMatrix[1] =  normalize(mNormal * inBinormal);
+	tbnMatrix[2] =  normalize(mNormal * inNormal);
     
 	// The light vector (L) is the vector from the point of interest to
     // the light. Calculate that and multiply it by the TBN matrix.
@@ -66,8 +67,8 @@ void main()
 	// The view vector is the vector from the point of interest to the
     // viewer, which in view space is simply the negative of the position.
     // Calculate that and multiply it by the TBN matrix.
-    vs_out.eyeDir =   normalize(vec3(-vertexPosition.xyz * tbnMatrix));
-    //vs_out.eyeDir = vec3(-vertexPosition);
+    //vs_out.eyeDir =   normalize(vec3(-vertexPosition.xyz * tbnMatrix));
+    vs_out.eyeDir = vec3(-vertexPosition);
 
 	
     // Pass the per-vertex normal so that the fragment shader can
@@ -76,7 +77,6 @@ void main()
 
 
 	vs_out.texcoord = inUv;
-	vs_out.loadBias = ubo.lodBias;
-	gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(inPos.xyz, 1.0);
-	vs_out.shadowCoord = ( biasMat * ubo.depthMVP *  ubo.modelMatrix) * vec4(inPos, 1.0);	
+	gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * tmpPos;
+	vs_out.shadowCoord = ( biasMat * ubo.depthMVP *  ubo.modelMatrix) * tmpPos;
 }

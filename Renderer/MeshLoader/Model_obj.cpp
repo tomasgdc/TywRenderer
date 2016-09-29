@@ -152,8 +152,10 @@ bool OBJ_ParseFace(FILE* file,
 	else if (hasVer && hasNormal && hasTexCoord) {
 		OBJ_ParseVertexTextureNormalIndices(file, vertexIndices, uvIndices, normalIndices);
 	}
-	else {
+	else 
+	{
 		printf("ERROR: OBJ_ParseFace: wrong format \r\n");
+		assert(false);
 		return false;
 	}
 	return true;
@@ -495,16 +497,20 @@ objMaterial_t* OBJ_ParseMTL(const char* fileName) {
 	objModel_t* model = objGlobal.model;
 
 	FILE* file = fopen(fileName, "r");
-	if (file == nullptr) {
+	if (file == nullptr) 
+	{
 		printf("ERROR: Could not load OBJ material file %s", fileName);
+		assert(false);
 		return nullptr;
 	}
-	while (1) {
+	while (1) 
+	{
 		char lineHeader[128];
 		int res = fscanf(file, "%s", lineHeader);
 		if (res == EOF) { break; }
 
-		if (strcmp(lineHeader, "newmtl") == 0) {
+		if (strcmp(lineHeader, "newmtl") == 0) 
+		{
 			char mtlName[60];
 			fscanf(file, "%s\n", &mtlName);
 			OBJ_ParseNewMTL(file, model, mtlName);
@@ -512,7 +518,8 @@ objMaterial_t* OBJ_ParseMTL(const char* fileName) {
 	}
 
 	//DEBUG
-	for (int i = 0; i < model->materials.size(); i++) {
+	for (int i = 0; i < model->materials.size(); i++) 
+	{
 		objMaterial_t* mat = model->materials[i];
 		printf("Material name: %s \r\n", mat->name);
 		printf("map_Kd:	   %s  \r\n", mat->map_Kd);

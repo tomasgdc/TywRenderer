@@ -46,7 +46,7 @@ void main()
 	
 	//Unpacking data
 	vec3 diffuseTexture = float2color(packedData.x);
-	vec3 normalTexture = normalize(float2color(packedData.y));
+	vec3 normalTexture =  float2color(packedData.y);
 	vec3 specularTexture = float2color(packedData.z);
 	
     

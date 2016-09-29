@@ -90,8 +90,12 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 class Renderer final: public VKRenderer
 {
-	VkTools::VulkanTexture m_VkTexture;
+public:
 	VkFont*	m_VkFont;
+
+private:
+	VkTools::VulkanTexture m_VkTexture;
+	
 
 	struct {
 		glm::mat4 projectionMatrix;
@@ -148,18 +152,7 @@ public:
 
 void Renderer::ChangeLodBias(float delta)
 {
-	m_uboVS.lodBias += delta;
-	if (m_uboVS.lodBias < 0.0f)
-	{
-		m_uboVS.lodBias = 0.0f;
-	}
-	if (m_uboVS.lodBias > m_VkTexture.mipLevels)
-	{
-		m_uboVS.lodBias = m_VkTexture.mipLevels;
-	}
 
-	UpdateUniformBuffers();
-	m_VkFont->UpdateUniformBuffers(m_WindowWidth, m_WindowHeight, g_zoom);
 }
 
 
@@ -169,7 +162,7 @@ void Renderer::BeginTextUpdate()
 
 	std::stringstream ss;
 	ss << std::fixed << std::setprecision(2) << "ms-" << (frameTimer * 1000.0f) <<  "-fps-" << lastFPS;
-	m_VkFont->AddText(-25, -30, 0.1, 0.1, ss.str());
+	m_VkFont->AddText(-0.22, -0.25, 0.001, 0.001, ss.str());
 
 	m_VkFont->EndTextUpdate();
 }
@@ -931,6 +924,8 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		if (g_bPrepared) 
 		{
 			g_Renderer.VWindowResize(g_iDesktopHeight, g_iDesktopWidth);
+			g_Renderer.UpdateUniformBuffers();
+			g_Renderer.m_VkFont->UpdateUniformBuffers(g_iDesktopWidth, g_iDesktopHeight, 0.0f);
 		}
 		break;
 	}

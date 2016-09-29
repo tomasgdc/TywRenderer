@@ -33,9 +33,77 @@
 //math
 #include <External\glm\glm\gtc\matrix_inverse.hpp>
 
+//Camera
+#include <Renderer\Camera.h>
+
 
 //Global variables
 //====================================================================================
+#if defined(_WIN32)
+#define KEY_ESCAPE VK_ESCAPE 
+#define KEY_F1 VK_F1
+#define KEY_F2 VK_F2
+#define KEY_W 0x57
+#define KEY_A 0x41
+#define KEY_S 0x53
+#define KEY_D 0x44
+#define KEY_P 0x50
+#define KEY_SPACE 0x20
+#define KEY_KPADD 0x6B
+#define KEY_KPSUB 0x6D
+#define KEY_B 0x42
+#define KEY_F 0x46
+#define KEY_L 0x4C
+#define KEY_N 0x4E
+#define KEY_O 0x4F
+#define KEY_T 0x54
+#elif defined(__ANDROID__)
+// Dummy key codes 
+#define KEY_ESCAPE 0x0
+#define KEY_F1 0x1
+#define KEY_F2 0x2
+#define KEY_W 0x3
+#define KEY_A 0x4
+#define KEY_S 0x5
+#define KEY_D 0x6
+#define KEY_P 0x7
+#define KEY_SPACE 0x8
+#define KEY_KPADD 0x9
+#define KEY_KPSUB 0xA
+#define KEY_B 0xB
+#define KEY_F 0xC
+#define KEY_L 0xD
+#define KEY_N 0xE
+#define KEY_O 0xF
+#define KEY_T 0x10
+#elif defined(__linux__)
+#define KEY_ESCAPE 0x9
+#define KEY_F1 0x43
+#define KEY_F2 0x44
+#define KEY_W 0x19
+#define KEY_A 0x26
+#define KEY_S 0x27
+#define KEY_D 0x28
+#define KEY_P 0x21
+#define KEY_SPACE 0x41
+#define KEY_KPADD 0x56
+#define KEY_KPSUB 0x52
+#define KEY_B 0x38
+#define KEY_F 0x29
+#define KEY_L 0x2E
+#define KEY_N 0x39
+#define KEY_O 0x20
+#define KEY_T 0x1C
+#endif
+
+// todo: Android gamepad keycodes outside of define for now
+#define GAMEPAD_BUTTON_A 0x1000
+#define GAMEPAD_BUTTON_B 0x1001
+#define GAMEPAD_BUTTON_X 0x1002
+#define GAMEPAD_BUTTON_Y 0x1003
+#define GAMEPAD_BUTTON_L1 0x1004
+#define GAMEPAD_BUTTON_R1 0x1005
+#define GAMEPAD_BUTTON_START 0x1006
 
 uint32_t	g_iDesktopWidth = 0;
 uint32_t	g_iDesktopHeight = 0;
@@ -102,8 +170,13 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 class Renderer final: public VKRenderer
 {
-	VkTools::VulkanTexture m_VkTexture;
+public:
 	VkFont*	m_VkFont;
+	Camera  m_Camera;
+	bool	m_bViewUpdated;
+private:
+	VkTools::VulkanTexture m_VkTexture;
+	
 	glm::vec3 lightPos = glm::vec3();
 	float lightFOV = 45.0f;
 
@@ -121,13 +194,14 @@ class Renderer final: public VKRenderer
 		glm::mat4 normal;
 		glm::mat4 depthBiasMVP;
 		glm::vec4 viewPos;
+		glm::vec4 instancePos[3];
 		glm::vec3 lightPos;
-		float lodBias = 0.0f;
 	}modelUniformData;
 
 
 	struct {
 		glm::mat4 depthMVP;
+		glm::vec4 instancePos[3];
 	} meshOffscreenUniformData;
 
 	struct {
@@ -162,7 +236,7 @@ class Renderer final: public VKRenderer
 	VkBufferObject_s				quadVbo;
 	VkBufferObject_s				quadIndexVbo;
 public:
-	Renderer() {}
+	Renderer();
 	~Renderer();
 
 	void BuildCommandBuffers() override;
@@ -242,6 +316,28 @@ public:
 	VkDescriptorSet  planeDescriptorSet;
 };
 
+
+Renderer::Renderer()
+{
+	m_Camera.type = Camera::CameraType::firstperson;
+	m_Camera.movementSpeed = 5.0f;
+#ifndef __ANDROID__
+	m_Camera.rotationSpeed = 0.25f;
+#endif
+	m_Camera.position = { 0.47f, -3.8f, -3.34f };
+	m_Camera.setRotation(glm::vec3(-164.0f, -164.0f, 0.0f));
+	m_Camera.setPerspective(60.0f, (float)1280 / (float)720, 0.1f, 256.0f);
+
+
+	// Init some values
+	modelUniformData.instancePos[0] = glm::vec4(0.0f);
+	modelUniformData.instancePos[1] = glm::vec4(-4.0f, 0.0, -4.0f, 0.0f);
+	modelUniformData.instancePos[2] = glm::vec4(4.0f, 0.0, -4.0f, 0.0f);
+
+	meshOffscreenUniformData.instancePos[0] = glm::vec4(0.0f);
+	meshOffscreenUniformData.instancePos[1] = glm::vec4(-4.0f, 0.0, -4.0f, 0.0f);
+	meshOffscreenUniformData.instancePos[2] = glm::vec4(4.0f, 0.0, -4.0f, 0.0f);
+}
 
 Renderer::~Renderer()
 {
@@ -415,7 +511,7 @@ void Renderer::UpdateLight()
 
 	// Animate the light sour
 	lightPos.x = sin(glm::radians(timer * 360.0f))*30.0f;
-	lightPos.y = -20.0f;// +sin(glm::radians(timer * 360.0f)) * 20.0f;
+	lightPos.y = 20.0f;// +sin(glm::radians(timer * 360.0f)) * 20.0f;
 	lightPos.z = 50.0f; // +sin(glm::radians(timer * 360.0f)) *20.0f;
 	//lightPos = glm::vec3(0, 0, 0);
 
@@ -709,7 +805,7 @@ void Renderer::BuildOffscreenCommandBuffer()
 		vkCmdBindVertexBuffers(offScreenCmdBuffer, VERTEX_BUFFER_BIND_ID, 1, &listLocalBuffers[j].buffer, offsets);
 
 		//Draw
-		vkCmdDraw(offScreenCmdBuffer, meshSize[j], 1, 0, 0);
+		vkCmdDraw(offScreenCmdBuffer, meshSize[j], 3, 0, 0);
 	}
 
 
@@ -742,7 +838,7 @@ void Renderer::UpdateOffscreenUniformBuffers()
 {
 	// Matrix from light's point of view
 	glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(lightFOV), 1.0f, zNear, zFar);
-	glm::mat4 depthViewMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0, 0,1)) * glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0));
+	glm::mat4 depthViewMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0, 0,1)) * glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0));
 	glm::mat4 depthModelMatrix = glm::mat4(1.0f);
 	glm::mat4 projectionViewMatrix = depthProjectionMatrix * depthViewMatrix;
 	meshOffscreenUniformData.depthMVP = projectionViewMatrix * modelUniformData.modelMatrix;
@@ -758,6 +854,7 @@ void Renderer::UpdateOffscreenUniformBuffers()
 		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.offscreenModel.memory);
 	}
 
+
 	meshOffscreenUniformData.depthMVP = projectionViewMatrix * planeUniformData.modelMatrix;
 	{
 		//Plane offscreen data
@@ -771,16 +868,7 @@ void Renderer::UpdateOffscreenUniformBuffers()
 
 void Renderer::ChangeLodBias(float delta)
 {
-	modelUniformData.lodBias += delta;
-	if (modelUniformData.lodBias < 0.0f)
-	{
-		modelUniformData.lodBias = 0.0f;
-	}
-	if (modelUniformData.lodBias > m_VkTexture.mipLevels)
-	{
-		modelUniformData.lodBias = m_VkTexture.mipLevels;
-	}
-	m_VkFont->UpdateUniformBuffers(m_WindowWidth, m_WindowHeight, g_zoom);
+
 }
 
 
@@ -884,7 +972,7 @@ void Renderer::BuildCommandBuffers()
 			vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &listLocalBuffers[j].buffer, offsets);
 
 			//Draw
-			vkCmdDraw(m_pWRenderer->m_DrawCmdBuffers[i], meshSize[j], 1, 0, 0);
+			vkCmdDraw(m_pWRenderer->m_DrawCmdBuffers[i], meshSize[j], 3, 0, 0);
 		}
 
 
@@ -931,18 +1019,12 @@ void Renderer::UpdateUniformBuffers()
 	rotateMesh   = glm::rotate(rotateMesh, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	rotatePlane  = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
-	rotateMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-	rotateMatrix = glm::rotate(rotateMatrix,	glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-	rotateMatrix = glm::rotate(rotateMatrix,	glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-
-
-	//Mesh uniform data
-	modelUniformData.projectionMatrix = glm::perspective(glm::radians(60.0f), (float)m_WindowWidth / (float)m_WindowHeight, zNear, zFar);
-	//glm::translate(rotateMatrix, glm::vec3(0.0f, 5.0f, g_zoom));
-	modelUniformData.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 5.0f, g_zoom));
-	modelUniformData.modelMatrix = rotateMatrix * rotateMesh * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 5.0f));
+	m_Camera.updateAspectRatio((float)m_WindowWidth / (float)m_WindowHeight);
+	modelUniformData.projectionMatrix = m_Camera.matrices.perspective;
+	modelUniformData.viewMatrix = m_Camera.matrices.view;
+	modelUniformData.modelMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 0.0f));
+	modelUniformData.modelMatrix = glm::scale(modelUniformData.modelMatrix, glm::vec3(0.2, 0.2, 0.2));
 	modelUniformData.normal = glm::inverseTranspose(modelUniformData.modelMatrix);
-	modelUniformData.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
 	{
 		// Map uniform buffer and update it
 		uint8_t *pData;
@@ -954,7 +1036,7 @@ void Renderer::UpdateUniformBuffers()
 
 	//Plane uniform data
 	planeUniformData.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(50.0f, 50.0f, 50.0f));
-	planeUniformData.modelMatrix = rotatePlane * glm::translate(planeUniformData.modelMatrix, glm::vec3(0.0f, 0.0f, 0.08f));
+	planeUniformData.modelMatrix = rotatePlane * glm::translate(planeUniformData.modelMatrix, glm::vec3(0.0f, 0.0f, -0.05f));
 	planeUniformData.mvp = modelUniformData.projectionMatrix * modelUniformData.viewMatrix * planeUniformData.modelMatrix;
 	{
 		// Map uniform buffer and update it
@@ -1720,10 +1802,11 @@ int main()
 		auto tStart = std::chrono::high_resolution_clock::now();
 
 		//Update uniform data
-		g_Renderer.UpdateLight();
 		g_Renderer.UpdateUniformBuffers();
-		g_Renderer.UpdateOffscreenUniformBuffers();
 		g_Renderer.UpdateQuadUniformData();
+		g_Renderer.UpdateLight();
+		g_Renderer.UpdateOffscreenUniformBuffers();
+		
 
 		//Do the rendering
 		g_Renderer.StartFrame();
@@ -1735,6 +1818,12 @@ int main()
 		g_Renderer.frameCounter++;
 		auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
 		g_Renderer.frameTimer = (float)tDiff / 1000.0f;
+		g_Renderer.m_Camera.update(g_Renderer.frameTimer);
+		if (g_Renderer.m_Camera.moving())
+		{
+			g_Renderer.m_bViewUpdated = true;
+		}
+
 		g_Renderer.fpsTimer += (float)tDiff;
 		if (g_Renderer.fpsTimer > 1000.0f)
 		{
@@ -1762,83 +1851,58 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		break;
 	case WM_PAINT:
 		//ValidateRect(window, NULL);
-		break;
+		//break;
 	case WM_KEYDOWN:
 		switch (wParam)
 		{
-		case 0x50:
+		case KEY_P:
 			//paused = !paused;
 			break;
-		case VK_F1:
-			//if (enableTextOverlay)
-		{
-			//textOverlay->visible = !textOverlay->visible;
-		}
-		break;
-		case VK_ESCAPE:
+		case KEY_ESCAPE:
 			PostQuitMessage(0);
 			break;
 		}
 
-
-
-		switch ((uint32_t)wParam)
+		if (g_Renderer.m_Camera.firstperson)
 		{
-		case 0x6B:
-		case GAMEPAD_BUTTON_R1:
-			g_Renderer.ChangeLodBias(0.1f);
-			break;
-		case 0x6D:
-		case GAMEPAD_BUTTON_L1:
-			g_Renderer.ChangeLodBias(-0.1f);
-			break;
+			switch (wParam)
+			{
+			case KEY_W:
+				g_Renderer.m_Camera.keys.up = true;
+				break;
+			case KEY_S:
+				g_Renderer.m_Camera.keys.down = true;
+				break;
+			case KEY_A:
+				g_Renderer.m_Camera.keys.left = true;
+				break;
+			case KEY_D:
+				g_Renderer.m_Camera.keys.right = true;
+				break;
+			}
 		}
-
-
-		/*
-		if (camera.firstperson)
-		{
-		switch (wParam)
-		{
-		case 0x57:
-		camera.keys.up = true;
-		break;
-		case 0x53:
-		camera.keys.down = true;
-		break;
-		case 0x41:
-		camera.keys.left = true;
-		break;
-		case 0x44:
-		camera.keys.right = true;
-		break;
-		}
-		}
-		*/
 
 		//keyPressed((uint32_t)wParam);
 		break;
 	case WM_KEYUP:
-		/*
-		if (camera.firstperson)
+		if (g_Renderer.m_Camera.firstperson)
 		{
-		switch (wParam)
-		{
-		case 0x57:
-		camera.keys.up = false;
-		break;
-		case 0x53:
-		camera.keys.down = false;
-		break;
-		case 0x41:
-		camera.keys.left = false;
-		break;
-		case 0x44:
-		camera.keys.right = false;
-		break;
+			switch (wParam)
+			{
+			case KEY_W:
+				g_Renderer.m_Camera.keys.up = false;
+				break;
+			case KEY_S:
+				g_Renderer.m_Camera.keys.down = false;
+				break;
+			case KEY_A:
+				g_Renderer.m_Camera.keys.left = false;
+				break;
+			case KEY_D:
+				g_Renderer.m_Camera.keys.right = false;
+				break;
+			}
 		}
-		}
-		*/
 		break;
 	case WM_RBUTTONDOWN:
 	case WM_LBUTTONDOWN:
@@ -1850,7 +1914,8 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 	{
 		short wheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
 		g_zoom += (float)wheelDelta * 0.005f * g_ZoomSpeed;
-		//camera.translate(glm::vec3(0.0f, 0.0f, (float)wheelDelta * 0.005f * zoomSpeed));
+		g_Renderer.m_Camera.translate(glm::vec3(0.0f, 0.0f, (float)wheelDelta * 0.005f * g_ZoomSpeed));
+		g_Renderer.m_bViewUpdated = true;
 		break;
 	}
 	case WM_MOUSEMOVE:
@@ -1859,8 +1924,9 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			int32_t posx = LOWORD(lParam);
 			int32_t posy = HIWORD(lParam);
 			g_zoom += (g_MousePos.y - (float)posy) * .005f * g_ZoomSpeed;
-			//camera.translate(glm::vec3(-0.0f, 0.0f, (mousePos.y - (float)posy) * .005f * zoomSpeed));
+			g_Renderer.m_Camera.translate(glm::vec3(-0.0f, 0.0f, (g_MousePos.y - (float)posy) * .005f * g_ZoomSpeed));
 			g_MousePos = glm::vec2((float)posx, (float)posy);
+			g_Renderer.m_bViewUpdated = true;
 		}
 		if (wParam & MK_LBUTTON)
 		{
@@ -1868,17 +1934,17 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			int32_t posy = HIWORD(lParam);
 			g_Rotation.x += (g_MousePos.y - (float)posy) * 1.25f * g_RotationSpeed;
 			g_Rotation.y -= (g_MousePos.x - (float)posx) * 1.25f * g_RotationSpeed;
-			//camera.rotate(glm::vec3((mousePos.y - (float)posy), -(mousePos.x - (float)posx), 0.0f));
+			g_Renderer.m_Camera.rotate(glm::vec3((g_MousePos.y - (float)posy) * g_Renderer.m_Camera.rotationSpeed, -(g_MousePos.x - (float)posx) * g_Renderer.m_Camera.rotationSpeed, 0.0f));
 			g_MousePos = glm::vec2((float)posx, (float)posy);
-
+			g_Renderer.m_bViewUpdated = true;
 		}
 		if (wParam & MK_MBUTTON)
 		{
 			int32_t posx = LOWORD(lParam);
 			int32_t posy = HIWORD(lParam);
-			g_CameraPos.x -= (g_MousePos.x - (float)posx) * 0.01f;
-			g_CameraPos.y -= (g_MousePos.y - (float)posy) * 0.01f;
-			//camera.translate(glm::vec3(-(mousePos.x - (float)posx) * 0.01f, -(mousePos.y - (float)posy) * 0.01f, 0.0f));
+			g_Renderer.m_Camera.translate(glm::vec3(-(g_MousePos.x - (float)posx) * 0.01f, -(g_MousePos.y - (float)posy) * 0.01f, 0.0f));
+			g_Renderer.m_bViewUpdated = true;
+
 			g_MousePos.x = (float)posx;
 			g_MousePos.y = (float)posy;
 		}
@@ -1891,9 +1957,11 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		}
 		break;
 	case WM_EXITSIZEMOVE:
-		if (g_bPrepared) 
+		if (g_bPrepared)
 		{
 			g_Renderer.VWindowResize(g_iDesktopHeight, g_iDesktopWidth);
+			g_Renderer.m_VkFont->UpdateUniformBuffers(g_iDesktopWidth, g_iDesktopHeight, g_zoom);
+			g_Renderer.m_VkFont->UpdateUniformBuffers(g_iDesktopWidth, g_iDesktopHeight, 0.0f);
 		}
 		break;
 	}

@@ -13,7 +13,6 @@ in VS_OUT
     vec3 eyeDir;
     vec3 lightDir;
     vec3 normal;
-	float loadBias;
 } fs_in;
 
 layout (binding = 1) uniform sampler2D samplerDiffuse;
@@ -39,7 +38,7 @@ void main()
 
 
     // Calculate diffuse color with simple N dot L.
-    vec3 diffuse = max(dot(fs_in.normal, L), 0.0) * diffuseTexture.rgb;
+    vec3 diffuse = max(dot(fs_in.normal, V), 0.0) * diffuseTexture.rgb;
     // Uncomment this to turn off diffuse shading
     // diffuse = vec3(0.0);
 

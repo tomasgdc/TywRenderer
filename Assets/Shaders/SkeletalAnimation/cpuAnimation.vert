@@ -22,7 +22,6 @@ layout (binding = 0) uniform UBO
 	mat4 viewMatrix;
 	mat4 normal;
 	vec4 viewPos;
-	float lodBias;
 } ubo;
 
 
@@ -55,22 +54,23 @@ void main()
 	mat4 mvMatrix = ubo.viewMatrix * ubo.modelMatrix;
 
 	//Convert vertex pos to view space
-	vec3 vertexPosition = vec3(mvMatrix *  vec4(inPos, 1.0));
+	vec4 vertexPosition = mvMatrix *  vec4(inPos, 1.0);
 	
 
 	// Setup (t)angent-(b)inormal-(n)ormal matrix for converting
     // object coordinates into tangent space
 	mat3 tbnMatrix;
-    tbnMatrix[0] =  normalize(mat3(mvMatrix) * inTangent);
-	tbnMatrix[1] =  normalize(mat3(mvMatrix) * inBinormal);
-	tbnMatrix[2] =  normalize(mat3(mvMatrix) * inNormal);
+	mat3 mNormal =  transpose(inverse(mat3(ubo.modelMatrix)));
+    tbnMatrix[0] =  normalize(mNormal * inTangent);
+	tbnMatrix[1] =  normalize(mNormal * inBinormal);
+	tbnMatrix[2] =  normalize(mNormal * inNormal);
 
     
 	// The light vector (L) is the vector from the point of interest to
     // the light. Calculate that and multiply it by the TBN matrix.
 	vec3 LightVec = vec3(lightPos.xyz - vertexPosition.xyz);
-	//vs_out.lightDir = vec3(LightVec * tbnMatrix);
-	vs_out.lightDir = normalize(LightVec.xyz);
+	vs_out.lightDir = vec3(LightVec * tbnMatrix);
+	//vs_out.lightDir = normalize(LightVec.xyz);
 
 
 	// The view vector is the vector from the point of interest to the
@@ -86,6 +86,5 @@ void main()
 
 
 	vs_out.texcoord = inUv;
-	vs_out.loadBias = ubo.lodBias;
 	gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * boneTransform * vec4(inPos.xyz, 1.0);
 }

@@ -11,7 +11,6 @@ in VS_OUT
     vec3 lightDir;
     vec3 normal;
 	vec4 shadowCoord;
-	float loadBias;
 } fs_in;
 
 layout (binding = 1) uniform sampler2D samplerNormal;
@@ -77,8 +76,8 @@ void main()
 	float shadow = filterPCF(fs_in.shadowCoord / fs_in.shadowCoord.w);
 
 	
-    vec3 V = (fs_in.eyeDir);
-    vec3 L = (fs_in.lightDir);
+    vec3 V = normalize(fs_in.eyeDir);
+    vec3 L = normalize(fs_in.lightDir);
 
 
     // Calculate R ready for use in Phong lighting.
