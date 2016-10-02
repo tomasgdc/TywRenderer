@@ -170,6 +170,47 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 class Renderer final: public VKRenderer
 {
+private:
+	// The pipeline (state objects) is a static store for the 3D pipeline states (including shaders)
+	// Other than OpenGL this makes you setup the render states up-front
+	// If different render states are required you need to setup multiple pipelines
+	// and switch between them
+	// Note that there are a few dynamic states (scissor, viewport, line width) that
+	// can be set from a command buffer and does not have to be part of the pipeline
+	// This basic example only uses one pipeline
+	VkPipeline pipeline;
+
+	// The pipeline layout defines the resource binding slots to be used with a pipeline
+	// This includes bindings for buffes (ubos, ssbos), images and sampler
+	// A pipeline layout can be used for multiple pipeline (state objects) as long as 
+	// their shaders use the same binding layout
+	VkPipelineLayout pipelineLayout;
+
+	// The descriptor set stores the resources bound to the binding points in a shader
+	// It connects the binding points of the different shaders with the buffers and images
+	// used for those bindings
+	VkDescriptorSet descriptorSet;
+
+	// The descriptor set layout describes the shader binding points without referencing
+	// the actual buffers. 
+	// Like the pipeline layout it's pretty much a blueprint and can be used with
+	// different descriptor sets as long as the binding points (and shaders) match
+	VkDescriptorSetLayout descriptorSetLayout;
+
+	// Synchronization semaphores
+	// Semaphores are used to synchronize dependencies between command buffers
+	// We use them to ensure that we e.g. don't present to the swap chain
+	// until all rendering has completed
+	struct
+	{
+		// Swap chain image presentation
+		VkSemaphore presentComplete;
+		// Command buffer submission and execution
+		VkSemaphore renderComplete;
+		// Text overlay submission and execution
+		VkSemaphore textOverlayComplete;
+	} Semaphores;
+
 public:
 	VkFont*	m_VkFont;
 	Camera  m_Camera;
@@ -235,33 +276,24 @@ private:
 
 	VkBufferObject_s				quadVbo;
 	VkBufferObject_s				quadIndexVbo;
+
+	RenderModelStatic staticModel;
 public:
 	Renderer();
 	~Renderer();
 
 	void BuildCommandBuffers() override;
-
 	void UpdateUniformBuffers() override;
-
 	void PrepareUniformBuffers() override;
-
 	void PrepareVertices(bool useStagingBuffers) override;
-
 	void VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling) override;
-
 	void PreparePipeline() override;
-
-
 	void SetupDescriptorSet() override;
-
 	void SetupDescriptorSetLayout() override;
-
 	void SetupDescriptorPool() override;
-
 	void LoadAssets() override;
-
-
 	void StartFrame() override;
+	void PrepareSemaphore() override;
 
 
 	void ChangeLodBias(float delta);
@@ -342,8 +374,25 @@ Renderer::Renderer()
 Renderer::~Renderer()
 {
 	SAFE_DELETE(m_VkFont);
-	// Clean up used Vulkan resources 
-	// Note : Inherited destructor cleans up resources stored in base class
+
+	//Destroy mesh data
+	VkBufferObject::FreeMeshBufferResources(m_pWRenderer->m_SwapChain.device, quadVbo);
+	VkBufferObject::FreeMeshBufferResources(m_pWRenderer->m_SwapChain.device, quadIndexVbo);
+	for (auto& rs : listLocalBuffers)
+	{
+		VkBufferObject::FreeMeshBufferResources(m_pWRenderer->m_SwapChain.device, rs);
+	}
+
+	// Uniform buffers
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.offscreenModel);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.offscreenPlane);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.quad);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.plane);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.model);
+
+	//Delete model
+	staticModel.Clear(m_pWRenderer->m_SwapChain.device);
+
 
 	// Frame buffer
 	vkDestroySampler(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.depthSampler, nullptr);
@@ -369,30 +418,56 @@ Renderer::~Renderer()
 	vkDestroyPipelineLayout(m_pWRenderer->m_SwapChain.device, quadPipelineLayout, nullptr);
 	
 
-
-	//vkDestroyDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, quaddes, nullptr);
-
-	//Destroy mesh data
-	VkBufferObject::FreeMeshBufferResources(m_pWRenderer->m_SwapChain.device, quadVbo);
-	VkBufferObject::FreeMeshBufferResources(m_pWRenderer->m_SwapChain.device, quadIndexVbo);
-	for (auto& rs : listLocalBuffers)
-	{
-		VkBufferObject::FreeMeshBufferResources(m_pWRenderer->m_SwapChain.device, rs);
-	}
-
-
-	// Uniform buffers
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.offscreenModel);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.offscreenPlane);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.quad);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.plane);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.model);
-
-
 	//Destroy Semaphores
 	vkFreeCommandBuffers(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_CmdPool, 1, &offScreenCmdBuffer);
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, offscreenSemaphore, nullptr);
+
+
+
+
+
+
+
+
+
+	//Destroy Shader Module
+	for (int i = 0; i < m_ShaderModules.size(); i++)
+	{
+		vkDestroyShaderModule(m_pWRenderer->m_SwapChain.device, m_ShaderModules[i], nullptr);
+	}
+
+	//Release semaphores
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.presentComplete, nullptr);
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.renderComplete, nullptr);
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.textOverlayComplete, nullptr);
+
+	//DestroyPipeline
+	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, pipeline, nullptr);
+	vkDestroyPipelineLayout(m_pWRenderer->m_SwapChain.device, pipelineLayout, nullptr);
+	vkDestroyDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, descriptorSetLayout, nullptr);
 }
+
+
+void Renderer::PrepareSemaphore()
+{
+	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreCreateInfo.pNext = NULL;
+
+	// This semaphore ensures that the image is complete
+	// before starting to submit again
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.presentComplete));
+
+	// This semaphore ensures that all commands submitted
+	// have been finished before submitting the image to the queue
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.renderComplete));
+
+
+	// This semaphore ensures that all commands submitted
+	// have been finished before submitting the image to the queue
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.textOverlayComplete));
+}
+
 
 void Renderer::UpdateQuadUniformData()
 {
@@ -1347,22 +1422,14 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	m_VkFont->PrepareUniformBuffers();
 	m_VkFont->InitializeChars("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM-:.@1234567890", *m_pTextureLoader);
 	m_VkFont->PrepareResources(g_iDesktopWidth, g_iDesktopHeight);
-
-
 	BeginTextUpdate();
 
 
-	RenderModelStatic staticModel;
+
 	staticModel.InitFromFile("Geometry/nanosuit/nanosuit2.obj", GetAssetPath());
 
 
-	//RenderModelAssimp assimpModel;
-	//assimpModel.InitFromFile("Geometry/cyberwarrior/warrior.fxb", GetAssetPath());
-
-
-	
 	std::vector<VkBufferObject_s> listStagingBuffers;
-
 	listLocalBuffers.resize(staticModel.surfaces.size());
 	listStagingBuffers.resize(staticModel.surfaces.size());
 	listDescriptros.resize(staticModel.surfaces.size());

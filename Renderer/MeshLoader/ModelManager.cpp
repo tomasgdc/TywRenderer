@@ -57,9 +57,11 @@ void RenderModelManagerLocal::RemoveModel(RenderModel *model) {
 Clear
 ========================
 */
-void RenderModelManagerLocal::Clear() {
-	for (it = models.begin(); it != models.end(); ++it) {
-		it->second->Clear();
+void RenderModelManagerLocal::Clear(VkDevice device) 
+{
+	for (it = models.begin(); it != models.end(); ++it) 
+	{
+		it->second->Clear(device);
 	}
 	models.clear();
 }

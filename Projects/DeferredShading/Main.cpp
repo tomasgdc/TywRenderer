@@ -172,8 +172,44 @@ public:
 	Camera  m_Camera;
 	bool	m_bViewUpdated;
 private:
-	VkTools::VulkanTexture m_VkTexture;
-	
+	// The pipeline (state objects) is a static store for the 3D pipeline states (including shaders)
+	// Other than OpenGL this makes you setup the render states up-front
+	// If different render states are required you need to setup multiple pipelines
+	// and switch between them
+	// Note that there are a few dynamic states (scissor, viewport, line width) that
+	// can be set from a command buffer and does not have to be part of the pipeline
+	// This basic example only uses one pipeline
+	VkPipeline pipeline;
+
+	// The pipeline layout defines the resource binding slots to be used with a pipeline
+	// This includes bindings for buffes (ubos, ssbos), images and sampler
+	// A pipeline layout can be used for multiple pipeline (state objects) as long as 
+	// their shaders use the same binding layout
+	VkPipelineLayout pipelineLayout;
+
+	// The descriptor set stores the resources bound to the binding points in a shader
+	// It connects the binding points of the different shaders with the buffers and images
+	// used for those bindings
+	VkDescriptorSet descriptorSet;
+
+	// The descriptor set layout describes the shader binding points without referencing
+	// the actual buffers. 
+	// Like the pipeline layout it's pretty much a blueprint and can be used with
+	// different descriptor sets as long as the binding points (and shaders) match
+	VkDescriptorSetLayout descriptorSetLayout;
+
+	// Synchronization semaphores
+	// Semaphores are used to synchronize dependencies between command buffers
+	// We use them to ensure that we e.g. don't present to the swap chain
+	// until all rendering has completed
+	struct {
+		// Swap chain image presentation
+		VkSemaphore presentComplete;
+		// Command buffer submission and execution
+		VkSemaphore renderComplete;
+		// Text overlay submission and execution
+		VkSemaphore textOverlayComplete;
+	} Semaphores;
 
 
 	float zNear = 1.0f;
@@ -212,20 +248,23 @@ private:
 		FrameBufferAttachment position;
 		FrameBufferAttachment nm; //normal and diffuse
 		FrameBufferAttachment depth;
-		FrameBufferAttachment specular;
 		VkRenderPass renderPass;
 	} offScreenFrameBuf;
+
+	struct {
+		VkBuffer buffer;
+		VkDeviceMemory memory;
+		VkDescriptorBufferInfo descriptor;
+	}  uniformDataVS;
+
 
 	// One sampler for the frame buffer color attachments
 	VkSampler colorSampler;
 
 
-	struct {
-		VkTools::UniformData offscreenModel;
-		VkTools::UniformData offscreenPlane;
+	struct 
+	{
 		VkTools::UniformData quad;
-		VkTools::UniformData plane;
-		VkTools::UniformData model;
 		VkTools::UniformData fsLights;
 		VkTools::UniformData vsFullScreen;
 	}  uniformData;
@@ -269,54 +308,33 @@ private:
 		glm::mat4 mvp;
 		glm::uint32_t textureType;
 	} quadUniformData;
+
+	RenderModelStatic staticModel;
 public:
 	Renderer();
 	~Renderer();
 
 	void BuildCommandBuffers() override;
-
 	void UpdateUniformBuffers() override;
-
 	void PrepareUniformBuffers() override;
-
 	void PrepareVertices(bool useStagingBuffers) override;
-
 	void VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling) override;
-
 	void PreparePipeline() override;
-
-
 	void SetupDescriptorSet() override;
-
 	void SetupDescriptorSetLayout() override;
-
 	void SetupDescriptorPool() override;
-
 	void LoadAssets() override;
-
-
+	void PrepareSemaphore() override;
 	void StartFrame() override;
 
 
 	void ChangeLodBias(float delta);
 	void BeginTextUpdate();
-
-
 	void CreateFrameBuffer();
-
-
-	void CreateAttachement(
-		VkFormat format,
-		VkImageUsageFlagBits usage,
-		FrameBufferAttachment *attachment,
-		VkCommandBuffer layoutCmd);
-
+	void CreateAttachement(VkFormat format,VkImageUsageFlagBits usage,FrameBufferAttachment *attachment,VkCommandBuffer layoutCmd);
 	void PrepareFramebufferCommands();
-
 	void GenerateQuad();
 	void UpdateQuadUniformData(const glm::vec3& pos = glm::vec3(1.0, 1.0, 0.0));
-
-	//Lights
 	void UpdateUniformBuffersLights();
 };
 
@@ -338,22 +356,38 @@ Renderer::~Renderer()
 
 	vkDestroySampler(m_pWRenderer->m_SwapChain.device, colorSampler, nullptr);
 
+	//Destroy model data
+	staticModel.Clear(m_pWRenderer->m_SwapChain.device);
+
+
+	//Delete memory
+	for (int i = 0; i < listLocalBuffers.size(); i++)
+	{
+		VkBufferObject::DeleteBufferMemory(m_pWRenderer->m_SwapChain.device, listLocalBuffers[i], nullptr);
+	}
+
+
+	//Destroy Shader Module
+	for (int i = 0; i < m_ShaderModules.size(); i++)
+	{
+		vkDestroyShaderModule(m_pWRenderer->m_SwapChain.device, m_ShaderModules[i], nullptr);
+	}
+
 	//Uniform Data
-	//VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.model);
-	//VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.offscreenModel);
+	vkDestroyBuffer(m_pWRenderer->m_SwapChain.device, uniformDataVS.buffer, nullptr);
+	vkFreeMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory, nullptr);
 	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.quad);
 	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.fsLights);
 	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.vsFullScreen);
 
 	//QUad
-	vkFreeMemory(m_pWRenderer->m_SwapChain.device, quadVbo.memory, nullptr);
-	vkFreeMemory(m_pWRenderer->m_SwapChain.device, quadIndexVbo.memory, nullptr);
+	VkBufferObject::DeleteBufferMemory(m_pWRenderer->m_SwapChain.device, quadVbo, nullptr);
+	VkBufferObject::DeleteBufferMemory(m_pWRenderer->m_SwapChain.device, quadIndexVbo, nullptr);
 
 	//Position
 	vkDestroyImageView(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.position.view, nullptr);
 	vkDestroyImage(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.position.image, nullptr);
 	vkFreeMemory(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.position.mem, nullptr);
-
 
 	//Normal and Diffuse
 	vkDestroyImageView(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.nm.view, nullptr);
@@ -365,12 +399,22 @@ Renderer::~Renderer()
 	vkDestroyImage(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.depth.image, nullptr);
 	vkFreeMemory(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.depth.mem, nullptr);
 
+
+	//Destroy framebuffer
+	vkDestroyFramebuffer(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.frameBuffer, nullptr);
+
+
 	//Destroy FrameBufferPipeline
 	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, frameBufferPipeline, nullptr);
 	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, quadPipeline, nullptr);
+	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, pipeline, nullptr);
 
 	//Destroy PipelineLayout
 	vkDestroyPipelineLayout(m_pWRenderer->m_SwapChain.device, frameBufferPipelineLayout, nullptr);
+	vkDestroyPipelineLayout(m_pWRenderer->m_SwapChain.device, pipelineLayout, nullptr);
+
+	//Destroy layout
+	vkDestroyDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, descriptorSetLayout, nullptr);
 
 	//Destroy RenderPass
 	vkDestroyRenderPass(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.renderPass, nullptr);
@@ -378,7 +422,33 @@ Renderer::~Renderer()
 	//Destroy Command Buffer and Semaphore
 	vkFreeCommandBuffers(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_CmdPool, 1, &GBufferScreenCmdBuffer);
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, GBufferSemaphore, nullptr);
+
+	//Release semaphores
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.presentComplete, nullptr);
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.renderComplete, nullptr);
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.textOverlayComplete, nullptr);
 }
+
+void Renderer::PrepareSemaphore()
+{
+	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreCreateInfo.pNext = NULL;
+
+	// This semaphore ensures that the image is complete
+	// before starting to submit again
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.presentComplete));
+
+	// This semaphore ensures that all commands submitted
+	// have been finished before submitting the image to the queue
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.renderComplete));
+
+
+	// This semaphore ensures that all commands submitted
+	// have been finished before submitting the image to the queue
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.textOverlayComplete));
+}
+
 
 void Renderer::UpdateUniformBuffersLights()
 {
@@ -1205,7 +1275,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	BeginTextUpdate();
 
 
-	RenderModelStatic staticModel;
+	
 	staticModel.InitFromFile("Geometry/nanosuit/nanosuit2.obj", GetAssetPath());
 
 
@@ -1470,7 +1540,7 @@ void Renderer::PreparePipeline()
 
 void Renderer::VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling)
 {
-	m_pTextureLoader->LoadTexture(fileName, format, &m_VkTexture);
+
 }
 
 

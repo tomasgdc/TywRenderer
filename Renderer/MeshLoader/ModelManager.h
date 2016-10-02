@@ -25,7 +25,7 @@ public:
 	virtual void			AddModel(RenderModel *model) = 0;
 
 	//clears all models from hash map
-	virtual void			Clear() = 0;
+	virtual void			Clear(VkDevice device) = 0;
 };
 
 
@@ -38,7 +38,7 @@ public:
 	virtual RenderModel *	FindModel(const char *modelName);
 	virtual void			AddModel(RenderModel *model);
 	virtual void			RemoveModel(RenderModel *model);
-	virtual void			Clear();
+	virtual void			Clear(VkDevice device);
 private:
 	std::map<std::string, RenderModel*> models;
 	std::map<std::string, RenderModel*>::iterator it;

@@ -39,8 +39,7 @@ RenderModelAssimp::RenderModelAssimp()
 
 RenderModelAssimp::~RenderModelAssimp()
 {
-	//Delete all allocated data
-	Clear();
+
 }
 
 
@@ -130,7 +129,7 @@ int RenderModelAssimp::getSize() const
 }
 
 
-void RenderModelAssimp::Clear()
+void RenderModelAssimp::Clear(VkDevice device)
 {
 	for (auto& mesh : m_Entries)
 	{
@@ -142,6 +141,7 @@ void RenderModelAssimp::Clear()
 
 	for (auto& material : m_material)
 	{
+		material.second->Clear(device);
 		SAFE_DELETE_ARRAY(material.second);
 	}
 }

@@ -184,9 +184,8 @@ void GlyphData::ReleaseBuffer() {
 	}
 }
 
-bool GlyphData::Release() {
-	//SAFE_DELETE(log); //somewhy -> breaks
-
+bool GlyphData::Release() 
+{
 	 //free FreeType resources
 	FT_Done_Face(face);
 	FT_Done_FreeType(library);
@@ -197,7 +196,8 @@ bool GlyphData::Release() {
 	return true;
 }
 
-GlyphData::~GlyphData(){
+GlyphData::~GlyphData()
+{
 	//In case i forget to delete it
 	//Release();
 	//if memory for ft_donace_face

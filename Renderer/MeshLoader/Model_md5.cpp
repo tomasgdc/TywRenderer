@@ -36,13 +36,15 @@ MD5Mesh::MD5Mesh():
 	numMeshJoints(0), 
 	maxJointVertDist(0.0f), 
 	deformInfo(nullptr),
-	surfaceNum(0)
+	surfaceNum(0),
+	numMaterials(0)
 {
 
 }
 
 
-MD5Mesh::~MD5Mesh() {
+MD5Mesh::~MD5Mesh() 
+{
 	SAFE_DELETE_ARRAY(meshJoints);
 }
 
@@ -122,10 +124,7 @@ void MD5Mesh::ParseMesh(FILE* ptrFile, int numJoints, std::vector<JointQuat>& jo
 	uint32_t numVerts(0);
 	uint32_t numWeights(0);
 	int32_t rval(1);
-	
-	//std::vector<vertIndex_t>	 vert;
-	//std::vector<triangleIndex_t> tri;
-	//std::vector<vertexWeight_t>  weight;
+
 	while(rval != 0 && rval != EOF)
 	{
 		char lineHeader[128];
@@ -138,6 +137,7 @@ void MD5Mesh::ParseMesh(FILE* ptrFile, int numJoints, std::vector<JointQuat>& jo
 			
 			shader = TYW_NEW Material;
 			shader->setTexture(globalImage->GetImage(shaderName, "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED), false);
+			numMaterials++;
 		}
 		else if (strcmp(lineHeader, "numverts") == 0) 
 		{
@@ -544,4 +544,18 @@ void MD5Mesh::UpdateMesh(const MD5Mesh *mesh,  std::vector<JointQuat>& joints, c
 		}
 	}
 	*/
+}
+
+
+void RenderModelMD5::Clear(VkDevice device)
+{
+	//Delete texture data
+	for (auto& mesh : meshes)
+	{
+		for (int i = 0; i < mesh.numMaterials; i++)
+		{
+			mesh.shader[i].Clear(device);
+		}
+		//SAFE_DELETE_ARRAY(mesh.shader);
+	}
 }

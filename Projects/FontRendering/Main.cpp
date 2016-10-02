@@ -88,7 +88,32 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 class Renderer final : public VKRenderer
 {
-	VkTools::VulkanTexture m_VkTexture;
+private:
+	// The pipeline (state objects) is a static store for the 3D pipeline states (including shaders)
+	// Other than OpenGL this makes you setup the render states up-front
+	// If different render states are required you need to setup multiple pipelines
+	// and switch between them
+	// Note that there are a few dynamic states (scissor, viewport, line width) that
+	// can be set from a command buffer and does not have to be part of the pipeline
+	// This basic example only uses one pipeline
+	VkPipeline pipeline;
+
+
+	// Synchronization semaphores
+	// Semaphores are used to synchronize dependencies between command buffers
+	// We use them to ensure that we e.g. don't present to the swap chain
+	// until all rendering has completed
+	struct
+	{
+		// Swap chain image presentation
+		VkSemaphore presentComplete;
+		// Command buffer submission and execution
+		VkSemaphore renderComplete;
+		// Text overlay submission and execution
+		VkSemaphore textOverlayComplete;
+	} Semaphores;
+
+
 	VkFont*	m_VkFont;
 
 	//Vertex
@@ -99,40 +124,79 @@ class Renderer final : public VKRenderer
 	std::string					text;
 	VkPipeline					nonSdfPipeline;
 public:
-	Renderer() {}
-	~Renderer() 
-	{
-		vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, nonSdfPipeline, nullptr);
-	}
+	Renderer();
+	~Renderer();
 
 	void BuildCommandBuffers() override;
-
 	void UpdateUniformBuffers() override;
-
 	void PrepareUniformBuffers() override;
-
 	void PrepareVertices(bool useStagingBuffers) override;
-
 	void VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling) override;
-
 	void PreparePipeline() override;
-
-
 	void SetupDescriptorSet() override;
-
 	void SetupDescriptorSetLayout() override;
-
 	void SetupDescriptorPool() override;
-
 	void LoadAssets() override;
-
+	void PrepareSemaphore() override;
+	void StartFrame() override;
 
 	void ChangeLodBias(float delta);
 };
 
+
+Renderer::Renderer()
+{
+
+}
+
+
+Renderer::~Renderer()
+{
+	SAFE_DELETE(m_VkFont);
+
+	//Delete buffer data
+	VkBufferObject::DeleteBufferMemory(m_pWRenderer->m_SwapChain.device, m_BufferData, nullptr);
+
+	//Destroy Shader Module
+	for (int i = 0; i < m_ShaderModules.size(); i++)
+	{
+		vkDestroyShaderModule(m_pWRenderer->m_SwapChain.device, m_ShaderModules[i], nullptr);
+	}
+
+	//Release semaphores
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.presentComplete, nullptr);
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.renderComplete, nullptr);
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.textOverlayComplete, nullptr);
+
+	//DestroyPipeline
+	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, pipeline, nullptr);
+	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, nonSdfPipeline, nullptr);
+}
+
 void Renderer::ChangeLodBias(float delta)
 {
 	UpdateUniformBuffers();
+}
+
+
+void Renderer::PrepareSemaphore()
+{
+	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreCreateInfo.pNext = NULL;
+
+	// This semaphore ensures that the image is complete
+	// before starting to submit again
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.presentComplete));
+
+	// This semaphore ensures that all commands submitted
+	// have been finished before submitting the image to the queue
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.renderComplete));
+
+
+	// This semaphore ensures that all commands submitted
+	// have been finished before submitting the image to the queue
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.textOverlayComplete));
 }
 
 
@@ -324,7 +388,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	m_VkFont->SetupDescriptorSetLayout();
 	m_VkFont->PrepareUniformBuffers();
 	m_VkFont->InitializeChars("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM-:.@1234567890", *m_pTextureLoader);
-	//m_VkFont->PrepareResources();
+	m_VkFont->PrepareResources(g_iDesktopWidth, g_iDesktopHeight);
 
 	// Vertex buffer
 	VkDeviceSize bufferSize = 256 * sizeof(drawFont);
@@ -571,66 +635,73 @@ void Renderer::VLoadTexture(std::string fileName, VkFormat format, bool forceLin
 
 
 void Renderer::SetupDescriptorSetLayout()
-{
-	/*
-	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings =
-	{
-		// Binding 0 : Vertex shader uniform buffer
-		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,0),
+{	
 
-		// Binding 1 : Fragment shader image sampler
-		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,1)
-	};
-
-	VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());
-	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, &descriptorLayout, nullptr, &descriptorSetLayout));
-
-	VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkTools::Initializer::PipelineLayoutCreateInfo(&descriptorSetLayout, 1);
-	VK_CHECK_RESULT(vkCreatePipelineLayout(m_pWRenderer->m_SwapChain.device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
-	*/
 }
 
 void Renderer::SetupDescriptorPool()
 {
-	/*
-	// Example uses one ubo and one image sampler
-	std::vector<VkDescriptorPoolSize> poolSizes =
-	{
-		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1),
-		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1)
-	};
 
-	VkDescriptorPoolCreateInfo descriptorPoolInfo = VkTools::Initializer::DescriptorPoolCreateInfo(poolSizes.size(), poolSizes.data(), 2);
-	VK_CHECK_RESULT(vkCreateDescriptorPool(m_pWRenderer->m_SwapChain.device, &descriptorPoolInfo, nullptr, &m_pWRenderer->m_DescriptorPool));
-	*/
 }
 
 
 void Renderer::SetupDescriptorSet()
 {
-	/*
-	VkDescriptorSetAllocateInfo allocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &descriptorSetLayout, 1);
 
-	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfo, &descriptorSet));
-
-	// Image descriptor for the color map texture
-	VkDescriptorImageInfo texDescriptor = VkTools::Initializer::DescriptorImageInfo(m_VkTexture.sampler, m_VkTexture.view, VK_IMAGE_LAYOUT_GENERAL);
-
-	std::vector<VkWriteDescriptorSet> writeDescriptorSets =
-	{
-		// Binding 0 : Vertex shader uniform buffer
-		VkTools::Initializer::WriteDescriptorSet(descriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	0,&uniformDataVS.descriptor),
-
-		// Binding 1 : Fragment shader texture sampler
-		VkTools::Initializer::WriteDescriptorSet(descriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,&texDescriptor)
-	};
-
-	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
-	*/
 }
 
 
+void Renderer::StartFrame()
+{
+	{
+		// Get next image in the swap chain (back/front buffer)
+		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.GetNextImage(Semaphores.presentComplete, &m_pWRenderer->m_currentBuffer));
 
+		// Submit the post present image barrier to transform the image back to a color attachment
+		// that can be used to write to by our render pass
+		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_pWRenderer->m_PostPresentCmdBuffers[m_pWRenderer->m_currentBuffer];
+
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+		// Make sure that the image barrier command submitted to the queue 
+		// has finished executing
+		VK_CHECK_RESULT(vkQueueWaitIdle(m_pWRenderer->m_Queue));
+	}
+
+
+
+	{
+		// The submit infor strcuture contains a list of
+		// command buffers and semaphores to be submitted to a queue
+		// If you want to submit multiple command buffers, pass an array
+		VkPipelineStageFlags pipelineStages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
+		submitInfo.pWaitDstStageMask = &pipelineStages;
+		// The wait semaphore ensures that the image is presented 
+		// before we start submitting command buffers agein
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &Semaphores.presentComplete;
+		// Submit the currently active command buffer
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_pWRenderer->m_DrawCmdBuffers[m_pWRenderer->m_currentBuffer];
+		// The signal semaphore is used during queue presentation
+		// to ensure that the image is not rendered before all
+		// commands have been submitted
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
+
+		// Submit to the graphics queue
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+		// Present the current buffer to the swap chain
+		// We pass the signal semaphore from the submit info
+		// to ensure that the image is not rendered until
+		// all commands have been submitted
+		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.QueuePresent(m_pWRenderer->m_Queue, m_pWRenderer->m_currentBuffer, Semaphores.renderComplete));
+	}
+}
 
 void Renderer::LoadAssets()
 {

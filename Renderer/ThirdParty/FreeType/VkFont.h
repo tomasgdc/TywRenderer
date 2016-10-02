@@ -17,47 +17,42 @@ namespace VkTools
 
 class TYWRENDERER_API VkFont
 {
-	public:
-		VkFont(VkPhysicalDevice physicalDevice,
-			VkDevice device,
-			VkQueue queue,
-			std::vector<VkFramebuffer> &framebuffers,
-			VkFormat colorformat,
-			VkFormat depthformat,
-			uint32_t *framebufferwidth,
-			uint32_t *framebufferheight);
+public:
+	VkFont(VkPhysicalDevice physicalDevice,
+		VkDevice device,
+		VkQueue queue,
+		std::vector<VkFramebuffer> &framebuffers,
+		VkFormat colorformat,
+		VkFormat depthformat,
+		uint32_t *framebufferwidth,
+		uint32_t *framebufferheight);
 
-		//Loads freetype and creates font
-		void CreateFontVk(const std::string& strTypeface, int point_size, int dpi);
+	~VkFont();
+
+	//Loads freetype and creates font
+	void CreateFontVk(const std::string& strTypeface, int point_size, int dpi);
 
 		
-		//Initializes chars and loads textures
-		void InitializeChars(char* source, VkTools::VulkanTextureLoader& pTextureLoader);
+	//Initializes chars and loads textures
+	void InitializeChars(char* source, VkTools::VulkanTextureLoader& pTextureLoader);
 
 
-		void Resize(uint32_t windowWidth, uint32_t windowHeight);
-		void BeginTextUpdate();
-		void EndTextUpdate();
-		void SubmitToQueue(VkQueue queue, uint32_t bufferindex);
+	void Resize(uint32_t windowWidth, uint32_t windowHeight);
+	void BeginTextUpdate();
+	void EndTextUpdate();
+	void SubmitToQueue(VkQueue queue, uint32_t bufferindex);
 
-		void PrepareResources(uint32_t width, uint32_t height);
-		void PrepareRenderPass();
-		void PreparePipeline();
-		void SetupDescriptorSetLayout();
-		void SetupDescriptorPool();
+	void PrepareResources(uint32_t width, uint32_t height);
+	void PrepareRenderPass();
+	void PreparePipeline();
+	void SetupDescriptorSetLayout();
+	void SetupDescriptorPool();
 
-		void UpdateUniformBuffers(uint32_t windowWidth, uint32_t windowHeight, float zoom);
-		void PrepareUniformBuffers();
+	void UpdateUniformBuffers(uint32_t windowWidth, uint32_t windowHeight, float zoom);
+	void PrepareUniformBuffers();
 
-		void BuildCommandBuffers();
-		void UpdateCommandBuffers();
-
-		//Add Text
-		void AddText(float x, float y, float ws, float hs, const std::string& text);
-
-
-		bool Release();
-		~VkFont();
+	//Add Text
+	void AddText(float x, float y, float ws, float hs, const std::string& text);
 private:
 	VkPipelineShaderStageCreateInfo VkFont::LoadShader(const std::string& fileName, VkShaderStageFlagBits stage);
 
@@ -94,20 +89,20 @@ public:
 	uint32_t					numLetters;
 
 
-	struct {
-		glm::mat4 projectionMatrix;
-		glm::mat4 modelMatrix;
-		glm::mat4 viewMatrix;
-		float lodBias = 0.0f;
-	}m_uboVS;
+struct {
+	glm::mat4 projectionMatrix;
+	glm::mat4 modelMatrix;
+	glm::mat4 viewMatrix;
+	float lodBias = 0.0f;
+}m_uboVS;
 
 
-	struct 
-	{
-		VkBuffer buffer;
-		VkDeviceMemory memory;
-		VkDescriptorBufferInfo descriptor;
-	}  uniformDataVS;
+struct 
+{
+	VkBuffer buffer;
+	VkDeviceMemory memory;
+	VkDescriptorBufferInfo descriptor;
+}  uniformDataVS;
 public:
 	GlyphData* data;
 	std::unordered_map<char, VkTools::VulkanTexture*> glyphs; //Create hash map

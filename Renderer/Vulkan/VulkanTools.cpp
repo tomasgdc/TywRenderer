@@ -214,8 +214,13 @@ VkFenceCreateInfo VkTools::Initializer::FenceCreateInfo(VkFenceCreateFlags flags
 VkSubmitInfo VkTools::Initializer::SubmitInfo()
 {
 	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
 	submitInfo.pNext = NULL;
+	submitInfo.waitSemaphoreCount = 0;
+	submitInfo.pWaitSemaphores = NULL;
+	submitInfo.pWaitDstStageMask = NULL;
+	submitInfo.signalSemaphoreCount = 0;
+	submitInfo.pSignalSemaphores = NULL;
 	return submitInfo;
 }
 

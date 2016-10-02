@@ -30,7 +30,7 @@ public:
 	~Material();
 
 				//Deletes texture2D class data
-	void		Clear();
+	void		Clear(VkDevice device);
 
 				//sets texture data via memcpy
 	void		setLighting(GLXMATERIAL* material);

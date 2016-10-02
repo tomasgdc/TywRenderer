@@ -90,8 +90,56 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 class Renderer final: public VKRenderer
 {
+private:
+	// The pipeline (state objects) is a static store for the 3D pipeline states (including shaders)
+	// Other than OpenGL this makes you setup the render states up-front
+	// If different render states are required you need to setup multiple pipelines
+	// and switch between them
+	// Note that there are a few dynamic states (scissor, viewport, line width) that
+	// can be set from a command buffer and does not have to be part of the pipeline
+	// This basic example only uses one pipeline
+	VkPipeline pipeline;
+
+	// The pipeline layout defines the resource binding slots to be used with a pipeline
+	// This includes bindings for buffes (ubos, ssbos), images and sampler
+	// A pipeline layout can be used for multiple pipeline (state objects) as long as 
+	// their shaders use the same binding layout
+	VkPipelineLayout pipelineLayout;
+
+	// The descriptor set stores the resources bound to the binding points in a shader
+	// It connects the binding points of the different shaders with the buffers and images
+	// used for those bindings
+	VkDescriptorSet descriptorSet;
+
+	// The descriptor set layout describes the shader binding points without referencing
+	// the actual buffers. 
+	// Like the pipeline layout it's pretty much a blueprint and can be used with
+	// different descriptor sets as long as the binding points (and shaders) match
+	VkDescriptorSetLayout descriptorSetLayout;
+
+	// Synchronization semaphores
+	// Semaphores are used to synchronize dependencies between command buffers
+	// We use them to ensure that we e.g. don't present to the swap chain
+	// until all rendering has completed
+	struct
+	{
+		// Swap chain image presentation
+		VkSemaphore presentComplete;
+		// Command buffer submission and execution
+		VkSemaphore renderComplete;
+		// Text overlay submission and execution
+		VkSemaphore textOverlayComplete;
+	} Semaphores;
+
+public:
 	VkTools::VulkanTexture m_VkTexture;
 	VkFont*	m_VkFont;
+
+	struct {
+		VkBuffer buffer;
+		VkDeviceMemory memory;
+		VkDescriptorBufferInfo descriptor;
+	}  uniformDataVS;
 
 	struct {
 		glm::mat4 projectionMatrix;
@@ -109,41 +157,91 @@ class Renderer final: public VKRenderer
 	std::vector<VkDescriptorSet>  listDescriptros;
 	std::vector<uint32_t>		   meshSize;
 
+	RenderModelStatic staticModel;
 public:
-	Renderer() {}
-	~Renderer()
-	{
-		SAFE_DELETE(m_VkFont);
-	}
+	Renderer();
+	~Renderer();
 
 	void BuildCommandBuffers() override;
-
 	void UpdateUniformBuffers() override;
-
 	void PrepareUniformBuffers() override;
-
 	void PrepareVertices(bool useStagingBuffers) override;
-
 	void VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling) override;
-
 	void PreparePipeline() override;
-
-
 	void SetupDescriptorSet() override;
-
 	void SetupDescriptorSetLayout() override;
-
 	void SetupDescriptorPool() override;
-
 	void LoadAssets() override;
-
-
 	void StartFrame() override;
+	void PrepareSemaphore() override;
 
 
 	void ChangeLodBias(float delta);
 	void BeginTextUpdate();
 };
+
+
+
+void Renderer::PrepareSemaphore()
+{
+	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreCreateInfo.pNext = NULL;
+
+	// This semaphore ensures that the image is complete
+	// before starting to submit again
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.presentComplete));
+
+	// This semaphore ensures that all commands submitted
+	// have been finished before submitting the image to the queue
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.renderComplete));
+
+
+	// This semaphore ensures that all commands submitted
+	// have been finished before submitting the image to the queue
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.textOverlayComplete));
+}
+
+
+Renderer::Renderer()
+{
+
+}
+
+Renderer::~Renderer()
+{
+	SAFE_DELETE(m_VkFont);
+
+	//Delete memory
+	for (int i = 0; i < listLocalBuffers.size(); i++)
+	{
+		VkBufferObject::DeleteBufferMemory(m_pWRenderer->m_SwapChain.device, listLocalBuffers[i], nullptr);
+	}
+
+	//Delete data from static model
+	staticModel.Clear(m_pWRenderer->m_SwapChain.device);
+
+
+	//Destroy Shader Module
+	for (int i = 0; i < m_ShaderModules.size(); i++)
+	{
+		vkDestroyShaderModule(m_pWRenderer->m_SwapChain.device, m_ShaderModules[i], nullptr);
+	}
+
+	//destroy uniform data
+	vkDestroyBuffer(m_pWRenderer->m_SwapChain.device, uniformDataVS.buffer, nullptr);
+	vkFreeMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory, nullptr);
+
+	//Release semaphores
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.presentComplete, nullptr);
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.renderComplete, nullptr);
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.textOverlayComplete, nullptr);
+
+	//DestroyPipeline
+	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, pipeline, nullptr);
+	vkDestroyPipelineLayout(m_pWRenderer->m_SwapChain.device, pipelineLayout, nullptr);
+	vkDestroyDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, descriptorSetLayout, nullptr);
+}
 
 void Renderer::ChangeLodBias(float delta)
 {
@@ -348,22 +446,14 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	m_VkFont->PrepareUniformBuffers();
 	m_VkFont->InitializeChars("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM-:.@1234567890", *m_pTextureLoader);
 	m_VkFont->PrepareResources(g_iDesktopWidth, g_iDesktopHeight);
-
-
 	BeginTextUpdate();
 
 
-	RenderModelStatic staticModel;
+
 	staticModel.InitFromFile("Geometry/teapot/teapoTriangulated.obj", GetAssetPath());
 
 
-	//RenderModelAssimp assimpModel;
-	//assimpModel.InitFromFile("Geometry/cyberwarrior/warrior.fxb", GetAssetPath());
-
-
-	
 	std::vector<VkBufferObject_s> listStagingBuffers;
-
 	listLocalBuffers.resize(staticModel.surfaces.size());
 	listStagingBuffers.resize(staticModel.surfaces.size());
 	listDescriptros.resize(staticModel.surfaces.size());

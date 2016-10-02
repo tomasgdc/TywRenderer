@@ -31,7 +31,7 @@ public:
 	bool						OBJLoad(std::string& fileName, std::string& filePath);
 	bool						ConvertOBJToModelSurfaces(const struct objModel_a* obj);
 
-	virtual void				Clear();
+	virtual void				Clear(VkDevice device);
 	virtual const char	*		getName() const;
 	virtual int					getSize() const;
 	void						setName(std::string name);
@@ -39,10 +39,13 @@ public:
 	void						addSurface(modelSurface_t& surface);
 public:
 	std::unordered_map<std::string, Material*>				m_material;
-	std::unordered_map<std::string, Material*>::iterator		it;
+	std::unordered_map<std::string, Material*>::iterator	it;
 
 	std::string										name;
 	std::vector<modelSurface_t>						surfaces;
+
+	//Stores number of materials loaded. Hack around till will figure out how to go around this problem.
+	std::unordered_map<std::string, uint32_t> materialSizes;
 };
 
 /*
@@ -80,9 +83,7 @@ struct vertIndex_t
 
 class TYWRENDERER_API MD5Mesh 
 {
-	
 	friend class				RenderModelMD5;
-
 public:
 	MD5Mesh();
 	~MD5Mesh();
@@ -94,7 +95,7 @@ public:
 
 	void						UpdateMesh(const MD5Mesh *mesh, std::vector<JointQuat>& joints, const	JointMat *entJointsInverted, deformInfo_t *surf);
 	//void						CalculateBounds(const idJointMat * entJoints, idBounds & bounds) const;
-	//int							NearestJoint(int a, int b, int c) const;
+	//int						NearestJoint(int a, int b, int c) const;
 
 public:
 	struct meshStructure
@@ -121,16 +122,18 @@ public:
 	uint32_t					numTris;			// number of triangles
 	uint32_t					numMeshJoints;		// number of mesh joints
 	uint32_t					surfaceNum;			// number of the static surface created for this mesh
+	uint32_t					numMaterials;		// number of materials
 	float						maxJointVertDist;	// maximum distance a vertex is separated from a joint
 	deformInfo_t *				deformInfo;			// used to create srfTriangles_t from base frames and new vertexes
 	int8_t *					meshJoints;			// the joints used by this mesh
 	Material *					shader;				// material applied to mesh
 };
 
-class TYWRENDERER_API RenderModelMD5 : public RenderModelStatic 
+class TYWRENDERER_API RenderModelMD5 final: public RenderModelStatic 
 {
 public:
-	virtual void				InitFromFile(std::string fileName, std::string filePath);
+	void				InitFromFile(std::string fileName, std::string filePath);
+	void				Clear(VkDevice device) override;
 	//virtual bool				LoadBinaryModel(idFile * file, const ID_TIME_T sourceTimeStamp);
 	//virtual void				WriteBinaryModel(idFile * file, ID_TIME_T *_timeStamp = NULL) const;
 	//virtual dynamicModel_t	IsDynamicModel() const;
@@ -199,7 +202,7 @@ public:
 	RenderModel *		InstantiateDynamicModel() override;
 	const char	*		getName() const override;
 	int				    getSize() const override;
-	void				Clear() override;
+	void				Clear(VkDevice device) override;
 
 public:
 	typedef std::unordered_map<std::string, Material*> MaterialMap;

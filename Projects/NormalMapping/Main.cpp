@@ -76,6 +76,48 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 class Renderer final: public VKRenderer
 {
+private:
+	// The pipeline (state objects) is a static store for the 3D pipeline states (including shaders)
+	// Other than OpenGL this makes you setup the render states up-front
+	// If different render states are required you need to setup multiple pipelines
+	// and switch between them
+	// Note that there are a few dynamic states (scissor, viewport, line width) that
+	// can be set from a command buffer and does not have to be part of the pipeline
+	// This basic example only uses one pipeline
+	VkPipeline pipeline;
+
+	// The pipeline layout defines the resource binding slots to be used with a pipeline
+	// This includes bindings for buffes (ubos, ssbos), images and sampler
+	// A pipeline layout can be used for multiple pipeline (state objects) as long as 
+	// their shaders use the same binding layout
+	VkPipelineLayout pipelineLayout;
+
+	// The descriptor set stores the resources bound to the binding points in a shader
+	// It connects the binding points of the different shaders with the buffers and images
+	// used for those bindings
+	VkDescriptorSet descriptorSet;
+
+	// The descriptor set layout describes the shader binding points without referencing
+	// the actual buffers. 
+	// Like the pipeline layout it's pretty much a blueprint and can be used with
+	// different descriptor sets as long as the binding points (and shaders) match
+	VkDescriptorSetLayout descriptorSetLayout;
+
+	// Synchronization semaphores
+	// Semaphores are used to synchronize dependencies between command buffers
+	// We use them to ensure that we e.g. don't present to the swap chain
+	// until all rendering has completed
+	struct
+	{
+		// Swap chain image presentation
+		VkSemaphore presentComplete;
+		// Command buffer submission and execution
+		VkSemaphore renderComplete;
+		// Text overlay submission and execution
+		VkSemaphore textOverlayComplete;
+	} Semaphores;
+
+
 	VkTools::VulkanTexture m_NormalTexture;
 	VkTools::VulkanTexture m_DiffuseTexture;
 
@@ -88,35 +130,113 @@ class Renderer final: public VKRenderer
 		float lodBias = 0.0f;
 	}m_uboVS;
 
+	struct {
+		VkBuffer buffer;
+		VkDeviceMemory memory;
+		VkDescriptorBufferInfo descriptor;
+	}  uniformDataVS;
+
+	struct {
+		VkBuffer buf;
+		VkDeviceMemory mem;
+		VkPipelineVertexInputStateCreateInfo inputState;
+		std::vector<VkVertexInputBindingDescription> bindingDescriptions;
+		std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+	} vertices;
+
+	struct {
+		int count;
+		VkBuffer buf;
+		VkDeviceMemory mem;
+	} indices;
 
 public:
-	Renderer() {}
-	~Renderer(){}
+	Renderer();
+	~Renderer();
 
 	void BuildCommandBuffers() override;
-
 	void UpdateUniformBuffers() override;
-
 	void PrepareUniformBuffers() override;
-
 	void PrepareVertices(bool useStagingBuffers) override;
-
 	void VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling) override;
-
 	void PreparePipeline() override;
-
-
 	void SetupDescriptorSet() override;
-
 	void SetupDescriptorSetLayout() override;
-
 	void SetupDescriptorPool() override;
-
 	void LoadAssets() override;
-
+	void StartFrame() override;
+	void PrepareSemaphore() override;
 
 	void ChangeLodBias(float delta);
 };
+
+
+Renderer::Renderer()
+{
+
+}
+
+Renderer::~Renderer()
+{
+	//Destroy texture
+	vkDestroyImageView(m_pWRenderer->m_SwapChain.device, m_DiffuseTexture.view, nullptr);
+	vkDestroyImage(m_pWRenderer->m_SwapChain.device, m_DiffuseTexture.image, nullptr);
+	vkFreeMemory(m_pWRenderer->m_SwapChain.device, m_DiffuseTexture.deviceMemory, nullptr);
+	vkDestroySampler(m_pWRenderer->m_SwapChain.device, m_DiffuseTexture.sampler, nullptr);
+
+	vkDestroyImageView(m_pWRenderer->m_SwapChain.device, m_NormalTexture.view, nullptr);
+	vkDestroyImage(m_pWRenderer->m_SwapChain.device, m_NormalTexture.image, nullptr);
+	vkFreeMemory(m_pWRenderer->m_SwapChain.device, m_NormalTexture.deviceMemory, nullptr);
+	vkDestroySampler(m_pWRenderer->m_SwapChain.device, m_NormalTexture.sampler, nullptr);
+
+	//Destroy Shader Module
+	for (int i = 0; i < m_ShaderModules.size(); i++)
+	{
+		vkDestroyShaderModule(m_pWRenderer->m_SwapChain.device, m_ShaderModules[i], nullptr);
+	}
+
+	//Release semaphores
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.presentComplete, nullptr);
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.renderComplete, nullptr);
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.textOverlayComplete, nullptr);
+
+	//DestroyPipeline
+	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, pipeline, nullptr);
+	vkDestroyPipelineLayout(m_pWRenderer->m_SwapChain.device, pipelineLayout, nullptr);
+
+	vkDestroyDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, descriptorSetLayout, nullptr);
+
+	//DestroyBuffer
+	vkDestroyBuffer(m_pWRenderer->m_SwapChain.device, uniformDataVS.buffer, nullptr);
+	vkDestroyBuffer(m_pWRenderer->m_SwapChain.device, indices.buf, nullptr);
+	vkDestroyBuffer(m_pWRenderer->m_SwapChain.device, vertices.buf, nullptr);
+
+	//Free memory
+	vkFreeMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory, nullptr);
+	vkFreeMemory(m_pWRenderer->m_SwapChain.device, indices.mem, nullptr);
+	vkFreeMemory(m_pWRenderer->m_SwapChain.device, vertices.mem, nullptr);
+}
+
+void Renderer::PrepareSemaphore()
+{
+	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreCreateInfo.pNext = NULL;
+
+	// This semaphore ensures that the image is complete
+	// before starting to submit again
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.presentComplete));
+
+	// This semaphore ensures that all commands submitted
+	// have been finished before submitting the image to the queue
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.renderComplete));
+
+
+	// This semaphore ensures that all commands submitted
+	// have been finished before submitting the image to the queue
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.textOverlayComplete));
+}
+
 
 void Renderer::ChangeLodBias(float delta)
 {
@@ -802,7 +922,57 @@ void Renderer::SetupDescriptorSet()
 }
 
 
+void Renderer::StartFrame()
+{
+	{
+		// Get next image in the swap chain (back/front buffer)
+		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.GetNextImage(Semaphores.presentComplete, &m_pWRenderer->m_currentBuffer));
 
+		// Submit the post present image barrier to transform the image back to a color attachment
+		// that can be used to write to by our render pass
+		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_pWRenderer->m_PostPresentCmdBuffers[m_pWRenderer->m_currentBuffer];
+
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+		// Make sure that the image barrier command submitted to the queue 
+		// has finished executing
+		VK_CHECK_RESULT(vkQueueWaitIdle(m_pWRenderer->m_Queue));
+	}
+
+
+
+	{
+		// The submit infor strcuture contains a list of
+		// command buffers and semaphores to be submitted to a queue
+		// If you want to submit multiple command buffers, pass an array
+		VkPipelineStageFlags pipelineStages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
+		submitInfo.pWaitDstStageMask = &pipelineStages;
+		// The wait semaphore ensures that the image is presented 
+		// before we start submitting command buffers agein
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &Semaphores.presentComplete;
+		// Submit the currently active command buffer
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_pWRenderer->m_DrawCmdBuffers[m_pWRenderer->m_currentBuffer];
+		// The signal semaphore is used during queue presentation
+		// to ensure that the image is not rendered before all
+		// commands have been submitted
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
+
+		// Submit to the graphics queue
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+		// Present the current buffer to the swap chain
+		// We pass the signal semaphore from the submit info
+		// to ensure that the image is not rendered until
+		// all commands have been submitted
+		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.QueuePresent(m_pWRenderer->m_Queue, m_pWRenderer->m_currentBuffer, Semaphores.renderComplete));
+	}
+}
 
 void Renderer::LoadAssets()
 {

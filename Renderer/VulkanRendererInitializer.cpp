@@ -41,16 +41,16 @@ VulkanRendererInitializer::VulkanRendererInitializer(): m_bPrepared(false)
 VulkanRendererInitializer::~VulkanRendererInitializer()
 {
 	// Clean up Vulkan resources
-	m_SwapChain.Cleanup();
 	if (m_DescriptorPool != VK_NULL_HANDLE)
 	{
 		vkDestroyDescriptorPool(m_SwapChain.device, m_DescriptorPool, nullptr);
 	}
+
 	if (m_SetupCmdBuffer != VK_NULL_HANDLE)
 	{
 		vkFreeCommandBuffers(m_SwapChain.device, m_CmdPool, 1, &m_SetupCmdBuffer);
-
 	}
+
 
 	//destroy command buffers
 	vkFreeCommandBuffers(m_SwapChain.device, m_CmdPool, static_cast<uint32_t>(m_DrawCmdBuffers.size()), m_DrawCmdBuffers.data());
@@ -69,13 +69,15 @@ VulkanRendererInitializer::~VulkanRendererInitializer()
 	vkFreeMemory(m_SwapChain.device, m_DepthStencil.mem, nullptr);
 
 	vkDestroyPipelineCache(m_SwapChain.device, m_PipelineCache, nullptr);
-
-
 	vkDestroyCommandPool(m_SwapChain.device, m_CmdPool, nullptr);
 
 	vkDestroySemaphore(m_SwapChain.device, m_Semaphores.presentComplete, nullptr);
 	vkDestroySemaphore(m_SwapChain.device, m_Semaphores.renderComplete, nullptr);
 	vkDestroySemaphore(m_SwapChain.device, m_Semaphores.textOverlayComplete, nullptr);
+
+	//Clean swapchain
+	m_SwapChain.Cleanup();
+
 	vkDestroyDevice(m_SwapChain.device, nullptr);
 	vkDestroyInstance(m_SwapChain.instance, nullptr);
 

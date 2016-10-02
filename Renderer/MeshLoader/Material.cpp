@@ -5,6 +5,8 @@
 */
 #include <RendererPch\stdafx.h>
 
+//Vulkan Includes
+#include <External\vulkan\vulkan.h>
 
 //Renderer Includes
 #include "Vulkan\VulkanTextureLoader.h"
@@ -86,11 +88,17 @@ void Material::setTexture(VkTools::VulkanTexture* texture, bool copy) {
 Clear
 ========================
 */
-void Material::Clear() {
+void Material::Clear(VkDevice device) 
+{
 	if (!m_texture)return;
 
-//	m_texture->DeleteFileData();
-//	m_texture->Clear();
+	//Delete texture data from gpu
+	vkDestroyImageView(device, m_texture->view, nullptr);
+	vkDestroyImage(device, m_texture->image, nullptr);
+	vkFreeMemory(device, m_texture->deviceMemory, nullptr);
+	vkDestroySampler(device, m_texture->sampler, nullptr);
+
+	//Delete 
 	SAFE_DELETE(m_texture);
 }
 
@@ -99,6 +107,7 @@ void Material::Clear() {
 ~Material
 ========================
 */
-Material::~Material() {
-	//Clear();
+Material::~Material() 
+{
+
 }

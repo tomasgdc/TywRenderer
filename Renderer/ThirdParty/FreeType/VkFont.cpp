@@ -57,7 +57,6 @@ VkFont::VkFont(VkPhysicalDevice physicalDevice,
 	this->frameBufferHeight = framebufferheight;
 
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &deviceMemoryProperties);
-	cmdBuffers.resize(framebuffers.size());
 }
 
 /*
@@ -206,51 +205,60 @@ void VkFont::AddText(float x, float y, float ws, float hs, const std::string& te
 	}
 }
 
-/*
-=======================================
-VkFont::Release()
-=======================================
-*/
-bool VkFont::Release() {
-	if (!data->Release()) 
-	{
-		return false;
-	}
-
-	//ufffffff
-	for (auto& t : glyphs)
-	{
-		vkDestroyImageView(device, t.second->view, nullptr);
-		vkDestroyImage(device, t.second->image, nullptr);
-		vkDestroySampler(device, t.second->sampler, nullptr);
-		vkFreeMemory(device, t.second->deviceMemory, nullptr);
-	}
-	SAFE_DELETE(data);
-
-
-
-	// Free up all Vulkan resources requested by the text overlay
-	vkDestroyBuffer(device, m_BufferData.buffer, nullptr);
-	vkFreeMemory(device, m_BufferData.memory, nullptr);
-
-	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-	vkDestroyPipelineCache(device, pipelineCache, nullptr);
-	vkDestroyPipeline(device, pipeline, nullptr);
-	vkDestroyRenderPass(device, renderPass, nullptr);
-	vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(cmdBuffers.size()), cmdBuffers.data());
-	vkDestroyCommandPool(device, commandPool, nullptr);
-	return true;
-}
 
 /*
 =============================
 ~VkFont
 =============================
 */
-VkFont::~VkFont() {
-	//Release();
+VkFont::~VkFont() 
+{
+	//Delete textures
+	for (auto& texture : glyphs)
+	{
+		VkTools::VulkanTexture* pTexture = texture.second;
+
+		vkDestroyImageView(device, pTexture->view, nullptr);
+		vkDestroyImage(device, pTexture->image, nullptr);
+		vkFreeMemory(device, pTexture->deviceMemory, nullptr);
+		vkDestroySampler(device, pTexture->sampler, nullptr);
+	}
+
+	//Delete data
+	VkBufferObject::DeleteBufferMemory(device, m_BufferData, nullptr);
+	vkDestroyBuffer(device, uniformDataVS.buffer, nullptr);
+	vkFreeMemory(device, uniformDataVS.memory, nullptr);
+
+	//check if something went wrong
+	assert(data->Release() && "Could not delete GlyphData");
+
+	//delete glyph data
+	SAFE_DELETE(data);
+
+	//Destroy Shader Modules
+	for (int i = 0; i < m_ShaderModules.size(); i++)
+	{
+		vkDestroyShaderModule(device, m_ShaderModules[i], nullptr);
+	}
+
+	if (commandPool != VK_NULL_HANDLE)
+	{
+		//Delete Commands
+		vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(cmdBuffers.size()), cmdBuffers.data());
+	}
+
+
+	vkDestroyPipeline(device, pipeline, nullptr);
+	vkDestroyRenderPass(device, renderPass, nullptr);
+	vkDestroyPipelineLayout(device, pipelineLayout , nullptr);
+
+	//Desotry descriptor layout
+	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+
+	//Destroy cache and pool
+	vkDestroyPipelineCache(device, pipelineCache, nullptr);
+	vkDestroyCommandPool(device, commandPool, nullptr);
+	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 }
 
 
@@ -492,6 +500,8 @@ void VkFont::PrepareResources(uint32_t width, uint32_t height)
 	cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 	VK_CHECK_RESULT(vkCreateCommandPool(device, &cmdPoolInfo, nullptr, &commandPool));
 
+	//Allocate cmd buffer size
+	cmdBuffers.resize(frameBuffers.size());
 
 	VkCommandBufferAllocateInfo cmdBufAllocateInfo =
 		VkTools::Initializer::CommandBufferAllocateInfo(
@@ -499,6 +509,7 @@ void VkFont::PrepareResources(uint32_t width, uint32_t height)
 			VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 			(uint32_t)cmdBuffers.size());
 
+	
 	VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &cmdBufAllocateInfo, cmdBuffers.data()));
 
 

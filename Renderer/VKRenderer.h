@@ -139,7 +139,7 @@ public:
 	void SwapCommandBuffers_FinnishRendering(uint64_t* gpuMicroSec);
 
 	// Create synchronzation semaphores
-	void PrepareSemaphore();
+	virtual void PrepareSemaphore();
 
 
 	//ovverridable
@@ -202,95 +202,11 @@ protected:
 	VulkanRendererInitializer			*m_pWRenderer;
 	VkTools::VulkanTextureLoader		*m_pTextureLoader;
 	ImageManager						*m_pImageManager;
-
 protected:
-	// The pipeline (state objects) is a static store for the 3D pipeline states (including shaders)
-	// Other than OpenGL this makes you setup the render states up-front
-	// If different render states are required you need to setup multiple pipelines
-	// and switch between them
-	// Note that there are a few dynamic states (scissor, viewport, line width) that
-	// can be set from a command buffer and does not have to be part of the pipeline
-	// This basic example only uses one pipeline
-	VkPipeline pipeline;
-
-	// The pipeline layout defines the resource binding slots to be used with a pipeline
-	// This includes bindings for buffes (ubos, ssbos), images and sampler
-	// A pipeline layout can be used for multiple pipeline (state objects) as long as 
-	// their shaders use the same binding layout
-	VkPipelineLayout pipelineLayout;
-
-	// The descriptor set stores the resources bound to the binding points in a shader
-	// It connects the binding points of the different shaders with the buffers and images
-	// used for those bindings
-	VkDescriptorSet descriptorSet;
-
-	// The descriptor set layout describes the shader binding points without referencing
-	// the actual buffers. 
-	// Like the pipeline layout it's pretty much a blueprint and can be used with
-	// different descriptor sets as long as the binding points (and shaders) match
-	VkDescriptorSetLayout descriptorSetLayout;
-
-	// Synchronization semaphores
-	// Semaphores are used to synchronize dependencies between command buffers
-	// We use them to ensure that we e.g. don't present to the swap chain
-	// until all rendering has completed
-	struct {
-		// Swap chain image presentation
-		VkSemaphore presentComplete;
-		// Command buffer submission and execution
-		VkSemaphore renderComplete;
-		// Text overlay submission and execution
-		VkSemaphore textOverlayComplete;
-	} Semaphores;
-
-
 	// List of shader modules created (stored for cleanup)
 	std::vector<VkShaderModule> m_ShaderModules;
 
-
 	VkClearColorValue defaultClearColor = { { 0.5f, 0.5f, 0.5f, 1.0f } };
-
-
-
-	struct {
-		VkBuffer buf;
-		VkDeviceMemory mem;
-		VkPipelineVertexInputStateCreateInfo inputState;
-		std::vector<VkVertexInputBindingDescription> bindingDescriptions;
-		std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-	} vertices;
-
-	struct {
-		int count;
-		VkBuffer buf;
-		VkDeviceMemory mem;
-	} indices;
-
-	struct {
-		VkBuffer buffer;
-		VkDeviceMemory memory;
-		VkDescriptorBufferInfo descriptor;
-	}  uniformDataVS;
-
-
-	// For simplicity we use the same uniform block layout as in the shader:
-	//
-	//	layout(set = 0, binding = 0) uniform UBO
-	//	{
-	//		mat4 projectionMatrix;
-	//		mat4 modelMatrix;
-	//		mat4 viewMatrix;
-	//	} ubo;
-	//
-	// This way we can just memcopy the ubo data to the ubo
-	// Note that you should be using data types that align with the GPU
-	// in order to avoid manual padding
-	struct {
-		glm::mat4 projectionMatrix;
-		glm::mat4 modelMatrix;
-		glm::mat4 viewMatrix;
-	} uboVS;
-
 
 	// Defines a frame rate independent timer value clamped from -1.0...1.0
 	// For use in animations, rotations, etc.
@@ -302,9 +218,6 @@ protected:
 
 	uint32_t m_WindowWidth;
 	uint32_t m_WindowHeight;
-
-	// Last frame time, measured using a high performance timer (if available)
-
 public:
 	// fps timer (one second interval)
 	float fpsTimer = 0.0f;
@@ -367,6 +280,5 @@ extern void				R_AllocStaticTriSurfIndexes(srfTriangles_t *tri, int numIndexes);
 extern void				R_FreeStaticTriSurfSilIndexes(srfTriangles_t *tri);
 extern void				R_FreeStaticTriSurf(srfTriangles_t *tri);
 extern void				R_FreeStaticTriSurfVerts(srfTriangles_t *tri);
-
 extern void				R_CreateStaticBuffersForTri(srfTriangles_t & tri);
 //=============================================

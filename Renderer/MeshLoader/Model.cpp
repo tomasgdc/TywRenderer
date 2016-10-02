@@ -5,6 +5,9 @@
 */
 #include <RendererPch\stdafx.h>
 
+//Vulkan Includes
+#include <External\vulkan\vulkan.h>
+
 //Renderer Includes
 #include "Model_local.h"
 #include "Model_obj.h"
@@ -100,8 +103,7 @@ bool RenderModelStatic::ConvertOBJToModelSurfaces(const struct objModel_a* obj) 
 	objMesh_t*			mesh;
 	modelSurface_t		surf, *modelSurf;
 
-	//Stores number of materials loaded. Hack around till will figure out how to go around this problem.
-	std::unordered_map<std::string, uint32_t> materialSizes;
+
 
 	//Loads image if it was not stored in globalImage
 	for (materialNum = 0; materialNum < obj->materials.size(); materialNum++) 
@@ -305,18 +307,31 @@ void RenderModelStatic::FreeSurfaceTriangles(srfTriangles_t *tris) {
 Clear
 =========================
 */
-void RenderModelStatic::Clear() {
+void RenderModelStatic::Clear(VkDevice device) 
+{
 	std::vector<modelSurface_t>::iterator			m_it;
-	for (m_it = surfaces.begin(); m_it != surfaces.end(); ++m_it) {
+	int j = 0;
+	for (m_it = surfaces.begin(); m_it != surfaces.end(); m_it++)
+	{
 		FreeSurfaceTriangles(m_it->geometry);
 	}
 	surfaces.clear();
 
-	for (it = m_material.begin(); it != m_material.end(); ++it) {
-		it->second->Clear();
-		SAFE_DELETE(it->second);
+	std::unordered_map<std::string, uint32_t>::iterator msizes_it = materialSizes.begin();
+	for (auto& material: m_material)
+	{
+		Material* pMaterial = material.second;
+		uint32_t numbOfMaterials = msizes_it->second;
+
+		for (int i = 0; i < numbOfMaterials; i++)
+		{
+			pMaterial[i].Clear(device);
+		}
+		SAFE_DELETE_ARRAY(pMaterial);
+
+		//Increase
+		msizes_it++;
 	}
-	m_material.clear();
 }
 
 

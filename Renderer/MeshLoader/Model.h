@@ -4,6 +4,7 @@
 *	This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
 */
 #pragma once
+#include <External\vulkan\vulkan.h>
 #include <Renderer\Geometry\VertData.h>
 #include <Renderer\Geometry\JointTransform.h>
 
@@ -90,5 +91,5 @@ public:
 
 	//Deletes any data that was stored in class. 
 	//Each derived class can have different clearing implementation
-	virtual void				Clear() = 0;
+	virtual void				Clear(VkDevice device) = 0;
 };

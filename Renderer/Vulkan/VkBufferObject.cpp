@@ -106,6 +106,15 @@ VkResult VkBufferObject::SubmitCommandBuffer(const VkQueue& copyQueue, const VkC
 	return VK_SUCCESS;
 }
 
+void VkBufferObject::DeleteBufferMemory(VkDevice device, VkBufferObject_s& buffer, const VkAllocationCallbacks* pAllocator)
+{
+	if(buffer.buffer != VK_NULL_HANDLE)
+	{
+		vkDestroyBuffer(device, buffer.buffer, nullptr);
+		vkFreeMemory(device, buffer.memory, nullptr);
+	}
+}
+
 
 void VkBufferObject::BindVertexDescriptor(VkBufferObject_s& localBuffer)
 {

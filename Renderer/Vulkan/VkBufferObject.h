@@ -34,6 +34,7 @@ public:
 	//You can use this function if command buffer was not submitted
 	static VkResult SubmitCommandBuffer(const VkQueue& copyQueue,const VkCommandBuffer& copyCmd, const VulkanRendererInitializer& pRendInit);
 
+	static void DeleteBufferMemory(VkDevice device, VkBufferObject_s& buffer, const VkAllocationCallbacks* pAllocator);
 public:
 	//Vertex
 	static void BindVertexDescriptor(VkBufferObject_s& localBuffer);
