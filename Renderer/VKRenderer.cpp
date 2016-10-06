@@ -48,7 +48,7 @@ VKRenderer::~VKRenderer()
 
 void VKRenderer::VShutdown()
 {
-	ImGui_ImplGlfwGL3_Shutdown();
+	ImGui_ImplGlfwVulkan_Shutdown();
 	m_pWRenderer->DestroyRendererScreen();
 }
 

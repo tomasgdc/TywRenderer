@@ -250,17 +250,20 @@ void				R_CreateStaticBuffersForTri(srfTriangles_t & tri);
 
 
 /*
-TESTING
+IMGUI - ON TEST PHASE AT THE MOMENT
 */
-TYWRENDERER_API bool		ImGui_ImplGlfwGL3_Init(IRendererInitializer *m_pWRenderer, bool install_callbacks);
-TYWRENDERER_API void        ImGui_ImplGlfwGL3_Shutdown();
-TYWRENDERER_API void		ImGui_ImplGlfwGL3_NewFrame(double dCurrentTime,  struct Win32vars & winVars);
+TYWRENDERER_API bool		ImGui_ImplGlfwVulkan_Init(VulkanRendererInitializer *m_pWRenderer, bool install_callbacks);
+TYWRENDERER_API void        ImGui_ImplGlfwVulkan_Shutdown();
+TYWRENDERER_API void        ImGui_ImplGlfwVulkan_NewFrame(double current_time);
+TYWRENDERER_API void        ImGui_ImplGlfwVulkan_Render(VkCommandBuffer command_buffer);
+TYWRENDERER_API void		ImGui_Render();
+
 
 // Use if you want to reset your rendering device without losing ImGui state.
-TYWRENDERER_API void        ImGui_ImplGlfwGL3_InvalidateDeviceObjects();
-TYWRENDERER_API bool        ImGui_ImplGlfwGL3_CreateDeviceObjects();
-TYWRENDERER_API bool		ImGui_ImplGlfwGL3_CreateFontsTexture();
-TYWRENDERER_API bool		ImguiRender();
+TYWRENDERER_API void        ImGui_ImplGlfwVulkan_InvalidateFontUploadObjects();
+TYWRENDERER_API void        ImGui_ImplGlfwVulkan_InvalidateDeviceObjects();
+TYWRENDERER_API bool        ImGui_ImplGlfwVulkan_CreateFontsTexture(VkCommandBuffer command_buffer);
+TYWRENDERER_API bool        ImGui_ImplGlfwVulkan_CreateDeviceObjects();
 //
 
 

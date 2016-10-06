@@ -3,6 +3,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+#define GLUS_PI 3.1415926535897932384626433832795
 
 in VS_OUT
 {
@@ -18,6 +19,10 @@ layout (binding = 3) uniform sampler2D samplerSpecular;
 
 
 layout (location = 0) out vec4 outFragColor;
+
+
+
+
 void main() 
 {
 	vec3 diffuseTexture = vec3(1.0f, 0.5f, 0.0f);
@@ -30,7 +35,7 @@ void main()
 
 
     // Calculate R ready for use in Phong lighting.
-    vec3 R = reflect(-L, fs_in.normal);
+    vec3 R = reflect(-V, fs_in.normal);
 
 
     // Calculate diffuse color with simple N dot L.
@@ -40,9 +45,9 @@ void main()
 
     // Assume that specular albedo is white - it could also come from a texture
     vec3 specular_albedo = vec3(1.0);
-
-    // Calculate Phong specular highlight
-    vec3 specular =  max(pow(dot(R, V), 20.0), 0.0) * specularTexture;
+	
+	//Specular light calculation
+	vec3 specular =  max(pow(dot(R, V), 20.0), 0.0) * specularTexture;
 
 
     // Final color is diffuse + specular

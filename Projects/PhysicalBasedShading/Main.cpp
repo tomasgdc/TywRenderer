@@ -33,6 +33,9 @@
 //math
 #include <External\glm\glm\gtc\matrix_inverse.hpp>
 
+//ImGui
+#include <Renderer\ThirdParty\ImGui\imgui.h>
+
 
 //Global variables
 //====================================================================================
@@ -730,6 +733,9 @@ void Renderer::StartFrame()
 
 
 	{
+		//ImGUI Render
+		ImGui_ImplGlfwVulkan_Render(m_pWRenderer->m_DrawCmdBuffers[m_pWRenderer->m_currentBuffer]);
+
 
 		//Submit model
 		VkPipelineStageFlags submitPipelineStages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
@@ -797,6 +803,35 @@ void Renderer::StartFrame()
 void Renderer::LoadAssets()
 {
 	m_VkFont = TYW_NEW VkFont(m_pWRenderer->m_SwapChain.physicalDevice, m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_Queue, m_pWRenderer->m_FrameBuffers, m_pWRenderer->m_SwapChain.colorFormat, m_pWRenderer->m_SwapChain.depthFormat, &m_WindowWidth, &m_WindowHeight);
+
+	//Load Imgui
+	ImGui_ImplGlfwVulkan_Init(m_pWRenderer, false);
+
+
+	//Create command buffer
+	VkCommandBuffer cmd;
+	VkCommandBufferAllocateInfo cmdBufAllocateInfo =
+		VkTools::Initializer::CommandBufferAllocateInfo(
+			m_pWRenderer->m_CmdPool,
+			VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+			1);
+
+	VK_CHECK_RESULT(vkAllocateCommandBuffers(m_pWRenderer->m_SwapChain.device, &cmdBufAllocateInfo, &cmd));
+	VkCommandBufferBeginInfo cmdBufInfo = VkTools::Initializer::CommandBufferBeginInfo();
+	VK_CHECK_RESULT(vkBeginCommandBuffer(cmd, &cmdBufInfo));
+
+	ImGui_ImplGlfwVulkan_CreateFontsTexture(cmd);
+
+	VK_CHECK_RESULT(vkEndCommandBuffer(cmd));
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &cmd;
+
+	VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+	VK_CHECK_RESULT(vkQueueWaitIdle(m_pWRenderer->m_Queue));
+	vkFreeCommandBuffers(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_CmdPool, 1, &cmd);
+	ImGui_ImplGlfwVulkan_InvalidateFontUploadObjects();
 }
 
 
@@ -816,6 +851,9 @@ int main()
 		if (!GenerateEvents(msg))break;
 
 		auto tStart = std::chrono::high_resolution_clock::now();
+		ImGui_ImplGlfwVulkan_NewFrame(g_Renderer.frameTimer);
+		ImGui_Render();
+
 		g_Renderer.StartFrame();
 		//Do something
 		g_Renderer.EndFrame(nullptr);

@@ -35,6 +35,11 @@ public:
 	virtual bool CreateRendererScreen(uint32_t height, uint32_t widht, bool isFullscreen, LRESULT (CALLBACK MainWindowProc)(HWND, UINT, WPARAM, LPARAM)) = 0;
 	virtual void DestroyRendererScreen() = 0;
 	virtual void RendererSwapBuffers() = 0;
+
+#if defined (WIN32) || defined(_WIN32) //Start of Windows
+	virtual HWND GetWind32Handle() = 0;
+#endif
+
 };
 
 

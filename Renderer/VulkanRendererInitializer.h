@@ -36,6 +36,7 @@ public:
 	*/
 	void RendererSwapBuffers();
 
+	HWND GetWind32Handle() { return m_HwndWindows; }
 public:
 	VkResult CreateVulkanInstance(bool bEnableValidation);
 
