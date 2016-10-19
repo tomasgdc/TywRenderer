@@ -117,6 +117,8 @@ SET(SOURCES_VULKAN
 SOURCE_GROUP("Vulkan\\Header Files" FILES ${HEADERS_VULKAN})
 SOURCE_GROUP("Vulkan\\Source Files" FILES ${SOURCES_VULKAN})
 
+
+
 SET(HEADERS
 	"Camera.h"
 	"VulkanRendererInitializer.h"

@@ -4,7 +4,7 @@
 *	This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
 */
 #pragma once
-
+#define IMGUI_INCLUDE_IMCONFIG_H
 
 //forward declared
 namespace VkTools
@@ -180,6 +180,8 @@ public:
 	//overridable
 	virtual void SetupDescriptorSet();
 
+	//overridable
+	virtual void LoadGUI();
 protected:
 	//Log Renderer
 	FILE*                     m_LogFile;
@@ -251,11 +253,13 @@ void				R_CreateStaticBuffersForTri(srfTriangles_t & tri);
 
 /*
 IMGUI - ON TEST PHASE AT THE MOMENT
-*/
-TYWRENDERER_API bool		ImGui_ImplGlfwVulkan_Init(VulkanRendererInitializer *m_pWRenderer, bool install_callbacks);
+*/ 
+
+
+TYWRENDERER_API bool		ImGui_ImplGlfwVulkan_Init(VulkanRendererInitializer *m_pWRenderer, uint32_t *framebufferwidth, uint32_t *framebufferheight, bool install_callbacks);
 TYWRENDERER_API void        ImGui_ImplGlfwVulkan_Shutdown();
 TYWRENDERER_API void        ImGui_ImplGlfwVulkan_NewFrame(double current_time);
-TYWRENDERER_API void        ImGui_ImplGlfwVulkan_Render(VkCommandBuffer command_buffer);
+TYWRENDERER_API void        ImGui_ImplGlfwVulkan_Render(VkCommandBuffer command_buffer, uint32_t& bufferIndex);
 TYWRENDERER_API void		ImGui_Render();
 
 
@@ -264,6 +268,11 @@ TYWRENDERER_API void        ImGui_ImplGlfwVulkan_InvalidateFontUploadObjects();
 TYWRENDERER_API void        ImGui_ImplGlfwVulkan_InvalidateDeviceObjects();
 TYWRENDERER_API bool        ImGui_ImplGlfwVulkan_CreateFontsTexture(VkCommandBuffer command_buffer);
 TYWRENDERER_API bool        ImGui_ImplGlfwVulkan_CreateDeviceObjects();
+
+//Events. Yes horrible for now. But will work....
+TYWRENDERER_API	void		ImGui_ImplGlfwVulkan_SetMousePos(const uint32_t& mouseposx, const uint32_t& mouseposy);
+TYWRENDERER_API void		ImGui_ImplGlfwVulkan_MousePressed(bool bPressed);
+TYWRENDERER_API void		ImGui_ImplGlfwVulkan_MouseOnWinodws(bool bOnWindows);
 //
 
 

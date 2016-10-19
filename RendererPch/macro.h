@@ -52,7 +52,7 @@ Tywyll game engine design and functionality will be changed with time.
 	#define DLL_IMPORT __declspec(dllimport)
 #endif
 
-
+/*
 //Engine Export
 #ifdef TywEngine_EXPORTS
 	#define TYWENGINE_API DLL_EXPORT
@@ -81,7 +81,7 @@ Tywyll game engine design and functionality will be changed with time.
 #else
 	#define TYWPHYSICS_API DLL_IMPORT
 #endif
-
+*/
 
 //Renderer Export
 #ifdef TywRenderer_EXPORTS

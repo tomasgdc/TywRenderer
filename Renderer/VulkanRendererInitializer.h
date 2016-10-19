@@ -147,7 +147,7 @@ public:
 	VkDescriptorPool						m_DescriptorPool = VK_NULL_HANDLE;
 
 
-
+	VkFence									m_Fence;
 #if defined(_WIN32)
 	HINSTANCE								m_hinstance;
 	HWND									m_HwndWindows;

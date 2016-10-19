@@ -69,6 +69,7 @@ VulkanRendererInitializer::~VulkanRendererInitializer()
 	vkFreeMemory(m_SwapChain.device, m_DepthStencil.mem, nullptr);
 
 	vkDestroyPipelineCache(m_SwapChain.device, m_PipelineCache, nullptr);
+	vkDestroyFence(m_SwapChain.device, m_Fence, nullptr);
 	vkDestroyCommandPool(m_SwapChain.device, m_CmdPool, nullptr);
 
 	vkDestroySemaphore(m_SwapChain.device, m_Semaphores.presentComplete, nullptr);
@@ -242,6 +243,11 @@ bool VulkanRendererInitializer::PrepareVulkan(uint32_t width, uint32_t height)
 
 	// Recreate setup command buffer for derived class
 	CreateSetupCommandBuffer();
+
+	//Command buffer execution fence
+	VkFenceCreateInfo fenceCreateInfo = VkTools::Initializer::FenceCreateInfo();
+	VK_CHECK_RESULT(vkCreateFence(m_SwapChain.device, &fenceCreateInfo, nullptr, &m_Fence));
+
 	return true;
 }
 
@@ -1039,7 +1045,6 @@ void VulkanRendererInitializer::WindowResize(uint32_t width, uint32_t height)
 
 void VulkanRendererInitializer::DestroyCommandBuffers()
 {
-
 	vkFreeCommandBuffers(m_SwapChain.device, m_CmdPool, static_cast<uint32_t>(m_DrawCmdBuffers.size()), m_DrawCmdBuffers.data());
 	vkFreeCommandBuffers(m_SwapChain.device, m_CmdPool, static_cast<uint32_t>(m_DrawCmdBuffers.size()), m_PrePresentCmdBuffers.data());
 	vkFreeCommandBuffers(m_SwapChain.device, m_CmdPool, static_cast<uint32_t>(m_DrawCmdBuffers.size()), m_PostPresentCmdBuffers.data());

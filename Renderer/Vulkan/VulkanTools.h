@@ -93,7 +93,7 @@ namespace VkTools
 	namespace Initializer
 	{
 		TYWRENDERER_API VkSemaphoreCreateInfo SemaphoreCreateInfo();
-		TYWRENDERER_API VkFenceCreateInfo FenceCreateInfo(VkFenceCreateFlags flags);
+		TYWRENDERER_API VkFenceCreateInfo FenceCreateInfo(VkFenceCreateFlags flags = VK_FLAGS_NONE);
 		TYWRENDERER_API VkEventCreateInfo EventCreateInfo();
 
 		TYWRENDERER_API VkSubmitInfo SubmitInfo();

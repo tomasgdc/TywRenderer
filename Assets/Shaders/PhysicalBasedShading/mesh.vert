@@ -19,6 +19,13 @@ layout (binding = 0) uniform UBO
 	float lodBias;
 } ubo;
 
+layout(binding = 1) uniform LightData
+{
+	vec3 lightPos;
+	vec3 Kd;
+	vec3 Ks;
+}lightData;
+
 
 out VS_OUT
 {
@@ -26,13 +33,15 @@ out VS_OUT
     vec3 eyeDir;
     vec3 lightDir;
     vec3 normal;
+	vec3 Kd;
+	vec3 Ks;
 } vs_out;
 
 
 void main() 
 {
 	//Light pos in model space
-	vec3 lightPos = vec3(0,2, 10);
+	vec3 lightPos = lightData.lightPos;
 
 	//Calculate vertex position in view space
 	mat4 mvMatrix = ubo.viewMatrix * ubo.modelMatrix;
@@ -68,5 +77,7 @@ void main()
 
 
 	vs_out.texcoord = inUv;
+	vs_out.Kd = lightData.Kd;
+	vs_out.Ks = lightData.Ks;
 	gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(inPos.xyz, 1.0);
 }

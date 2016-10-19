@@ -564,12 +564,7 @@ void VkFont::EndTextUpdate()
 	pDataLocal = nullptr;
 	pData = nullptr;
 
-
-
-	VkCommandBufferBeginInfo cmdBufInfo = VkTools::Initializer::CommandBufferBeginInfo();
-
-	VkClearValue clearValues[1];
-	clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+	static VkClearValue clearValue{ 0.0f, 0.0f, 0.0f, 0.0f };
 
 	VkRenderPassBeginInfo renderPassBeginInfo = {};
 	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -580,9 +575,9 @@ void VkFont::EndTextUpdate()
 	renderPassBeginInfo.renderArea.extent.width = *frameBufferWidth;
 	renderPassBeginInfo.renderArea.extent.height = *frameBufferHeight;
 	renderPassBeginInfo.clearValueCount = 1;
-	renderPassBeginInfo.pClearValues = clearValues;
+	renderPassBeginInfo.pClearValues = &clearValue;
 
-
+	VkCommandBufferBeginInfo cmdBufInfo = VkTools::Initializer::CommandBufferBeginInfo();
 	for (int32_t i = 0; i < cmdBuffers.size(); ++i)
 	{
 		renderPassBeginInfo.framebuffer = *frameBuffers[i];
@@ -593,10 +588,10 @@ void VkFont::EndTextUpdate()
 
 		// Update dynamic viewport state
 		VkViewport viewport = {};
-		viewport.height = (float)*frameBufferHeight;
-		viewport.width = (float)*frameBufferWidth;
-		viewport.minDepth = (float) 0.0f;
-		viewport.maxDepth = (float) 1.0f;
+		viewport.height = static_cast<float>(*frameBufferHeight);
+		viewport.width = static_cast<float>(*frameBufferWidth);
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
 		vkCmdSetViewport(cmdBuffers[i], 0, 1, &viewport);
 
 		// Update dynamic scissor state
@@ -607,19 +602,18 @@ void VkFont::EndTextUpdate()
 		scissor.offset.y = 0;
 		vkCmdSetScissor(cmdBuffers[i], 0, 1, &scissor);
 
-
-
+		VkDeviceSize vertex_offset = 0;
 		vkCmdBindPipeline(cmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-		VkDeviceSize offsets = 0;
+		vkCmdBindVertexBuffers(cmdBuffers[i], 0, 1, &m_BufferData.buffer, &vertex_offset);
 
-
-		vkCmdBindVertexBuffers(cmdBuffers[i], 0, 1, &m_BufferData.buffer, &offsets);
+		uint32_t char_offset = 0;
 		for (uint32_t j = 0; j < text.size(); j++)
 		{
 			if (text[j] == ' ')continue; //skip space
 
+			char_offset = j * 6;
 			vkCmdBindDescriptorSets(cmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptors[text[j]], 0, NULL);
-			vkCmdDraw(cmdBuffers[i], 6, 1, j * 6, 0);
+			vkCmdDraw(cmdBuffers[i], 6, 1, char_offset,0);
 		}
 		vkCmdEndRenderPass(cmdBuffers[i]);
 		VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffers[i]));

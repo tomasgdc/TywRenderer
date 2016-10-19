@@ -27,7 +27,7 @@
 
 
 //Font Rendering
-#include <Renderer\ThirdParty\FreeType\VkFont.h>
+#include <Renderer\ThirdParty\ImGui\imgui.h>
 
 
 //math
@@ -132,11 +132,13 @@ private:
 		VkSemaphore renderComplete;
 		// Text overlay submission and execution
 		VkSemaphore textOverlayComplete;
+		//Imgui sumbission and excetuion
+		VkSemaphore guiComplete;
 	} Semaphores;
 
+	VkCommandBuffer  cmdGui;
 public:
 	VkTools::VulkanTexture m_VkTexture;
-	VkFont*	m_VkFont;
 
 	struct {
 		VkBuffer buffer;
@@ -152,6 +154,18 @@ public:
 		glm::vec4 viewPos;
 	}m_uboVS;
 
+	struct
+	{
+		glm::vec3 lightPos;
+		glm::vec3 Kd;
+		glm::vec3 Ks;
+	}m_UniformShaderData;
+
+	struct
+	{
+		VkTools::UniformData shaderData;
+	}m_descriptors;
+
 	uint32_t numVerts = 0;
 	uint32_t numUvs = 0;
 	uint32_t numNormals = 0;
@@ -160,7 +174,7 @@ public:
 	std::vector<VkDescriptorSet>  listDescriptros;
 	std::vector<uint32_t>		   meshSize;
 
-	RenderModelStatic staticModel;
+	RenderModelStatic			  staticModel;
 public:
 	Renderer();
 	~Renderer();
@@ -174,15 +188,21 @@ public:
 	void SetupDescriptorSet() override;
 	void SetupDescriptorSetLayout() override;
 	void SetupDescriptorPool() override;
-	void LoadAssets() override;
 	void StartFrame() override;
 	void PrepareSemaphore() override;
+	void LoadGUI() override;
 
 
-	void ChangeLodBias(float delta);
-	void BeginTextUpdate();
+	void SetupShaderData();
+	void ImguiRender();
 };
 
+
+
+void Renderer::SetupShaderData()
+{
+
+}
 
 
 void Renderer::PrepareSemaphore()
@@ -191,18 +211,10 @@ void Renderer::PrepareSemaphore()
 	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	semaphoreCreateInfo.pNext = NULL;
 
-	// This semaphore ensures that the image is complete
-	// before starting to submit again
 	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.presentComplete));
-
-	// This semaphore ensures that all commands submitted
-	// have been finished before submitting the image to the queue
 	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.renderComplete));
-
-
-	// This semaphore ensures that all commands submitted
-	// have been finished before submitting the image to the queue
 	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.textOverlayComplete));
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.guiComplete));
 }
 
 
@@ -213,7 +225,6 @@ Renderer::Renderer()
 
 Renderer::~Renderer()
 {
-	SAFE_DELETE(m_VkFont);
 
 	//Delete memory
 	for (int i = 0; i < listLocalBuffers.size(); i++)
@@ -235,6 +246,9 @@ Renderer::~Renderer()
 	vkDestroyBuffer(m_pWRenderer->m_SwapChain.device, uniformDataVS.buffer, nullptr);
 	vkFreeMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory, nullptr);
 
+	vkDestroyBuffer(m_pWRenderer->m_SwapChain.device, m_descriptors.shaderData.buffer, nullptr);
+	vkFreeMemory(m_pWRenderer->m_SwapChain.device, m_descriptors.shaderData.memory, nullptr);
+
 	//Release semaphores
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.presentComplete, nullptr);
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.renderComplete, nullptr);
@@ -246,26 +260,15 @@ Renderer::~Renderer()
 	vkDestroyDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, descriptorSetLayout, nullptr);
 }
 
-void Renderer::ChangeLodBias(float delta)
-{
 
-}
-
-
-void Renderer::BeginTextUpdate()
-{
-	m_VkFont->BeginTextUpdate();
-
-	std::stringstream ss;
-	ss << std::fixed << std::setprecision(2) << "ms-" << (frameTimer * 1000.0f) <<  "-fps-" << lastFPS;
-	m_VkFont->AddText(-0.22, -0.25, 0.001, 0.001, ss.str());
-
-	m_VkFont->EndTextUpdate();
-}
 
 
 void Renderer::BuildCommandBuffers()
 {
+	VkCommandBufferAllocateInfo cmdBufAllocateInfo = VkTools::Initializer::CommandBufferAllocateInfo(m_pWRenderer->m_CmdPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY,1);
+	VK_CHECK_RESULT(vkAllocateCommandBuffers(m_pWRenderer->m_SwapChain.device, &cmdBufAllocateInfo, &cmdGui));
+
+
 	VkCommandBufferBeginInfo cmdBufInfo = {};
 	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdBufInfo.pNext = NULL;
@@ -283,8 +286,8 @@ void Renderer::BuildCommandBuffers()
 	renderPassBeginInfo.renderPass = m_pWRenderer->m_RenderPass;
 	renderPassBeginInfo.renderArea.offset.x = 0;
 	renderPassBeginInfo.renderArea.offset.y = 0;
-	renderPassBeginInfo.renderArea.extent.width = g_iDesktopWidth;
-	renderPassBeginInfo.renderArea.extent.height = g_iDesktopHeight;
+	renderPassBeginInfo.renderArea.extent.width = m_WindowWidth;
+	renderPassBeginInfo.renderArea.extent.height = m_WindowHeight;
 	renderPassBeginInfo.clearValueCount = 2;
 	renderPassBeginInfo.pClearValues = clearValues;
 
@@ -302,16 +305,16 @@ void Renderer::BuildCommandBuffers()
 
 		// Update dynamic viewport state
 		VkViewport viewport = {};
-		viewport.height = (float)g_iDesktopHeight;
-		viewport.width = (float)g_iDesktopWidth;
-		viewport.minDepth = (float) 0.0f;
-		viewport.maxDepth = (float) 1.0f;
+		viewport.height = (float)m_WindowHeight;
+		viewport.width = (float)m_WindowWidth;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
 		vkCmdSetViewport(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &viewport);
 
 		// Update dynamic scissor state
 		VkRect2D scissor = {};
-		scissor.extent.width = g_iDesktopWidth;
-		scissor.extent.height = g_iDesktopHeight;
+		scissor.extent.width = m_WindowWidth;
+		scissor.extent.height = m_WindowHeight;
 		scissor.offset.x = 0;
 		scissor.offset.y = 0;
 		vkCmdSetScissor(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &scissor);
@@ -342,6 +345,7 @@ void Renderer::BuildCommandBuffers()
 
 		vkCmdEndRenderPass(m_pWRenderer->m_DrawCmdBuffers[i]);
 
+		/*
 		// Add a present memory barrier to the end of the command buffer
 		// This will transform the frame buffer color attachment to a
 		// new layout for presenting it to the windowing system integration 
@@ -367,6 +371,7 @@ void Renderer::BuildCommandBuffers()
 			0, nullptr,
 			1, &prePresentBarrier);
 
+		*/
 		VK_CHECK_RESULT(vkEndCommandBuffer(m_pWRenderer->m_DrawCmdBuffers[i]));
 
 	}
@@ -374,85 +379,102 @@ void Renderer::BuildCommandBuffers()
 
 void Renderer::UpdateUniformBuffers()
 {
-	// Update matrices
-	m_uboVS.projectionMatrix = glm::perspective(glm::radians(60.0f), (float)m_WindowWidth / (float)m_WindowHeight, 0.1f, 256.0f);
 
-	m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 5.0f, g_zoom));
+	{
+		m_uboVS.projectionMatrix = glm::perspective(glm::radians(60.0f), (float)m_WindowWidth / (float)m_WindowHeight, 0.1f, 256.0f);
 
-	m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 5.0f));
-	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-	m_uboVS.normal = glm::inverseTranspose(m_uboVS.modelMatrix);
+		m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 5.0f, g_zoom));
 
-	m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
+		m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 5.0f));
+		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+		m_uboVS.normal = glm::inverseTranspose(m_uboVS.modelMatrix);
 
-	// Map uniform buffer and update it
-	uint8_t *pData;
-	VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory, 0, sizeof(m_uboVS), 0, (void **)&pData));
-	memcpy(pData, &m_uboVS, sizeof(m_uboVS));
-	vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory);
+		m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
+
+		// Map uniform buffer and update it
+		uint8_t *pData;
+		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory, 0, sizeof(m_uboVS), 0, (void **)&pData));
+		memcpy(pData, &m_uboVS, sizeof(m_uboVS));
+		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory);
+	}
+
+
+	{
+		// Map uniform buffer and update it
+		uint8_t *pData;
+		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, m_descriptors.shaderData.memory, 0, sizeof(m_UniformShaderData), 0, (void **)&pData));
+		memcpy(pData, &m_UniformShaderData, sizeof(m_UniformShaderData));
+		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, m_descriptors.shaderData.memory);
+	}
 }
 
 void Renderer::PrepareUniformBuffers()
 {
-	// Prepare and initialize a uniform buffer block containing shader uniforms
-	// In Vulkan there are no more single uniforms like in GL
-	// All shader uniforms are passed as uniform buffer blocks 
-	VkMemoryRequirements memReqs;
+	{
+		VkMemoryRequirements memReqs;
 
-	// Vertex shader uniform buffer block
-	VkBufferCreateInfo bufferInfo = {};
-	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.pNext = NULL;
-	allocInfo.allocationSize = 0;
-	allocInfo.memoryTypeIndex = 0;
+		// Vertex shader uniform buffer block
+		VkBufferCreateInfo bufferInfo = {};
+		VkMemoryAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.pNext = NULL;
+		allocInfo.allocationSize = 0;
+		allocInfo.memoryTypeIndex = 0;
 
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = sizeof(m_uboVS);
-	bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = sizeof(m_uboVS);
+		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
-	// Create a new buffer
-	VK_CHECK_RESULT(vkCreateBuffer(m_pWRenderer->m_SwapChain.device, &bufferInfo, nullptr, &uniformDataVS.buffer));
-	// Get memory requirements including size, alignment and memory type 
-	vkGetBufferMemoryRequirements(m_pWRenderer->m_SwapChain.device, uniformDataVS.buffer, &memReqs);
-	allocInfo.allocationSize = memReqs.size;
-	// Get the memory type index that supports host visibile memory access
-	// Most implementations offer multiple memory tpyes and selecting the 
-	// correct one to allocate memory from is important
-	// We also want the buffer to be host coherent so we don't have to flush 
-	// after every update. 
-	// Note that this may affect performance so you might not want to do this 
-	// in a real world application that updates buffers on a regular base
-	allocInfo.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_pWRenderer->m_DeviceMemoryProperties);
-	// Allocate memory for the uniform buffer
-	VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &allocInfo, nullptr, &(uniformDataVS.memory)));
-	// Bind memory to buffer
-	VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.buffer, uniformDataVS.memory, 0));
+		// Create a new buffer
+		VK_CHECK_RESULT(vkCreateBuffer(m_pWRenderer->m_SwapChain.device, &bufferInfo, nullptr, &uniformDataVS.buffer));
+		vkGetBufferMemoryRequirements(m_pWRenderer->m_SwapChain.device, uniformDataVS.buffer, &memReqs);
+		allocInfo.allocationSize = memReqs.size;
+		allocInfo.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_pWRenderer->m_DeviceMemoryProperties);
+		VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &allocInfo, nullptr, &(uniformDataVS.memory)));
+		VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.buffer, uniformDataVS.memory, 0));
 
-	// Store information in the uniform's descriptor
-	uniformDataVS.descriptor.buffer = uniformDataVS.buffer;
-	uniformDataVS.descriptor.offset = 0;
-	uniformDataVS.descriptor.range = sizeof(m_uboVS);
+		uniformDataVS.descriptor.buffer = uniformDataVS.buffer;
+		uniformDataVS.descriptor.offset = 0;
+		uniformDataVS.descriptor.range = sizeof(m_uboVS);
+	}
+
+
+	{
+		VkMemoryRequirements memReqs;
+
+		// Vertex shader uniform buffer block
+		VkBufferCreateInfo bufferInfo = {};
+		VkMemoryAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.pNext = NULL;
+		allocInfo.allocationSize = 0;
+		allocInfo.memoryTypeIndex = 0;
+
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = sizeof(m_UniformShaderData);
+		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+		// Create a new buffer
+		VK_CHECK_RESULT(vkCreateBuffer(m_pWRenderer->m_SwapChain.device, &bufferInfo, nullptr, &m_descriptors.shaderData.buffer));
+		vkGetBufferMemoryRequirements(m_pWRenderer->m_SwapChain.device, m_descriptors.shaderData.buffer, &memReqs);
+		allocInfo.allocationSize = memReqs.size;
+		allocInfo.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_pWRenderer->m_DeviceMemoryProperties);
+		VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &allocInfo, nullptr, &(m_descriptors.shaderData.memory)));
+		VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, m_descriptors.shaderData.buffer, m_descriptors.shaderData.memory, 0));
+
+		// Store information in the uniform's descriptor
+		m_descriptors.shaderData.descriptor.buffer = m_descriptors.shaderData.buffer;
+		m_descriptors.shaderData.descriptor.offset = 0;
+		m_descriptors.shaderData.descriptor.range = sizeof(m_UniformShaderData);
+	}
 
 	UpdateUniformBuffers();
 }
 
 void Renderer::PrepareVertices(bool useStagingBuffers)
 {
-	//Create font pipeline
-	m_VkFont->CreateFontVk((GetAssetPath() + "Textures/freetype/AmazDooMLeft.ttf"), 64, 96);
-
-	m_VkFont->SetupDescriptorPool();
-	m_VkFont->SetupDescriptorSetLayout();
-	m_VkFont->PrepareUniformBuffers();
-	m_VkFont->InitializeChars("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM-:.@1234567890", *m_pTextureLoader);
-	m_VkFont->PrepareResources(g_iDesktopWidth, g_iDesktopHeight);
-	BeginTextUpdate();
-
-
-
 	staticModel.InitFromFile("Geometry/teapot/teapoTriangulated.obj", GetAssetPath());
 
 
@@ -475,7 +497,8 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		std::vector<VkWriteDescriptorSet> writeDescriptorSets =
 		{
 			//uniform descriptor
-			VkTools::Initializer::WriteDescriptorSet(listDescriptros[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	0,&uniformDataVS.descriptor)
+			VkTools::Initializer::WriteDescriptorSet(listDescriptros[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	0, &uniformDataVS.descriptor),
+			VkTools::Initializer::WriteDescriptorSet(listDescriptros[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	1, &m_descriptors.shaderData.descriptor)
 		};
 		//Update descriptor set
 		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, NULL);
@@ -665,6 +688,7 @@ void Renderer::SetupDescriptorSetLayout()
 	{
 		// Binding 0 : Vertex shader uniform buffer
 		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,0),
+		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,1),
 	};
 
 	VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());
@@ -734,7 +758,7 @@ void Renderer::StartFrame()
 
 	{
 		//ImGUI Render
-		ImGui_ImplGlfwVulkan_Render(m_pWRenderer->m_DrawCmdBuffers[m_pWRenderer->m_currentBuffer]);
+		ImGui_ImplGlfwVulkan_Render(cmdGui, m_pWRenderer->m_currentBuffer);
 
 
 		//Submit model
@@ -742,44 +766,29 @@ void Renderer::StartFrame()
 		VkPipelineStageFlags stageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
 
+		//Render model
+		{
+			submitInfo.commandBufferCount = 1;
+			submitInfo.signalSemaphoreCount = 1;
+			submitInfo.waitSemaphoreCount = 1;
 
-		submitInfo.pWaitDstStageMask = &submitPipelineStages;
+			submitInfo.pWaitDstStageMask = &submitPipelineStages;
+			submitInfo.pWaitSemaphores = &Semaphores.presentComplete;
+
+			submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
+			submitInfo.pCommandBuffers = &m_pWRenderer->m_DrawCmdBuffers[m_pWRenderer->m_currentBuffer];
+			VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+		}
 		
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &m_pWRenderer->m_DrawCmdBuffers[m_pWRenderer->m_currentBuffer];
-		
-		// Wait for swap chain presentation to finish
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &Semaphores.presentComplete;
+		//Now Render GUI
+		{
+			submitInfo.pWaitDstStageMask = &stageFlags;
 
-		//Signal ready for model render to complete
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
-		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
-
-
-		//Wait for color output before rendering text
-		submitInfo.pWaitDstStageMask = &stageFlags;
-
-		// Wait model rendering to finnish
-		submitInfo.pWaitSemaphores = &Semaphores.renderComplete;
-		//Signal ready for text to completeS
-		submitInfo.pSignalSemaphores = &Semaphores.textOverlayComplete;
-		
-		submitInfo.pCommandBuffers = &m_VkFont->cmdBuffers[m_pWRenderer->m_currentBuffer];
-		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
-
-
-		// Reset stage mask
-		submitInfo.pWaitDstStageMask = &submitPipelineStages;
-		// Reset wait and signal semaphores for rendering next frame
-		// Wait for swap chain presentation to finish
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &Semaphores.presentComplete;
-		// Signal ready with offscreen semaphore
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
-
+			submitInfo.pCommandBuffers = &cmdGui;
+			submitInfo.pWaitSemaphores = &Semaphores.renderComplete;
+			submitInfo.pSignalSemaphores = &Semaphores.guiComplete;
+			VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+		}
 	}
 
 	{
@@ -794,19 +803,15 @@ void Renderer::StartFrame()
 		// We pass the signal semaphore from the submit info
 		// to ensure that the image is not rendered until
 		// all commands have been submitted
-		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.QueuePresent(m_pWRenderer->m_Queue, m_pWRenderer->m_currentBuffer, Semaphores.textOverlayComplete));
+		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.QueuePresent(m_pWRenderer->m_Queue, m_pWRenderer->m_currentBuffer, Semaphores.guiComplete));
 	}
 }
 
 
-
-void Renderer::LoadAssets()
+void Renderer::LoadGUI()
 {
-	m_VkFont = TYW_NEW VkFont(m_pWRenderer->m_SwapChain.physicalDevice, m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_Queue, m_pWRenderer->m_FrameBuffers, m_pWRenderer->m_SwapChain.colorFormat, m_pWRenderer->m_SwapChain.depthFormat, &m_WindowWidth, &m_WindowHeight);
-
 	//Load Imgui
-	ImGui_ImplGlfwVulkan_Init(m_pWRenderer, false);
-
+	ImGui_ImplGlfwVulkan_Init(m_pWRenderer, &m_WindowWidth, &m_WindowHeight, false);
 
 	//Create command buffer
 	VkCommandBuffer cmd;
@@ -835,37 +840,52 @@ void Renderer::LoadAssets()
 }
 
 
+
+void Renderer::ImguiRender()
+{
+		ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiSetCond_FirstUseEver);
+		ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		ImGui::DragFloat3("Kd", (float*)&m_UniformShaderData.Kd, 0.0f, 0.0f, 50.0f, "%.3f");
+		ImGui::DragFloat3("Ks", (float*)&m_UniformShaderData.Ks, 0.0f, 0.0f, 50.0f, "%.3f");
+		ImGui::DragFloat3("Light Position", (float*)&m_UniformShaderData.lightPos, 0.0f, 0.0f, 50.0f, "%.3f");
+
+
+}
+
 //Main global Renderer
 Renderer g_Renderer;
 
 int main()
 {
 	g_bPrepared = g_Renderer.VInitRenderer(800, 600, false, HandleWindowMessages);
+	ImGui_ImplGlfwVulkan_MouseOnWinodws(true); //for now will work. Should test against windows rect
 	
+
 #if defined(_WIN32)
 	MSG msg;
 #endif
 
+	double tDiff = 0;
 	while (TRUE)
 	{
 		if (!GenerateEvents(msg))break;
 
 		auto tStart = std::chrono::high_resolution_clock::now();
 		ImGui_ImplGlfwVulkan_NewFrame(g_Renderer.frameTimer);
-		ImGui_Render();
+		g_Renderer.ImguiRender();
 
 		g_Renderer.StartFrame();
 		//Do something
 		g_Renderer.EndFrame(nullptr);
+
+
 		auto tEnd = std::chrono::high_resolution_clock::now();
-		
 		g_Renderer.frameCounter++;
-		auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+		tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
 		g_Renderer.frameTimer = (float)tDiff / 1000.0f;
 		g_Renderer.fpsTimer += (float)tDiff;
 		if (g_Renderer.fpsTimer > 1000.0f)
 		{
-			g_Renderer.BeginTextUpdate();
 			g_Renderer.lastFPS = g_Renderer.frameCounter;
 			g_Renderer.fpsTimer = 0.0f;
 			g_Renderer.frameCounter = 0;
@@ -889,87 +909,26 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		//ValidateRect(window, NULL);
 		break;
 	case WM_KEYDOWN:
-		switch (wParam)
-		{
-		case 0x50:
-			//paused = !paused;
-			break;
 		case VK_F1:
-			//if (enableTextOverlay)
-		{
-			//textOverlay->visible = !textOverlay->visible;
-		}
-		break;
+			break;
 		case VK_ESCAPE:
+		{
 			PostQuitMessage(0);
 			break;
 		}
-
-
-
-		switch ((uint32_t)wParam)
-		{
-		case 0x6B:
-		case GAMEPAD_BUTTON_R1:
-			g_Renderer.ChangeLodBias(0.1f);
-			break;
-		case 0x6D:
-		case GAMEPAD_BUTTON_L1:
-			g_Renderer.ChangeLodBias(-0.1f);
-			break;
-		}
-
-
-		/*
-		if (camera.firstperson)
-		{
-		switch (wParam)
-		{
-		case 0x57:
-		camera.keys.up = true;
-		break;
-		case 0x53:
-		camera.keys.down = true;
-		break;
-		case 0x41:
-		camera.keys.left = true;
-		break;
-		case 0x44:
-		camera.keys.right = true;
-		break;
-		}
-		}
-		*/
-
-		//keyPressed((uint32_t)wParam);
 		break;
 	case WM_KEYUP:
-		/*
-		if (camera.firstperson)
-		{
-		switch (wParam)
-		{
-		case 0x57:
-		camera.keys.up = false;
-		break;
-		case 0x53:
-		camera.keys.down = false;
-		break;
-		case 0x41:
-		camera.keys.left = false;
-		break;
-		case 0x44:
-		camera.keys.right = false;
-		break;
-		}
-		}
-		*/
 		break;
 	case WM_RBUTTONDOWN:
 	case WM_LBUTTONDOWN:
-	case WM_MBUTTONDOWN:
 		g_MousePos.x = (float)LOWORD(lParam);
 		g_MousePos.y = (float)HIWORD(lParam);
+		ImGui_ImplGlfwVulkan_MousePressed(true);
+		break;
+	case WM_LBUTTONUP:
+		ImGui_ImplGlfwVulkan_MousePressed(false);
+		break;
+	case WM_MBUTTONDOWN:
 		break;
 	case WM_MOUSEWHEEL:
 	{
@@ -980,6 +939,8 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		break;
 	}
 	case WM_MOUSEMOVE:
+		ImGui_ImplGlfwVulkan_SetMousePos(LOWORD(lParam), HIWORD(lParam));
+
 		if (wParam & MK_RBUTTON)
 		{
 			int32_t posx = LOWORD(lParam);
@@ -987,6 +948,8 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			g_zoom += (g_MousePos.y - (float)posy) * .005f * g_ZoomSpeed;
 			//camera.translate(glm::vec3(-0.0f, 0.0f, (mousePos.y - (float)posy) * .005f * zoomSpeed));
 			g_MousePos = glm::vec2((float)posx, (float)posy);
+			
+			
 			g_Renderer.UpdateUniformBuffers();
 		}
 		if (wParam & MK_LBUTTON)
@@ -997,6 +960,8 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			g_Rotation.y -= (g_MousePos.x - (float)posx) * 1.25f * g_RotationSpeed;
 			//camera.rotate(glm::vec3((mousePos.y - (float)posy), -(mousePos.x - (float)posx), 0.0f));
 			g_MousePos = glm::vec2((float)posx, (float)posy);
+			
+
 			g_Renderer.UpdateUniformBuffers();
 		}
 		if (wParam & MK_MBUTTON)
@@ -1009,6 +974,7 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			//viewChanged();
 			g_MousePos.x = (float)posx;
 			g_MousePos.y = (float)posy;
+
 		}
 		break;
 	case WM_SIZE:

@@ -134,10 +134,18 @@ bool VKRenderer::VInitRenderer(uint32_t height, uint32_t width, bool isFullscree
 	//End RenderPass
 	BuildCommandBuffers();
 
+
+	//Load GUI
+	LoadGUI();
+
 	m_bIsOpenglRunning = true;
 	return true;
 }
 
+void VKRenderer::LoadGUI()
+{
+	//overriden
+}
 
 void VKRenderer::LoadAssets()
 {
@@ -173,8 +181,8 @@ void VKRenderer::StartFrame()
 
 void VKRenderer::EndFrame(uint64_t* gpuMicroSec)
 {
-	// Flush device to make sure all resources can be freed 
-	vkDeviceWaitIdle(m_pWRenderer->m_SwapChain.device);
+
+	VK_CHECK_RESULT(vkQueueWaitIdle(m_pWRenderer->m_Queue));
 }
 
 
