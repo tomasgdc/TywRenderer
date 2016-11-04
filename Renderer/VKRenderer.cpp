@@ -429,7 +429,7 @@ void VKRenderer::VWindowResize(uint32_t iHeight, uint32_t iWidth)
 }
 
 
-void VKRenderer::VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling)
+void VKRenderer::VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling, bool bUseCubeMap)
 {
 	//overriden
 }

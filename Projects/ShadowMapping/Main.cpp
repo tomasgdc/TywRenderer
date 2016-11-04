@@ -286,7 +286,7 @@ public:
 	void UpdateUniformBuffers() override;
 	void PrepareUniformBuffers() override;
 	void PrepareVertices(bool useStagingBuffers) override;
-	void VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling) override;
+	void VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling, bool bUseCubeMap = false) override;
 	void PreparePipeline() override;
 	void SetupDescriptorSet() override;
 	void SetupDescriptorSetLayout() override;
@@ -1676,7 +1676,7 @@ void Renderer::PreparePipeline()
 
 
 
-void Renderer::VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling)
+void Renderer::VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling, bool bUseCubeMap)
 {
 	//m_pTextureLoader->LoadTexture(fileName, format, &m_VkTexture);
 }

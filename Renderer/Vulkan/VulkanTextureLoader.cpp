@@ -891,7 +891,8 @@ bool VkTools::VulkanTextureLoader::LoadCubemap(std::string filename, VkFormat fo
 #else
 	gli::texture_cube texCube(gli::load(filename));
 #endif	
-	if (!texCube.empty())
+	assert(!texCube.empty());
+	if (texCube.empty())
 	{
 		return false;
 	}

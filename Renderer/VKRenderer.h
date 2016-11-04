@@ -79,7 +79,6 @@ struct gl_params
 };
 #pragma pack(pop)
 
-
 #include "VulkanRendererInitializer.h"
 
 class TYWRENDERER_API VKRenderer: public IRenderer
@@ -157,7 +156,6 @@ public:
 	//ovveridable
 	virtual void SetupDescriptorPool();
 
-	
 	//ovveridable
 	virtual void BuildCommandBuffers();
 
@@ -171,7 +169,8 @@ public:
 	virtual void PrepareVertices(bool useStagingBuffers);
 
 	//Ovveridable texutre loader
-	virtual void VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling);
+	virtual void VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling, bool bUseCubeMap = false);
+
 
 	VkCommandBuffer GetCommandBuffer(bool begin);
 

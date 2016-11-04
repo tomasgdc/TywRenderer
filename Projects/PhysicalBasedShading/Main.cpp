@@ -94,36 +94,12 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 class Renderer final: public VKRenderer
 {
 private:
-	// The pipeline (state objects) is a static store for the 3D pipeline states (including shaders)
-	// Other than OpenGL this makes you setup the render states up-front
-	// If different render states are required you need to setup multiple pipelines
-	// and switch between them
-	// Note that there are a few dynamic states (scissor, viewport, line width) that
-	// can be set from a command buffer and does not have to be part of the pipeline
-	// This basic example only uses one pipeline
 	VkPipeline pipeline;
-
-	// The pipeline layout defines the resource binding slots to be used with a pipeline
-	// This includes bindings for buffes (ubos, ssbos), images and sampler
-	// A pipeline layout can be used for multiple pipeline (state objects) as long as 
-	// their shaders use the same binding layout
 	VkPipelineLayout pipelineLayout;
-
-	// The descriptor set stores the resources bound to the binding points in a shader
-	// It connects the binding points of the different shaders with the buffers and images
-	// used for those bindings
 	VkDescriptorSet descriptorSet;
-
-	// The descriptor set layout describes the shader binding points without referencing
-	// the actual buffers. 
-	// Like the pipeline layout it's pretty much a blueprint and can be used with
-	// different descriptor sets as long as the binding points (and shaders) match
 	VkDescriptorSetLayout descriptorSetLayout;
+	VkCommandBuffer  cmdGui;
 
-	// Synchronization semaphores
-	// Semaphores are used to synchronize dependencies between command buffers
-	// We use them to ensure that we e.g. don't present to the swap chain
-	// until all rendering has completed
 	struct
 	{
 		// Swap chain image presentation
@@ -135,16 +111,12 @@ private:
 		//Imgui sumbission and excetuion
 		VkSemaphore guiComplete;
 	} Semaphores;
-
-	VkCommandBuffer  cmdGui;
 public:
-	VkTools::VulkanTexture m_VkTexture;
+	RenderModelStatic			  staticModel;
+	VkTools::VulkanTexture		  m_VkTexture;
 
-	struct {
-		VkBuffer buffer;
-		VkDeviceMemory memory;
-		VkDescriptorBufferInfo descriptor;
-	}  uniformDataVS;
+	std::vector<VkBufferObject_s> listLocalBuffers;
+	std::vector<uint32_t>		  meshSize;
 
 	struct {
 		glm::mat4 projectionMatrix;
@@ -152,6 +124,8 @@ public:
 		glm::mat4 viewMatrix;
 		glm::mat4 normal;
 		glm::vec4 viewPos;
+		glm::vec3 lightPos;
+		float loadBias;
 	}m_uboVS;
 
 	struct
@@ -159,22 +133,18 @@ public:
 		glm::vec3 lightPos;
 		glm::vec3 Kd;
 		glm::vec3 Ks;
+		float	  ScreenGamma;
 	}m_UniformShaderData;
 
 	struct
 	{
 		VkTools::UniformData shaderData;
+		VkTools::UniformData uniformDataVS;
 	}m_descriptors;
 
-	uint32_t numVerts = 0;
-	uint32_t numUvs = 0;
-	uint32_t numNormals = 0;
-
-	std::vector<VkBufferObject_s> listLocalBuffers;
-	std::vector<VkDescriptorSet>  listDescriptros;
-	std::vector<uint32_t>		   meshSize;
-
-	RenderModelStatic			  staticModel;
+	uint32_t numVerts;
+	uint32_t numUvs;
+	uint32_t numNormals;
 public:
 	Renderer();
 	~Renderer();
@@ -183,7 +153,7 @@ public:
 	void UpdateUniformBuffers() override;
 	void PrepareUniformBuffers() override;
 	void PrepareVertices(bool useStagingBuffers) override;
-	void VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling) override;
+	void VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling, bool bUseCubeMap = false) override;
 	void PreparePipeline() override;
 	void SetupDescriptorSet() override;
 	void SetupDescriptorSetLayout() override;
@@ -191,6 +161,7 @@ public:
 	void StartFrame() override;
 	void PrepareSemaphore() override;
 	void LoadGUI() override;
+	void LoadAssets() override;
 
 
 	void SetupShaderData();
@@ -198,10 +169,19 @@ public:
 };
 
 
+void Renderer::LoadAssets()
+{
+	VLoadTexture(GetAssetPath() + "Textures/cubemap_yokohama.ktx", VK_FORMAT_BC3_UNORM_BLOCK, false, true);
+}
 
 void Renderer::SetupShaderData()
 {
+	m_UniformShaderData.lightPos = glm::vec3(0.0f, 0.0f, 0.0f);
+	m_UniformShaderData.Kd = glm::vec3(0.0f, 0.0f, 0.5f);
+	m_UniformShaderData.Ks = glm::vec3(0.0f, 0.0f,  1.0f);
+	m_UniformShaderData.ScreenGamma = 2.2f;
 
+	m_uboVS.lightPos = m_UniformShaderData.lightPos;
 }
 
 
@@ -243,8 +223,8 @@ Renderer::~Renderer()
 	}
 
 	//destroy uniform data
-	vkDestroyBuffer(m_pWRenderer->m_SwapChain.device, uniformDataVS.buffer, nullptr);
-	vkFreeMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory, nullptr);
+	vkDestroyBuffer(m_pWRenderer->m_SwapChain.device, m_descriptors.uniformDataVS.buffer, nullptr);
+	vkFreeMemory(m_pWRenderer->m_SwapChain.device, m_descriptors.uniformDataVS.memory, nullptr);
 
 	vkDestroyBuffer(m_pWRenderer->m_SwapChain.device, m_descriptors.shaderData.buffer, nullptr);
 	vkFreeMemory(m_pWRenderer->m_SwapChain.device, m_descriptors.shaderData.memory, nullptr);
@@ -330,11 +310,10 @@ void Renderer::BuildCommandBuffers()
 		// Bind triangle vertex buffer (contains position and colors)
 		VkDeviceSize offsets[1] = { 0 };
 
+		// Bind descriptor sets describing shader binding points
+		vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
 		for (int j = 0; j < listLocalBuffers.size(); j++)
 		{
-			// Bind descriptor sets describing shader binding points
-			vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &listDescriptros[j], 0, NULL);
-
 			//Bind Buffer
 			vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &listLocalBuffers[j].buffer, offsets);
 
@@ -382,22 +361,21 @@ void Renderer::UpdateUniformBuffers()
 
 	{
 		m_uboVS.projectionMatrix = glm::perspective(glm::radians(60.0f), (float)m_WindowWidth / (float)m_WindowHeight, 0.1f, 256.0f);
-
 		m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 5.0f, g_zoom));
 
 		m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 5.0f));
 		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
 		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
 		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-		m_uboVS.normal = glm::inverseTranspose(m_uboVS.modelMatrix);
+		m_uboVS.normal = (glm::inverseTranspose(m_uboVS.modelMatrix));
 
 		m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
 
 		// Map uniform buffer and update it
 		uint8_t *pData;
-		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory, 0, sizeof(m_uboVS), 0, (void **)&pData));
+		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, m_descriptors.uniformDataVS.memory, 0, sizeof(m_uboVS), 0, (void **)&pData));
 		memcpy(pData, &m_uboVS, sizeof(m_uboVS));
-		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory);
+		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, m_descriptors.uniformDataVS.memory);
 	}
 
 
@@ -412,6 +390,9 @@ void Renderer::UpdateUniformBuffers()
 
 void Renderer::PrepareUniformBuffers()
 {
+	//Set data first
+	SetupShaderData();
+
 	{
 		VkMemoryRequirements memReqs;
 
@@ -428,16 +409,16 @@ void Renderer::PrepareUniformBuffers()
 		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
 		// Create a new buffer
-		VK_CHECK_RESULT(vkCreateBuffer(m_pWRenderer->m_SwapChain.device, &bufferInfo, nullptr, &uniformDataVS.buffer));
-		vkGetBufferMemoryRequirements(m_pWRenderer->m_SwapChain.device, uniformDataVS.buffer, &memReqs);
+		VK_CHECK_RESULT(vkCreateBuffer(m_pWRenderer->m_SwapChain.device, &bufferInfo, nullptr, &m_descriptors.uniformDataVS.buffer));
+		vkGetBufferMemoryRequirements(m_pWRenderer->m_SwapChain.device, m_descriptors.uniformDataVS.buffer, &memReqs);
 		allocInfo.allocationSize = memReqs.size;
 		allocInfo.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_pWRenderer->m_DeviceMemoryProperties);
-		VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &allocInfo, nullptr, &(uniformDataVS.memory)));
-		VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.buffer, uniformDataVS.memory, 0));
+		VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &allocInfo, nullptr, &(m_descriptors.uniformDataVS.memory)));
+		VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, m_descriptors.uniformDataVS.buffer, m_descriptors.uniformDataVS.memory, 0));
 
-		uniformDataVS.descriptor.buffer = uniformDataVS.buffer;
-		uniformDataVS.descriptor.offset = 0;
-		uniformDataVS.descriptor.range = sizeof(m_uboVS);
+		m_descriptors.uniformDataVS.descriptor.buffer = m_descriptors.uniformDataVS.buffer;
+		m_descriptors.uniformDataVS.descriptor.offset = 0;
+		m_descriptors.uniformDataVS.descriptor.range = sizeof(m_uboVS);
 	}
 
 
@@ -481,27 +462,11 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	std::vector<VkBufferObject_s> listStagingBuffers;
 	listLocalBuffers.resize(staticModel.surfaces.size());
 	listStagingBuffers.resize(staticModel.surfaces.size());
-	listDescriptros.resize(staticModel.surfaces.size());
-
-	m_pWRenderer->m_DescriptorPool = VK_NULL_HANDLE;
-	SetupDescriptorPool();
-	VkDescriptorSetAllocateInfo allocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &descriptorSetLayout, 1);
 
 	for (int i = 0; i < staticModel.surfaces.size(); i++) 
 	{
 		//Get triangles
 		srfTriangles_t* tr = staticModel.surfaces[i].geometry;
-
-
-		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfo, &listDescriptros[i]));
-		std::vector<VkWriteDescriptorSet> writeDescriptorSets =
-		{
-			//uniform descriptor
-			VkTools::Initializer::WriteDescriptorSet(listDescriptros[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	0, &uniformDataVS.descriptor),
-			VkTools::Initializer::WriteDescriptorSet(listDescriptros[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	1, &m_descriptors.shaderData.descriptor)
-		};
-		//Update descriptor set
-		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, NULL);
 
 
 		//Create stagging buffer first
@@ -548,107 +513,59 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 
 void Renderer::PreparePipeline()
 {
-
-	// Create our rendering pipeline used in this example
-	// Vulkan uses the concept of rendering pipelines to encapsulate
-	// fixed states
-	// This replaces OpenGL's huge (and cumbersome) state machine
-	// A pipeline is then stored and hashed on the GPU making
-	// pipeline changes much faster than having to set dozens of 
-	// states
-	// In a real world application you'd have dozens of pipelines
-	// for every shader set used in a scene
-	// Note that there are a few states that are not stored with
-	// the pipeline. These are called dynamic states and the 
-	// pipeline only stores that they are used with this pipeline,
-	// but not their states
-
-	// Assign states
-	// Assign pipeline state create information
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
-
 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	// The layout used for this pipeline
 	pipelineCreateInfo.layout = pipelineLayout;
-	// Renderpass this pipeline is attached to
 	pipelineCreateInfo.renderPass = m_pWRenderer->m_RenderPass;
 
-	// Vertex input state
-	// Describes the topoloy used with this pipeline
-	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = {};
-	inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	// This pipeline renders vertex data as triangle lists
-	inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState =
+		VkTools::Initializer::PipelineInputAssemblyStateCreateInfo(
+			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+			0,
+			VK_FALSE);
 
-	// Rasterization state
-	VkPipelineRasterizationStateCreateInfo rasterizationState = {};
-	rasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	// Solid polygon mode
-	rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
-	// No culling
-	rasterizationState.cullMode = VK_CULL_MODE_NONE;
-	rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	rasterizationState.depthClampEnable = VK_FALSE;
-	rasterizationState.rasterizerDiscardEnable = VK_FALSE;
-	rasterizationState.depthBiasEnable = VK_FALSE;
-	rasterizationState.lineWidth = 1.0f;
+	VkPipelineRasterizationStateCreateInfo rasterizationState =
+		VkTools::Initializer::PipelineRasterizationStateCreateInfo(
+			VK_POLYGON_MODE_FILL,
+			VK_CULL_MODE_BACK_BIT,
+			VK_FRONT_FACE_CLOCKWISE,
+			0);
 
-	// Color blend state
-	// Describes blend modes and color masks
-	VkPipelineColorBlendStateCreateInfo colorBlendState = {};
-	colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	// One blend attachment state
-	// Blending is not used in this example
-	VkPipelineColorBlendAttachmentState blendAttachmentState[1] = {};
-	blendAttachmentState[0].colorWriteMask = 0xf;
-	blendAttachmentState[0].blendEnable = VK_FALSE;
-	colorBlendState.attachmentCount = 1;
-	colorBlendState.pAttachments = blendAttachmentState;
+	VkPipelineColorBlendAttachmentState blendAttachmentState =
+		VkTools::Initializer::PipelineColorBlendAttachmentState(
+			0xf,
+			VK_FALSE);
 
-	// Viewport state
-	VkPipelineViewportStateCreateInfo viewportState = {};
-	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	// One viewport
-	viewportState.viewportCount = 1;
-	// One scissor rectangle
-	viewportState.scissorCount = 1;
+	VkPipelineColorBlendStateCreateInfo colorBlendState =
+		VkTools::Initializer::PipelineColorBlendStateCreateInfo(
+			1,
+			&blendAttachmentState);
 
-	// Enable dynamic states
-	// Describes the dynamic states to be used with this pipeline
-	// Dynamic states can be set even after the pipeline has been created
-	// So there is no need to create new pipelines just for changing
-	// a viewport's dimensions or a scissor box
-	VkPipelineDynamicStateCreateInfo dynamicState = {};
-	// The dynamic state properties themselves are stored in the command buffer
-	std::vector<VkDynamicState> dynamicStateEnables;
-	dynamicStateEnables.push_back(VK_DYNAMIC_STATE_VIEWPORT);
-	dynamicStateEnables.push_back(VK_DYNAMIC_STATE_SCISSOR);
-	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamicState.pDynamicStates = dynamicStateEnables.data();
-	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
+	VkPipelineDepthStencilStateCreateInfo depthStencilState =
+		VkTools::Initializer::PipelineDepthStencilStateCreateInfo(
+			VK_TRUE,
+			VK_TRUE,
+			VK_COMPARE_OP_LESS_OR_EQUAL);
 
-	// Depth and stencil state
-	// Describes depth and stenctil test and compare ops
-	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
-	// Basic depth compare setup with depth writes and depth test enabled
-	// No stencil used 
-	depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depthStencilState.depthTestEnable = VK_TRUE;
-	depthStencilState.depthWriteEnable = VK_TRUE;
-	depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-	depthStencilState.depthBoundsTestEnable = VK_FALSE;
-	depthStencilState.back.failOp = VK_STENCIL_OP_KEEP;
-	depthStencilState.back.passOp = VK_STENCIL_OP_KEEP;
-	depthStencilState.back.compareOp = VK_COMPARE_OP_ALWAYS;
-	depthStencilState.stencilTestEnable = VK_FALSE;
-	depthStencilState.front = depthStencilState.back;
+	VkPipelineViewportStateCreateInfo viewportState =
+		VkTools::Initializer::PipelineViewportStateCreateInfo(1, 1, 0);
 
-	// Multi sampling state
-	VkPipelineMultisampleStateCreateInfo multisampleState = {};
-	multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisampleState.pSampleMask = NULL;
-	// No multi sampling used in this example
-	multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	VkPipelineMultisampleStateCreateInfo multisampleState =
+		VkTools::Initializer::PipelineMultisampleStateCreateInfo(
+			VK_SAMPLE_COUNT_4_BIT,
+			0);
+
+	std::vector<VkDynamicState> dynamicStateEnables = {
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_SCISSOR
+	};
+	VkPipelineDynamicStateCreateInfo dynamicState =
+		VkTools::Initializer::PipelineDynamicStateCreateInfo(
+			dynamicStateEnables.data(),
+			static_cast<uint32_t>(dynamicStateEnables.size()),
+			0);
+
+
 
 	// Load shaders
 	//Shaders are loaded from the SPIR-V format, which can be generated from glsl
@@ -676,9 +593,12 @@ void Renderer::PreparePipeline()
 
 
 
-void Renderer::VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling)
+void Renderer::VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling, bool bUseCubeMap)
 {
-	m_pTextureLoader->LoadTexture(fileName, format, &m_VkTexture);
+	if (!bUseCubeMap)
+		m_pTextureLoader->LoadTexture(fileName, format, &m_VkTexture);
+	else
+		m_pTextureLoader->LoadCubemap(fileName, format, &m_VkTexture);
 }
 
 
@@ -688,7 +608,8 @@ void Renderer::SetupDescriptorSetLayout()
 	{
 		// Binding 0 : Vertex shader uniform buffer
 		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,0),
-		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,1),
+		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT,1),
+		VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,2),
 	};
 
 	VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());
@@ -703,35 +624,28 @@ void Renderer::SetupDescriptorPool()
 	// Example uses one ubo and one image sampler
 	std::vector<VkDescriptorPoolSize> poolSizes =
 	{
-		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 7),
+		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2),
+		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1)
 	};
 
-	VkDescriptorPoolCreateInfo descriptorPoolInfo = VkTools::Initializer::DescriptorPoolCreateInfo(poolSizes.size(),poolSizes.data(),7);
+	VkDescriptorPoolCreateInfo descriptorPoolInfo = VkTools::Initializer::DescriptorPoolCreateInfo(poolSizes.size(),poolSizes.data(), 1);
 	VK_CHECK_RESULT(vkCreateDescriptorPool(m_pWRenderer->m_SwapChain.device, &descriptorPoolInfo, nullptr, &m_pWRenderer->m_DescriptorPool));
 }
 
 
 void Renderer::SetupDescriptorSet()
 {
-	/*
-	VkDescriptorSetAllocateInfo allocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool,&descriptorSetLayout,1);
-
+	VkDescriptorSetAllocateInfo allocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &descriptorSetLayout, 1);
 	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfo, &descriptorSet));
-
-	// Image descriptor for the color map texture
-	VkDescriptorImageInfo texDescriptor = VkTools::Initializer::DescriptorImageInfo(m_VkTexture.sampler, m_VkTexture.view,VK_IMAGE_LAYOUT_GENERAL);
-
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets =
 	{
-		// Binding 0 : Vertex shader uniform buffer
-		VkTools::Initializer::WriteDescriptorSet(descriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	0,&uniformDataVS.descriptor),
-	
-		// Binding 1 : Fragment shader texture sampler
-		VkTools::Initializer::WriteDescriptorSet(descriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,&texDescriptor)
+		//uniform descriptor
+		VkTools::Initializer::WriteDescriptorSet(descriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	0, &m_descriptors.uniformDataVS.descriptor),
+		VkTools::Initializer::WriteDescriptorSet(descriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	1, &m_descriptors.shaderData.descriptor),
+		VkTools::Initializer::WriteDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &m_VkTexture.descriptor)
 	};
-
+	//Update descriptor set
 	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, NULL);
-	*/
 }
 
 void Renderer::StartFrame()
@@ -848,8 +762,9 @@ void Renderer::ImguiRender()
 		ImGui::DragFloat3("Kd", (float*)&m_UniformShaderData.Kd, 0.0f, 0.0f, 50.0f, "%.3f");
 		ImGui::DragFloat3("Ks", (float*)&m_UniformShaderData.Ks, 0.0f, 0.0f, 50.0f, "%.3f");
 		ImGui::DragFloat3("Light Position", (float*)&m_UniformShaderData.lightPos, 0.0f, 0.0f, 50.0f, "%.3f");
+		ImGui::DragFloat("Screen Gamma ", &m_UniformShaderData.ScreenGamma, 0.0f, 0.0f, 2.4f, "%.3f");
 
-
+		m_uboVS.lightPos = m_UniformShaderData.lightPos;
 }
 
 //Main global Renderer
@@ -857,7 +772,7 @@ Renderer g_Renderer;
 
 int main()
 {
-	g_bPrepared = g_Renderer.VInitRenderer(800, 600, false, HandleWindowMessages);
+	g_bPrepared = g_Renderer.VInitRenderer(720, 1280, false, HandleWindowMessages);
 	ImGui_ImplGlfwVulkan_MouseOnWinodws(true); //for now will work. Should test against windows rect
 	
 

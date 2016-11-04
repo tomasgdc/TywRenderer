@@ -60,8 +60,8 @@ void main()
 	// The view vector is the vector from the point of interest to the
     // viewer, which in view space is simply the negative of the position.
     // Calculate that and multiply it by the TBN matrix.
-    //vs_out.eyeDir =   normalize(vec3(-vertexPosition.xyz * tbnMatrix));
-    vs_out.eyeDir = vec3(-vertexPosition);
+    vs_out.eyeDir =   normalize(vec3(-vertexPosition.xyz * tbnMatrix));
+    //vs_out.eyeDir = vec3(-vertexPosition);
 
 	
     // Pass the per-vertex normal so that the fragment shader can
