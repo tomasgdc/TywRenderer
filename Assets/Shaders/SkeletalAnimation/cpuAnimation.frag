@@ -7,7 +7,7 @@ layout(location = 0) in vec4 inNormal;
 layout(location = 1) in vec3 inPos;
 
 
-in VS_OUT
+layout(location = 9) in struct
 {
     vec2 texcoord;
     vec3 eyeDir;

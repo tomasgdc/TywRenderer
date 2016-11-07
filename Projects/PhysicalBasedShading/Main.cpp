@@ -132,7 +132,10 @@ public:
 	{
 		glm::vec3 lightPos;
 		glm::vec3 Kd;
-		glm::vec3 Ks;
+		float pad;							//padding
+		float roughnessValue;				// 0 : smooth, 1: rough
+		float F0;							// fresnel reflectance at normal incidence
+		float k;							// fraction of diffuse reflection (specular reflection = 1 - k)
 		float	  ScreenGamma;
 	}m_UniformShaderData;
 
@@ -177,8 +180,10 @@ void Renderer::LoadAssets()
 void Renderer::SetupShaderData()
 {
 	m_UniformShaderData.lightPos = glm::vec3(0.0f, 0.0f, 0.0f);
-	m_UniformShaderData.Kd = glm::vec3(0.0f, 0.0f, 0.5f);
-	m_UniformShaderData.Ks = glm::vec3(0.0f, 0.0f,  1.0f);
+	m_UniformShaderData.Kd = glm::vec3(1.0f, 1.0f, 0.5f);
+	m_UniformShaderData.roughnessValue = 0.1;
+	m_UniformShaderData.F0 = 0.8;
+	m_UniformShaderData.k = 0.2;
 	m_UniformShaderData.ScreenGamma = 2.2f;
 
 	m_uboVS.lightPos = m_UniformShaderData.lightPos;
@@ -363,7 +368,7 @@ void Renderer::UpdateUniformBuffers()
 		m_uboVS.projectionMatrix = glm::perspective(glm::radians(60.0f), (float)m_WindowWidth / (float)m_WindowHeight, 0.1f, 256.0f);
 		m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 5.0f, g_zoom));
 
-		m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 5.0f));
+		m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -170.0f));
 		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
 		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
 		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -552,7 +557,7 @@ void Renderer::PreparePipeline()
 
 	VkPipelineMultisampleStateCreateInfo multisampleState =
 		VkTools::Initializer::PipelineMultisampleStateCreateInfo(
-			VK_SAMPLE_COUNT_4_BIT,
+			VK_SAMPLE_COUNT_1_BIT,
 			0);
 
 	std::vector<VkDynamicState> dynamicStateEnables = {
@@ -725,7 +730,10 @@ void Renderer::StartFrame()
 void Renderer::LoadGUI()
 {
 	//Load Imgui
-	ImGui_ImplGlfwVulkan_Init(m_pWRenderer, &m_WindowWidth, &m_WindowHeight, false);
+	ImGui_ImplGlfwVulkan_Init(m_pWRenderer, &m_WindowWidth, &m_WindowHeight, 
+		GetAssetPath() + "Shaders/ImGui/text.vert.spv",
+		GetAssetPath() + "Shaders/ImGui/text.frag.spv",
+		false);
 
 	//Create command buffer
 	VkCommandBuffer cmd;
@@ -757,11 +765,14 @@ void Renderer::LoadGUI()
 
 void Renderer::ImguiRender()
 {
+
 		ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiSetCond_FirstUseEver);
 		ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		ImGui::DragFloat3("Kd", (float*)&m_UniformShaderData.Kd, 0.0f, 0.0f, 50.0f, "%.3f");
-		ImGui::DragFloat3("Ks", (float*)&m_UniformShaderData.Ks, 0.0f, 0.0f, 50.0f, "%.3f");
 		ImGui::DragFloat3("Light Position", (float*)&m_UniformShaderData.lightPos, 0.0f, 0.0f, 50.0f, "%.3f");
+		ImGui::DragFloat("Roughness Value ", &m_UniformShaderData.roughnessValue, 0.0f, 0.0f, 2.4f, "%.3f");
+		ImGui::DragFloat("Fresnel reflectance ", &m_UniformShaderData.F0, 0.0f, 0.0f, 2.4f, "%.3f");
+		ImGui::DragFloat("Fraction of diffuse reflectance ", &m_UniformShaderData.k, 0.0f, 0.0f, 2.4f, "%.3f");
 		ImGui::DragFloat("Screen Gamma ", &m_UniformShaderData.ScreenGamma, 0.0f, 0.0f, 2.4f, "%.3f");
 
 		m_uboVS.lightPos = m_UniformShaderData.lightPos;

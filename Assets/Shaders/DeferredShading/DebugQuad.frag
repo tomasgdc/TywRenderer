@@ -3,17 +3,16 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-in VS_OUT
-{
-	vec2 uv;
-	uint textureType;
-} fs_in;
-
 layout (binding = 1) uniform highp  sampler2D  positionColor;
 layout (binding = 2) uniform highp  sampler2D  packedTexture; //packed normal, diffuse, specular
 
-layout (location = 0) out vec4 outFragColor;
 
+layout (location = 0) out vec4 outFragColor;
+layout(location = 5) in struct
+{
+	vec2 uv;
+	//int textureType;
+} fs_in;
 
 // c_precision of 128 fits within 7 base-10 digits
 const float c_precision = 128.0;

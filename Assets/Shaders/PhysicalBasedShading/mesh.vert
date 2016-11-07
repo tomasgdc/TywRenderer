@@ -21,7 +21,7 @@ layout (binding = 0) uniform UBO
 } ubo;
 
 
-out VS_OUT
+layout (location = 5) out VS_OUT
 {
     vec3 eyeDir;
     vec3 lightDir;
@@ -41,33 +41,11 @@ void main()
 	//Convert vertex pos to view space
 	vec4 vertexPosition = mvMatrix *  vec4(inPos, 1.0);
 	
-
-	// Setup (t)angent-(b)inormal-(n)ormal matrix for converting
-    // object coordinates into tangent space
-//	mat3 tbnMatrix;
-//	mat3 mNormal =  transpose(inverse(mat3(ubo.modelMatrix)));
-//  tbnMatrix[0] =  normalize(mNormal * inTangent);
-//	tbnMatrix[1] =  normalize(mNormal * inBinormal);
-//	tbnMatrix[2] =  normalize(mNormal * inNormal);
-    
 	
 	vs_out.lightDir = normalize(vec3(lightPos.xyz - vertexPosition.xyz));
-//	vec3 LightVec = normalize(vec3(lightPos.xyz - vertexPosition.xyz));
-//	vs_out.lightDir = vec3(LightVec * tbnMatrix);
-//	vs_out.lightDir = normalize(LightVec.xyz);
-
-
-	// The view vector is the vector from the point of interest to the
-    // viewer, which in view space is simply the negative of the position.
-    //vs_out.eyeDir =   normalize(vec3(-vertexPosition.xyz * tbnMatrix));
-    vs_out.eyeDir = normalize(-vertexPosition.xyz);
-
-	
-    // Pass the per-vertex normal so that the fragment shader can
-    // turn the normal map on and off.
-    vs_out.normal = normalize(mat3(ubo.normal) * inNormal);
-
-
+	vs_out.eyeDir = normalize(-vertexPosition.xyz);
+	vs_out.normal = normalize(mat3(ubo.normal) * inNormal); //problem
 	vs_out.texcoord = inUv;
+	
 	gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(inPos.xyz, 1.0);
 }

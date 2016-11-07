@@ -20,7 +20,7 @@ layout (binding = 0) uniform UBO
 } ubo;
 
 
-out VS_OUT
+layout(location = 5) out struct
 {
 	mat3 TBN;
 	vec3 ws_coords;

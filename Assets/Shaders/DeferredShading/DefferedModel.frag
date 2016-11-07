@@ -46,7 +46,7 @@ void main()
 	
 	//Unpacking data
 	vec3 diffuseTexture = float2color(packedData.x);
-	vec3 normalTexture =  float2color(packedData.y);
+	vec3 normalTexture =  normalize(float2color(packedData.y));
 	vec3 specularTexture = float2color(packedData.z);
 	
     
@@ -60,6 +60,7 @@ void main()
 	{
 		// Vector to light
 		vec3 L = ubo.lights[i].position.xyz - positionTexture;
+
 		// Distance from light to fragment position
 		float dist = length(L);
 
@@ -67,7 +68,7 @@ void main()
 		vec3 V = ubo.viewPos.xyz - positionTexture;
 		V = normalize(V);
 		
-		//if(dist < ubo.lights[i].radius)
+		if(dist < ubo.lights[i].radius)
 		{
 			// Light to fragment
 			L = normalize(L);
@@ -76,16 +77,22 @@ void main()
 			float atten = ubo.lights[i].radius / (pow(dist, 2.0) + 1.0);
 
 			// Diffuse part
-			vec3 N = normalize(normalTexture);
-			float NdotL = max(0.0, dot(N, L));
+			float NdotL = max(0.0, dot(normalTexture, L));
 			vec3 diff = ubo.lights[i].color * diffuseTexture.rgb * NdotL * atten;
 
-			// Specular part
-			// Specular map values are stored in alpha of albedo mrt
-			vec3 R = reflect(-L, N);
-			float NdotR = max(0.0, dot(R, V));
-			vec3 spec = ubo.lights[i].color * specularTexture * pow(NdotR, 16.0) * atten;
 
+			// calculate specular reflection only if
+			// the surface is oriented to the light source
+			float specularTerm = 0;
+			if(dot(normalTexture, L) > 0)
+			{
+				//vec3 R = reflect(-L, N);
+				vec3 H = normalize(L + V);
+				specularTerm = pow(max(0.0, dot(normalTexture, H)), 16.0);
+			}
+			vec3 spec = ubo.lights[i].color * specularTexture * specularTerm * atten;
+
+			//Final color
 			fragcolor += diff + spec;	
 		}	
 	}    	

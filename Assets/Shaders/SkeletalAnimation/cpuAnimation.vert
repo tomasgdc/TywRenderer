@@ -25,7 +25,7 @@ layout (binding = 0) uniform UBO
 } ubo;
 
 
-out VS_OUT
+layout(location = 9) out struct
 {
     vec2 texcoord;
     vec3 eyeDir;

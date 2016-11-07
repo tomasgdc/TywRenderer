@@ -14,10 +14,10 @@ layout (binding = 0) uniform UBO
 } ubo;
 
 
-out VS_OUT
+layout(location = 3) out struct
 {
 	vec2 uv;
-	uint textureType;
+	//uint textureType;
 } vs_out;
 
 out gl_PerVertex 
@@ -27,6 +27,6 @@ out gl_PerVertex
 void main() 
 {
 	vs_out.uv = inUV;
-	vs_out.textureType = 3;
+	//vs_out.textureType = 3;
 	gl_Position = ubo.mvp * vec4(inPos.xyz, 1.0);
 }

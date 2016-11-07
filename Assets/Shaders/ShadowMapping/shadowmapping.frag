@@ -4,7 +4,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 
-in VS_OUT
+layout(location = 5) in struct
 {
     vec2 texcoord;
     vec3 eyeDir;

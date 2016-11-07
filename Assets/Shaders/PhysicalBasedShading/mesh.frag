@@ -5,11 +5,11 @@
 
 //CONSTANTS
 #define GLUS_PI 3.1415926535897932384626433832795
-float roughnessValue = 0.1; // 0 : smooth, 1: rough
-float F0 = 0.8; // fresnel reflectance at normal incidence
-float k = 0.2; // fraction of diffuse reflection (specular reflection = 1 - k)
+//float roughnessValue = 0.1; // 0 : smooth, 1: rough
+//float F0 = 0.8; // fresnel reflectance at normal incidence
+//float k = 0.2; // fraction of diffuse reflection (specular reflection = 1 - k)
 
-in VS_OUT
+layout (location = 5) in VS_OUT
 {
     vec3 eyeDir;
     vec3 lightDir;
@@ -18,11 +18,13 @@ in VS_OUT
 } fs_in;
 
 
-layout(binding = 1) uniform LightData
+layout(binding = 1, std140) uniform LightData
 {
 	vec3 lightPos;
 	vec3 Kd;
-	vec3 Ks;
+	float roughnessValue;				// 0 : smooth, 1: rough
+	float F0;						// fresnel reflectance at normal incidence
+	float k;				// fraction of diffuse reflection (specular reflection = 1 - k)
 	float ScreenGamma;
 }lightData;
 
@@ -62,7 +64,7 @@ vec3 Color(vec3 normal, vec3 LightVec, vec3 EyeDirection)
     float g1 = (NH2 * NdotV) / VdotH;
     float g2 = (NH2 * NdotL) / VdotH;
     float geoAtt = min(1.0, min(g1, g2));
-    float mSquared = roughnessValue * roughnessValue;
+    float mSquared = lightData.roughnessValue * lightData.roughnessValue;
 
     // roughness (or: microfacet distribution function)
     // beckmann distribution function -> Dark sides are too dark; Fix me? USE GGX
@@ -73,8 +75,8 @@ vec3 Color(vec3 normal, vec3 LightVec, vec3 EyeDirection)
     // fresnel
     // Schlick approximation
     float fresnel = pow(1.0 - VdotH, 5.0);
-    fresnel *= (1.0 - F0);
-    fresnel += F0;
+    fresnel *= (1.0 - lightData.F0);
+    fresnel += lightData.F0;
 
     // IBL
     vec3 ibl_diffuse = texture(samperCubeMap,normal).xyz;
@@ -84,11 +86,11 @@ vec3 Color(vec3 normal, vec3 LightVec, vec3 EyeDirection)
     refl = mix(refl,ibl_reflection,roughness);
 
     //Specular
-    specular = (fresnel  * geoAtt * GGX_Distribution(NdotH, roughnessValue) ) / (NdotV * GLUS_PI);
-    specular = (k + specular * (1.0 - k));
+    specular = (fresnel  * geoAtt * GGX_Distribution(NdotH, lightData.roughnessValue)) / (NdotV * GLUS_PI);
+    specular = (lightData.k + specular * (1.0 - lightData.k));
     
 	//Color
-    return  (NdotL + specular) * vec3(0.5, 0.5, 0.5);
+    return  (NdotL * lightData.Kd) + specular;
 }
 
 
@@ -97,8 +99,8 @@ void main()
     vec3 colorLinear = Color(fs_in.normal, fs_in.lightDir, fs_in.eyeDir);
 
 	//Gamma correction
-	//vec3 colorGammaCorrected = pow(colorLinear, vec3(1.0/lightData.ScreenGamma));
-	vec3 colorGammaCorrected = pow(colorLinear, vec3(1.0/2.2));
+	vec3 colorGammaCorrected = pow(colorLinear, vec3(1.0/lightData.ScreenGamma));
+	//vec3 colorGammaCorrected = pow(colorLinear, vec3(1.0/2.2));
 
 	//Output
     outFragColor = vec4(colorGammaCorrected, 1.0);

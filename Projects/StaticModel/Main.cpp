@@ -241,6 +241,7 @@ Renderer::~Renderer()
 
 void Renderer::PrepareSemaphore()
 {
+
 	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
 	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	semaphoreCreateInfo.pNext = NULL;
