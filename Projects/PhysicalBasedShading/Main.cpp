@@ -125,7 +125,6 @@ public:
 		glm::mat4 normal;
 		glm::vec4 viewPos;
 		glm::vec3 lightPos;
-		float loadBias;
 	}m_uboVS;
 
 	struct
@@ -136,6 +135,7 @@ public:
 		float roughnessValue;				// 0 : smooth, 1: rough
 		float F0;							// fresnel reflectance at normal incidence
 		float k;							// fraction of diffuse reflection (specular reflection = 1 - k)
+		float loadBias;
 		float	  ScreenGamma;
 	}m_UniformShaderData;
 
@@ -185,6 +185,7 @@ void Renderer::SetupShaderData()
 	m_UniformShaderData.F0 = 0.8;
 	m_UniformShaderData.k = 0.2;
 	m_UniformShaderData.ScreenGamma = 2.2f;
+	m_UniformShaderData.loadBias = 1.0f;
 
 	m_uboVS.lightPos = m_UniformShaderData.lightPos;
 }
@@ -461,7 +462,7 @@ void Renderer::PrepareUniformBuffers()
 
 void Renderer::PrepareVertices(bool useStagingBuffers)
 {
-	staticModel.InitFromFile("Geometry/teapot/teapoTriangulated.obj", GetAssetPath());
+	staticModel.InitFromFile("Geometry/teapot/teapotTriangulated.obj", GetAssetPath());
 
 
 	std::vector<VkBufferObject_s> listStagingBuffers;
@@ -773,6 +774,7 @@ void Renderer::ImguiRender()
 		ImGui::DragFloat("Roughness Value ", &m_UniformShaderData.roughnessValue, 0.0f, 0.0f, 2.4f, "%.3f");
 		ImGui::DragFloat("Fresnel reflectance ", &m_UniformShaderData.F0, 0.0f, 0.0f, 2.4f, "%.3f");
 		ImGui::DragFloat("Fraction of diffuse reflectance ", &m_UniformShaderData.k, 0.0f, 0.0f, 2.4f, "%.3f");
+		ImGui::DragFloat("Lod Bias Cube Map texture ", &m_UniformShaderData.loadBias, 0.0f, 0.0f, 1.0f, "%.3f");
 		ImGui::DragFloat("Screen Gamma ", &m_UniformShaderData.ScreenGamma, 0.0f, 0.0f, 2.4f, "%.3f");
 
 		m_uboVS.lightPos = m_UniformShaderData.lightPos;

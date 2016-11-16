@@ -3,6 +3,14 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+/*
+Sources
+https://www.shadertoy.com/view/ld3SRr
+http://www.frostbite.com/wp-content/uploads/2014/11/course_notes_moving_frostbite_to_pbr_v2.pdf
+https://chetanjags.wordpress.com/2015/08/26/image-based-lighting/
+*/
+
+
 //CONSTANTS
 #define GLUS_PI 3.1415926535897932384626433832795
 //float roughnessValue = 0.1; // 0 : smooth, 1: rough
@@ -25,72 +33,100 @@ layout(binding = 1, std140) uniform LightData
 	float roughnessValue;				// 0 : smooth, 1: rough
 	float F0;						// fresnel reflectance at normal incidence
 	float k;				// fraction of diffuse reflection (specular reflection = 1 - k)
+	float lodBias;
 	float ScreenGamma;
 }lightData;
 
 layout (binding = 2) uniform samplerCube samperCubeMap;
 layout (location = 0) out vec4 outFragColor;
 
-float chiGGX(float v)
-{
-    return v > 0 ? 1 : 0;
+
+//http://www.frostbite.com/wp-content/uploads/2014/11/course_notes_moving_frostbite_to_pbr_v2.pdf
+float V_SmithGGXCorrelated ( float NdotL , float NdotV , float alphaG )
+ {
+	// Original formulation of G_SmithGGX Correlated
+	// lambda_v = ( -1 + sqrt ( alphaG2 * (1 - NdotL2 ) / NdotL2 + 1)) * 0.5 f;
+	// lambda_l = ( -1 + sqrt ( alphaG2 * (1 - NdotV2 ) / NdotV2 + 1)) * 0.5 f;
+	// G_SmithGGXCorrelated = 1 / (1 + lambda_v + lambda_l );
+	// V_SmithGGXCorrelated = G_SmithGGXCorrelated / (4.0 f * NdotL * NdotV );
+
+	// This is the optimize version
+	 float alphaG2 = alphaG * alphaG ;
+	// Caution : the " NdotL *" and " NdotV *" are explicitely inversed , this is not a mistake .
+	float Lambda_GGXV = NdotL * sqrt (( - NdotV * alphaG2 + NdotV ) * NdotV + alphaG2 );
+	float Lambda_GGXL = NdotV * sqrt (( - NdotL * alphaG2 + NdotL ) * NdotL + alphaG2 );
+
+	return 0.5f / ( Lambda_GGXV + Lambda_GGXL );
 }
 
-float GGX_Distribution(float NoH, float alpha)
+//The Fresnel function describes the amount of light that reflects from a mirror surface given its index of refraction. 
+float F_Schlick(float F0, float Ndot)
 {
-    float alpha2 = alpha * alpha;
-    float NoH2 = NoH * NoH;
-    float den = NoH2 * alpha2 + (1 - NoH2);
-    return (chiGGX(NoH) * alpha2) / ( GLUS_PI * den * den );
+    return  F0 + (1.0f - F0) * pow(1.0f - Ndot, 5.0f);
+}
+
+//Self shadowing of microfacet
+//http://graphicrants.blogspot.co.uk/2013/08/specular-brdf-reference.html
+float G_CookTolerance(float NdotH, float NdotV, float VdotH, float NdotL)
+{
+    float NH2 = 2.0f * NdotH;
+    float g1 = (NH2 * NdotV) / VdotH;
+    float g2 = (NH2 * NdotL) / VdotH;
+    float geoAtt = min(1.0f, min(g1, g2));
+	return geoAtt;
+}
+
+//http://www.frostbite.com/wp-content/uploads/2014/11/course_notes_moving_frostbite_to_pbr_v2.pdf
+float D_GGX ( float NdotH , float m )
+{
+	 // Divide by PI is apply later
+	 float m2 = m * m ;
+	 float f = ( NdotH * m2 - NdotH ) * NdotH + 1.0F;
+	 return m2 / (f * f) ;
+ }
+//http://www.frostbite.com/wp-content/uploads/2014/11/course_notes_moving_frostbite_to_pbr_v2.pdf
+float Fr_DisneyDiffuse (float NdotV , float NdotL , float LdotH , float linearRoughness)
+ {
+	 float energyBias = mix(0.0f, 0.5f , linearRoughness );
+	 float energyFactor = mix(1.0f, 1.0f / 1.51f , linearRoughness );
+	 float fd90 = energyBias + 2.0f * LdotH * LdotH * linearRoughness ;
+
+	 float lightScatter = F_Schlick (fd90 , NdotL );
+	 float viewScatter = F_Schlick (fd90 , NdotV );
+
+	return lightScatter * viewScatter * energyFactor ;
 }
 
 vec3 Color(vec3 normal, vec3 LightVec, vec3 EyeDirection)
 { 
-    //Get diffuse
     float NdotL = max(dot(normal, LightVec), 0.0);
     float specular = 0.0;
 
     //HalfVector -> Blin Phong reflection
     vec3 HalfVector = normalize((EyeDirection + LightVec));
 
-
     float NdotH = max(dot(normal, HalfVector), 0.0); 
     float NdotV = max(dot(normal, EyeDirection), 0.0); // note: this could also be NdotL, which is the same value
     float VdotH = max(dot(EyeDirection, HalfVector), 0.0);
+	float LdotH = max(dot(LightVec, HalfVector), 0.0);
 
 
-    // geometric attenuation
-    float NH2 = 2.0 * NdotH;
-    float g1 = (NH2 * NdotV) / VdotH;
-    float g2 = (NH2 * NdotL) / VdotH;
-    float geoAtt = min(1.0, min(g1, g2));
-    float mSquared = lightData.roughnessValue * lightData.roughnessValue;
+	 //Specular
+	float alphaG = lightData.roughnessValue * lightData.roughnessValue;
+    //float G = G_CookTolerance(NdotH, NdotV, VdotH, NdotL);
+	float V = V_SmithGGXCorrelated (NdotL , NdotV , alphaG);
+	float F = F_Schlick(lightData.F0, VdotH);
+	float D = D_GGX(NdotH, alphaG);
 
-    // roughness (or: microfacet distribution function)
-    // beckmann distribution function -> Dark sides are too dark; Fix me? USE GGX
-    float r1 = 1.0 / ( 4.0 * mSquared * pow(NdotH, 4.0));
-    float r2 = (NdotH * NdotH - 1.0) / (mSquared * NdotH * NdotH);
-    float roughness = r1 * exp(r2);
-
-    // fresnel
-    // Schlick approximation
-    float fresnel = pow(1.0 - VdotH, 5.0);
-    fresnel *= (1.0 - lightData.F0);
-    fresnel += lightData.F0;
-
-    // IBL
-    vec3 ibl_diffuse = texture(samperCubeMap,normal).xyz;
-    vec3 ibl_reflection = texture(samperCubeMap,reflect(EyeDirection,normal)).xyz;
-    vec3 refl = texture(samperCubeMap,reflect(EyeDirection,normal)).xyz;
-    refl = mix(refl,ibl_reflection,(1.0-fresnel)*roughness);
-    refl = mix(refl,ibl_reflection,roughness);
-
-    //Specular
-    specular = (fresnel  * geoAtt * GGX_Distribution(NdotH, lightData.roughnessValue)) / (NdotV * GLUS_PI);
+    specular = (D  * V * F) / (4 * NdotV * NdotL);
     specular = (lightData.k + specular * (1.0 - lightData.k));
-    
+
+	//Diffuse
+	float disneyDiffuse = Fr_DisneyDiffuse(NdotV , NdotL , LdotH, alphaG) / GLUS_PI;
+
+
 	//Color
-    return  (NdotL * lightData.Kd) + specular;
+    return  (NdotL * lightData.Kd)  + specular ;
 }
 
 

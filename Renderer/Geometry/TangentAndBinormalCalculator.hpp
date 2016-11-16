@@ -38,9 +38,23 @@ void TangentAndBinormalCalculator(const glm::vec3& Edge1, const glm::vec3& Edge2
 
 	// Gram-Schmidt orthogonalize
 	t = glm::normalize(t - n * glm::dot(n, t));
+	
 
 	// Calculate handedness
 	if (glm::dot(glm::cross(n, t), b) < 0.0f) {
 		t = t * -1.0f;
 	}
+}
+
+/*
+	This one uses current calculated normal and tangent to calculate binormal
+	@param: objMesh_t& pMe
+	@param: uint32_t iCurrentIndex
+*/
+void TangentAndBinormalCalculator(objMesh_t& pMesh, uint32_t iCurrentIndex)
+{
+	const glm::vec3 & n = pMesh.normals[iCurrentIndex];
+	const glm::vec3 & t = pMesh.tangent[iCurrentIndex];
+	pMesh.tangent[iCurrentIndex] = glm::orthonormalize(t, n);
+	pMesh.binormal[iCurrentIndex] = (glm::cross(pMesh.tangent[iCurrentIndex], n));
 }

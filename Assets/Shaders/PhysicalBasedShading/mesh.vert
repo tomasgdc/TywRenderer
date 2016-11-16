@@ -17,7 +17,6 @@ layout (binding = 0) uniform UBO
 	mat4 normal;
 	vec4 viewPos;
 	vec3 lightPos;
-	float lodBias;
 } ubo;
 
 

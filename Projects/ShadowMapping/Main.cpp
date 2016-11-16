@@ -225,7 +225,7 @@ private:
 	// for better shadow map precision
 	//naah need bigger depth
 	float zNear = 1.0f;
-	float zFar = 256.0f; 
+	float zFar = 100.0f; 
 
 
 	struct {
@@ -1855,7 +1855,7 @@ Renderer g_Renderer;
 int main()
 {
 	//Initialize Renderer
-	g_bPrepared = g_Renderer.VInitRenderer(800, 600, false, HandleWindowMessages);
+	g_bPrepared = g_Renderer.VInitRenderer(720, 1280, false, HandleWindowMessages);
 	
 #if defined(_WIN32)
 	MSG msg;

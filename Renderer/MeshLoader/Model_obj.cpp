@@ -17,12 +17,12 @@ typedef struct {
 }obj_t;
 static obj_t objGlobal;
 
-bool hasVer, hasNormal, hasTexCoord;
+bool bHasVer, bHasNormal, bHasTexCoord;
 
 //Functions for normal, tangent, bitangent calculation
 glm::vec3 CalculateNormals(const std::vector< unsigned int >& vertexIndices, const std::vector<glm::vec3>& temp_vertices, const int currentIndex);
 glm::vec3 CalculateSmoothNormals(const std::vector< unsigned int >& vertexIndices, const std::vector<glm::vec3>& temp_vertices, const int currentIndex);
-void CalculateTangentAndBinormal(objMesh_t& pMesh, const int currentIndex);
+void CalculateTangentAndBinormal(objMesh_t& pMesh);
 
 
 /*
@@ -140,16 +140,16 @@ bool OBJ_ParseFace(FILE* file,
 	std::vector< unsigned int >&  uvIndices,
 	std::vector< unsigned int >&  normalIndices) {
 
-	if (hasVer && !hasNormal && !hasTexCoord) {
+	if (bHasVer && !bHasNormal && !bHasTexCoord) {
 		OBJ_ParseVertexIndices(file, vertexIndices);
 	}
-	else if (hasVer && hasNormal && !hasTexCoord) {
+	else if (bHasVer && bHasNormal && !bHasTexCoord) {
 		OBJ_ParseVertexNormalIndices(file, vertexIndices, normalIndices);
 	}
-	else if (hasVer && !hasNormal && hasTexCoord) {
+	else if (bHasVer && !bHasNormal && bHasTexCoord) {
 		OBJ_ParseVertexTextureIndices(file, vertexIndices, uvIndices);
 	}
-	else if (hasVer && hasNormal && hasTexCoord) {
+	else if (bHasVer && bHasNormal && bHasTexCoord) {
 		OBJ_ParseVertexTextureNormalIndices(file, vertexIndices, uvIndices, normalIndices);
 	}
 	else 
@@ -178,7 +178,7 @@ int OBJ_ParseObject(FILE* file, const char* objectName,
 
 	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
 	int numVertices = 0, numNormals = 0, numTexCoord = 0, numFaces = 0;
-	hasVer = false, hasNormal = false, hasTexCoord = false;
+	bHasVer = false, bHasNormal = false, bHasTexCoord = false;
 	int res = 0;
 	while (1) {
 		char lineHeader[128];
@@ -193,17 +193,17 @@ int OBJ_ParseObject(FILE* file, const char* objectName,
 		if (strcmp(lineHeader, "v") == 0) {
 			OBJ_ParseVertex(file, temp_vertices);
 			numVertices++;
-			hasVer = true;
+			bHasVer = true;
 		}
 		else if ((strcmp(lineHeader, "vt") == 0)) {
 			OBJ_ParseTextCoord(file, temp_uvs);
 			numTexCoord++;
-			hasTexCoord = true;
+			bHasTexCoord = true;
 		}
 		else if (strcmp(lineHeader, "vn") == 0) {
 			OBJ_ParseNormal(file, temp_normals);
 			numNormals++;
-			hasNormal = true;
+			bHasNormal = true;
 		}
 		else if (strcmp(lineHeader, "usemtl") == 0) {
 			fscanf(file, "%s\n", materialName);
@@ -231,63 +231,80 @@ int OBJ_ParseObject(FILE* file, const char* objectName,
 
 	//Create needed size
 	pMesh->vertices = TYW_NEW glm::vec3[numFaces * 3];
-	pMesh->normals = TYW_NEW glm::vec3[numFaces * 3];
-	pMesh->tangent = TYW_NEW glm::vec3[numFaces * 3];
-	pMesh->binormal = TYW_NEW glm::vec3[numFaces * 3];
-	pMesh->uvs = TYW_NEW glm::vec2[numFaces * 3];
-	pMesh->faces = nullptr;
+	pMesh->normals = TYW_NEW glm::vec3[numFaces * 3]; //Normals always going to be created
 
+	//check if we parsed any texCoord as without them we can not create tangent and Bitangent
+	if (bHasTexCoord) 
+	{
+		pMesh->tangent = TYW_NEW glm::vec3[numFaces * 3];
+		pMesh->binormal = TYW_NEW glm::vec3[numFaces * 3];
+		pMesh->uvs = TYW_NEW glm::vec2[numFaces * 3];
+
+		pMesh->numUvs = numFaces * 3;
+		pMesh->numTangets = numFaces * 3;
+		pMesh->numBinormals = numFaces * 3;
+	}
+	else
+	{
+		pMesh->numUvs = 0;
+		pMesh->numTangets = 0;
+		pMesh->numBinormals = 0;
+	}
+
+	pMesh->faces = nullptr;
 	pMesh->numVertexes = numFaces * 3;
-	pMesh->numUvs = numFaces * 3;
 	pMesh->numNormals = numFaces * 3;
-	pMesh->numTangets = numFaces * 3;
-	pMesh->numBinormals = numFaces * 3;
 	pMesh->numFaces = numFaces;
 
-
-
-
-	//DEBUG
+#ifdef _DEBUG
 	printf("Mesh:     %s \r\n", objectName);
 	printf("VERTEX:	  %i \r\n", numVertices);
 	printf("TEXCOORD: %i \r\n", numTexCoord);
 	printf("NORMALS:  %i \r\n", numNormals);
 	printf("FACES:    %i \r\n", numFaces);
 	printf("\r\n");
+#endif
 
 	
-
 	//Instead if doing searching and sorting for vertex normals
 	//I use first [] access as duplicates
 	//Each time [vertexIndices[i]] is the same. I keep adding duplicate vertices position
 	std::vector <std::vector<uint32_t>> duplicateVertices;
 	duplicateVertices.resize(temp_vertices.size());
-
 	for (uint32_t i = 0; i < pMesh->numFaces * 3; i+=3) 
 	{
 		//First Vertex
 		pMesh->vertices[i] = temp_vertices[vertexIndices[i]];
-		pMesh->uvs[i] = temp_uvs[uvIndices[i]];
 		pMesh->normals[i] = pMesh->normals[i] = CalculateNormals(vertexIndices, temp_vertices, i);
-		pMesh->tangent[i] = glm::vec3(0, 0, 0);
-		pMesh->binormal[i] = glm::vec3(0, 0, 0);
-		duplicateVertices[vertexIndices[i]].push_back(i);
 
 		//Second Vertex
 		pMesh->vertices[i+1] = temp_vertices[vertexIndices[i+1]];
-		pMesh->uvs[i+1] = temp_uvs[uvIndices[i+1]];
 		pMesh->normals[i+1] = pMesh->normals[i];
-		pMesh->tangent[i+1] = glm::vec3(0, 0, 0);
-		pMesh->binormal[i+1] = glm::vec3(0, 0, 0);
-		duplicateVertices[vertexIndices[i+1]].push_back(i+1);
 
 		//Third Vertex
 		pMesh->vertices[i+2] = temp_vertices[vertexIndices[i+2]];
-		pMesh->uvs[i+2] = temp_uvs[uvIndices[i+2]];
 		pMesh->normals[i+2] = pMesh->normals[i];
-		pMesh->tangent[i+2] = glm::vec3(0, 0, 0);
-		pMesh->binormal[i+2] = glm::vec3(0, 0, 0);
-		duplicateVertices[vertexIndices[i+2]].push_back(i+2);
+
+		if (bHasTexCoord)
+		{
+			//First vertex
+			pMesh->uvs[i] = temp_uvs[uvIndices[i]];
+			pMesh->tangent[i] = glm::vec3(0, 0, 0);
+			pMesh->binormal[i] = glm::vec3(0, 0, 0);
+			duplicateVertices[vertexIndices[i]].push_back(i);
+
+			//Second vertex
+			pMesh->uvs[i + 1] = temp_uvs[uvIndices[i + 1]];
+			pMesh->tangent[i + 1] = glm::vec3(0, 0, 0);
+			pMesh->binormal[i + 1] = glm::vec3(0, 0, 0);
+			duplicateVertices[vertexIndices[i + 1]].push_back(i + 1);
+
+			//Third vertex
+			pMesh->uvs[i + 2] = temp_uvs[uvIndices[i + 2]];
+			pMesh->tangent[i + 2] = glm::vec3(0, 0, 0);
+			pMesh->binormal[i + 2] = glm::vec3(0, 0, 0);
+			duplicateVertices[vertexIndices[i + 2]].push_back(i + 2);
+		}
 	}
 
 	//Create new smooth normals
@@ -307,18 +324,36 @@ int OBJ_ParseObject(FILE* file, const char* objectName,
 	SAFE_DELETE_ARRAY(pMesh->normals)
 	pMesh->normals = newNormals;
 
-
 	//Calculate Tangent and Bittangent
-	for (int i = 0; i < pMesh->numVertexes; i+=3)
+	if (bHasTexCoord) {
+		CalculateTangentAndBinormal(*pMesh);
+	}
+
+	return res;
+}
+
+glm::vec3 CalculateNormals(const std::vector< unsigned int >& vertexIndices, const std::vector<glm::vec3>& temp_vertices, const int currentIndex)
+{
+	glm::vec3 Edge1 = temp_vertices[vertexIndices[(currentIndex + 1)]] - temp_vertices[vertexIndices[currentIndex]];
+	glm::vec3 Edge2 = temp_vertices[vertexIndices[(currentIndex + 2)]] - temp_vertices[vertexIndices[currentIndex]];
+
+	return glm::normalize(glm::cross(Edge1, Edge2));
+}
+
+
+void CalculateTangentAndBinormal(objMesh_t& pMesh)
+{
+	//Calculate Tangent and Bittangent
+	for (int i = 0; i < pMesh.numVertexes; i += 3)
 	{
-		glm::vec3& v0 = pMesh->vertices[i];
-		glm::vec3& v1 = pMesh->vertices[i + 1];
-		glm::vec3& v2 = pMesh->vertices[i + 2];
+		glm::vec3& v0 = pMesh.vertices[i];
+		glm::vec3& v1 = pMesh.vertices[i + 1];
+		glm::vec3& v2 = pMesh.vertices[i + 2];
 
 
-		glm::vec2& uv0 = pMesh->uvs[i];
-		glm::vec2& uv1 = pMesh->uvs[i+1];
-		glm::vec2& uv2 = pMesh->uvs[i+2];
+		glm::vec2& uv0 = pMesh.uvs[i];
+		glm::vec2& uv1 = pMesh.uvs[i + 1];
+		glm::vec2& uv2 = pMesh.uvs[i + 2];
 
 		glm::vec3 Edge1 = v1 - v0;
 		glm::vec3 Edge2 = v2 - v0;
@@ -339,57 +374,15 @@ int OBJ_ParseObject(FILE* file, const char* objectName,
 		Bitangent.x = f * (-DeltaU2 * Edge1.x - DeltaU1 * Edge2.x);
 		Bitangent.y = f * (-DeltaU2 * Edge1.y - DeltaU1 * Edge2.y);
 		Bitangent.z = f * (-DeltaU2 * Edge1.z - DeltaU1 * Edge2.z);
-			
-		pMesh->tangent[i]	= Tangent;
-		pMesh->tangent[i+1] = Tangent;
-		pMesh->tangent[i+2] = Tangent;
+
+		pMesh.tangent[i] = Tangent;
+		pMesh.tangent[i + 1] = Tangent;
+		pMesh.tangent[i + 2] = Tangent;
+
+		TangentAndBinormalCalculator(pMesh, i);
+		TangentAndBinormalCalculator(pMesh, i+1);
+		TangentAndBinormalCalculator(pMesh, i+2);
 	}
-
-	
-	
-	//Normalize tangents and bitangent
-	for (int i = 0; i < pMesh->numVertexes; i++)
-	{
-		const glm::vec3 & n = pMesh->normals[i];
-		const glm::vec3 & t = pMesh->tangent[i];
-		pMesh->tangent[i] = glm::orthonormalize(t, n);
-
-		pMesh->binormal[i] = (glm::cross(pMesh->tangent[i], n));
-	}
-	return res;
-}
-
-glm::vec3 CalculateNormals(const std::vector< unsigned int >& vertexIndices, const std::vector<glm::vec3>& temp_vertices, const int currentIndex)
-{
-	glm::vec3 Edge1 = temp_vertices[vertexIndices[(currentIndex + 1)]] - temp_vertices[vertexIndices[currentIndex]];
-	glm::vec3 Edge2 = temp_vertices[vertexIndices[(currentIndex + 2)]] - temp_vertices[vertexIndices[currentIndex]];
-
-	return glm::normalize(glm::cross(Edge1, Edge2));
-}
-
-
-void CalculateTangentAndBinormal(objMesh_t& pMesh, const int currentIndex)
-{
-	//calculate edges
-	glm::vec3 Edge1 = pMesh.vertices[currentIndex + 1] - pMesh.vertices[currentIndex];
-	glm::vec3 Edge2 = pMesh.vertices[currentIndex + 2] - pMesh.vertices[currentIndex];
-
-
-	//calculate uv edges
-	glm::vec2 Edge1Uv = pMesh.uvs[currentIndex + 1] - pMesh.uvs[currentIndex];
-	glm::vec2 Edge2Uv = pMesh.uvs[currentIndex + 2] - pMesh.uvs[currentIndex];
-
-
-	pMesh.tangent[currentIndex] = glm::vec3(0, 0, 0);
-	pMesh.binormal[currentIndex] = glm::vec3(0, 0, 0);
-
-	float r = 1.0f / (Edge1Uv.x * Edge2Uv.y - Edge1Uv.y * Edge2Uv.x);
-	glm::vec3 tangent = (Edge1 * Edge2Uv.y - Edge2 * Edge1Uv.y)*r;
-	glm::vec3 bitangent = (Edge2 * Edge1Uv.x - Edge1 * Edge2Uv.x)*r;
-
-	//t = tangent;
-	//b = bitangent;
-	TangentAndBinormalCalculator(Edge1, Edge2, Edge1Uv, Edge2Uv, pMesh.normals[currentIndex], pMesh.tangent[currentIndex], pMesh.binormal[currentIndex]);
 }
 
 
@@ -517,7 +510,7 @@ objMaterial_t* OBJ_ParseMTL(const char* fileName) {
 		}
 	}
 
-	//DEBUG
+#ifdef _DEBUG
 	for (int i = 0; i < model->materials.size(); i++) 
 	{
 		objMaterial_t* mat = model->materials[i];
@@ -527,6 +520,7 @@ objMaterial_t* OBJ_ParseMTL(const char* fileName) {
 		printf("map_Bump:  %s  \r\n", mat->map_bump);
 		printf("\r\n");
 	}
+#endif
 	return nullptr;
 }
 

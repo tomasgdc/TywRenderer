@@ -164,7 +164,6 @@ bool RenderModelStatic::ConvertOBJToModelSurfaces(const struct objModel_a* obj) 
 		object = obj->objects[objectNum];
 		mesh = &object->mesh;
 
-
 		tri = nullptr;
 		tri = R_AllocStaticTriSurf();
 		tri->numVerts = 0;
@@ -181,24 +180,33 @@ bool RenderModelStatic::ConvertOBJToModelSurfaces(const struct objModel_a* obj) 
 			//Firts vertex
 			tri->verts[i].vertex = mesh->vertices[i];
 			tri->verts[i].normal = mesh->normals[i];
-			tri->verts[i].tangent = mesh->tangent[i];
-			tri->verts[i].bitangent = mesh->binormal[i];
-			tri->verts[i].tex = mesh->uvs[i];
 
-			
 			//Second vertex
 			tri->verts[i + 1].vertex = mesh->vertices[i + 1];
 			tri->verts[i + 1].normal = mesh->normals[i+1];
-			tri->verts[i + 1].tangent = mesh->tangent[i+1];
-			tri->verts[i + 1].bitangent = mesh->binormal[i+1];
-			tri->verts[i + 1].tex = mesh->uvs[i+1];
 
 			//Third vector
 			tri->verts[i + 2].vertex = mesh->vertices[i + 2];
 			tri->verts[i + 2].normal = mesh->normals[i+2];
-			tri->verts[i + 2].tangent = mesh->tangent[i+2];
-			tri->verts[i + 2].bitangent = mesh->binormal[i+2];
-			tri->verts[i + 2].tex = mesh->uvs[i + 2];
+
+			if (mesh->numUvs > 0)
+			{
+				//First vertex
+				tri->verts[i].tangent = mesh->tangent[i];
+				tri->verts[i].bitangent = mesh->binormal[i];
+				tri->verts[i].tex = mesh->uvs[i];
+
+
+				//Second vertex
+				tri->verts[i + 1].tangent = mesh->tangent[i + 1];
+				tri->verts[i + 1].bitangent = mesh->binormal[i + 1];
+				tri->verts[i + 1].tex = mesh->uvs[i + 1];
+
+				//Third vertex
+				tri->verts[i + 2].tangent = mesh->tangent[i + 2];
+				tri->verts[i + 2].bitangent = mesh->binormal[i + 2];
+				tri->verts[i + 2].tex = mesh->uvs[i + 2];
+			}
 		}
 
 		modelSurf = &this->surfaces[objectNum];
@@ -210,7 +218,10 @@ bool RenderModelStatic::ConvertOBJToModelSurfaces(const struct objModel_a* obj) 
 			Material * pMaterial = it->second;
 			modelSurf->material = pMaterial;
 			modelSurf->numMaterials = materialSizes[object->mat_name]; //Will give number of materials that were loaded
+
+#ifdef DEBUG
 			printf("Found %s \n", object->mat_name);
+#endif
 		}
 	}
 	return true;
