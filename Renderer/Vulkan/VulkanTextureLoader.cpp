@@ -640,7 +640,7 @@ bool VkTools::VulkanTextureLoader::LoadTexture(const std::string& filename, VkFo
 		VkImageCreateInfo imageCreateInfo = VkTools::Initializer::ImageCreateInfo();
 		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
 		imageCreateInfo.format = format;
-		imageCreateInfo.mipLevels = 1;
+		imageCreateInfo.mipLevels = texture->mipLevels;
 		imageCreateInfo.arrayLayers = 1;
 		imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 		imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
