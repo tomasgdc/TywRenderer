@@ -50,6 +50,35 @@ VkResult VkBufferObject::CreateBuffer(const VulkanSwapChain& pSwapChain, VkPhysi
 	return VK_SUCCESS;
 }
 
+VkResult VkBufferObject::CreateBuffer(const VulkanSwapChain& pSwapChain, VkPhysicalDeviceMemoryProperties& memoryProperties, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkTools::UniformData& uniformData, void *data)
+{
+	// Create the buffer handle
+	VkBufferCreateInfo bufferCreateInfo = VkTools::Initializer::BufferCreateInfo(usageFlags, size);
+	VK_CHECK_RESULT(vkCreateBuffer(pSwapChain.device, &bufferCreateInfo, nullptr, &uniformData.buffer));
+
+	// Create the memory backing up the buffer handle
+	VkMemoryRequirements memReqs;
+	VkMemoryAllocateInfo memAlloc = VkTools::Initializer::MemoryAllocateInfo();
+	vkGetBufferMemoryRequirements(pSwapChain.device, uniformData.buffer, &memReqs);
+	memAlloc.allocationSize = memReqs.size;
+
+	// Find a memory type index that fits the properties of the buffer
+	memAlloc.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags, memoryProperties);
+	VK_CHECK_RESULT(vkAllocateMemory(pSwapChain.device, &memAlloc, nullptr, &uniformData.memory));
+
+	// If a pointer to the buffer data has been passed, map the buffer and copy over the data
+	if (data != nullptr)
+	{
+		void *mapped;
+		VK_CHECK_RESULT(vkMapMemory(pSwapChain.device, uniformData.memory, 0, size, 0, &mapped));
+		memcpy(mapped, data, size);
+		vkUnmapMemory(pSwapChain.device, uniformData.memory);
+	}
+
+	// Attach the memory to the buffer object
+	VK_CHECK_RESULT(vkBindBufferMemory(pSwapChain.device, uniformData.buffer, uniformData.memory, 0));
+	return VK_SUCCESS;
+}
 
 VkResult VkBufferObject::SubmitBufferObjects(const VkCommandBuffer& copyCmd, const VkQueue& copyQueue, const VulkanRendererInitializer& pRendInit, VkDeviceSize size, VkBufferObject_s& stagingBuffer, VkBufferObject_s& localBuffer, drawVertFlags enumDrawDescriptors)
 {

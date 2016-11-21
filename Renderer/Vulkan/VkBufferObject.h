@@ -10,6 +10,11 @@
 class VulkanSwapChain;
 class VulkanRendererInitializer;
 
+namespace VkTools
+{
+	struct UniformData;
+};
+
 struct TYWRENDERER_API VkBufferObject_s
 {
 	VkBufferObject_s(): buffer(0), memory(0){}
@@ -29,6 +34,8 @@ class TYWRENDERER_API VkBufferObject
 public:
 	VkBufferObject();
 	static VkResult CreateBuffer(const VulkanSwapChain& pSwapChain, VkPhysicalDeviceMemoryProperties& memoryProperties, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkBufferObject_s& bufferObject, void *data = nullptr);
+	static VkResult CreateBuffer(const VulkanSwapChain& pSwapChain, VkPhysicalDeviceMemoryProperties& memoryProperties, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkTools::UniformData& uniformData, void *data = nullptr);
+
 	static VkResult SubmitBufferObjects(const VkCommandBuffer& copyCmd, const VkQueue& copyQueue, const VulkanRendererInitializer& pRendInit, VkDeviceSize size, VkBufferObject_s& stagingBuffer, VkBufferObject_s& localBuffer, enum drawVertFlags enumDrawDescriptors);
 
 	//You can use this function if command buffer was not submitted

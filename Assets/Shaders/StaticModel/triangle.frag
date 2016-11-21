@@ -35,12 +35,8 @@ void main()
     // Calculate R ready for use in Phong lighting.
     vec3 R = reflect(-L, normalTexture);
 
-
     // Calculate diffuse color with simple N dot L.
 	vec3 diffuse = max(dot(normalTexture, V), 0.0) * diffuseTexture.rgb;
-    //vec3 diffuse = max(dot(fs_in.normal, V), 0.0) * diffuseTexture.rgb;
-    // Uncomment this to turn off diffuse shading
-    // diffuse = vec3(0.0);
 
     // Assume that specular albedo is white - it could also come from a texture
     vec3 specular_albedo = vec3(1.0);
@@ -51,7 +47,4 @@ void main()
 
     // Final color is diffuse + specular
     outFragColor = vec4(diffuse + specular, 1.0);
-	//outFragColor = vec4(normalTexture.rgb, 1.0);
-	//outFragColor = vec4(normalTexture.rgb, 1.0);
-	//outFragColor = vec4(fs_in.normal.rgb, 1.0);
 }

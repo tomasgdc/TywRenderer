@@ -15,14 +15,13 @@ layout (binding = 1) uniform sampler2D samplerNormal;
 layout (binding = 2) uniform sampler2D samplerDiffuse;
 layout (binding = 3) uniform sampler2D samplerSpecular;
 
+
+
 //Position
 layout (location = 0) out vec4 color0;
 
 //Normal, Diffuse, Specular
 layout (location = 1) out vec4 color1;
-
-//Depth
-layout(location = 2) out float color2;
 
 
 // c_precision of 128 fits within 7 base-10 digits
@@ -39,13 +38,14 @@ float color2float(vec3 color)
         + floor(color.g * c_precision + 0.5) * c_precisionp1 * c_precisionp1;
 }
  
-float near = 1.0; 
-float far  = 100.0; 
-float LinearizeDepth(float depth) 
+float n = 1.0f; // camera z near
+float f = 128.0f; // camera z far
+float LinearizeDepth(float depth)
 {
-    float z = depth * 2.0 - 1.0; // Back to NDC 
-    return (2.0 * near * far) / (far + near - z * (far - near));	
+  float z = depth * 2.0f - 1.0f; //Back to NDC
+  return (2.0f * n) / (f + n - z * (f - n));	
 }
+
 
 void main() 
 {	
@@ -53,18 +53,20 @@ void main()
 	//Get correct coords
 	vec2 flipped_texcoord = vec2(fs_in.texcoord.x, 1.0 - fs_in.texcoord.y);
 	vec3 diffuseTexture = texture(samplerDiffuse, flipped_texcoord).rgb;
-	vec3 normalTexture  = normalize( (1.0 - texture(samplerNormal, flipped_texcoord).rgb) * 2.0);
+	vec3 normalTexture  = normalize(1.0 -  (texture(samplerNormal, flipped_texcoord).rgb) * 2.0);
 	vec3 specularTexture = texture(samplerSpecular, flipped_texcoord).rgb;
 	
 	//Calculate normalTexture coords
-	normalTexture = fs_in.TBN * normalTexture;
+	normalTexture = normalize(fs_in.TBN * normalTexture);
 
 	vec4 outvec0 = vec4(0);
     vec4 outvec1 = vec4(0);
 
 	//Position
 	outvec0.xyz = fs_in.ws_coords;
-	outvec0.w = 1.0;
+
+	//Store Depth
+	outvec0.w = LinearizeDepth(gl_FragCoord.z);
 
 	
 
@@ -75,5 +77,4 @@ void main()
 
     color0 = outvec0;
     color1 = outvec1;
-	color2 = LinearizeDepth(gl_FragCoord.z);
 }

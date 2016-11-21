@@ -21,6 +21,8 @@ SET(RESOURCES
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DefferedMRT.vert"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DebugQuad.frag"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DebugQuad.vert"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/SSAO.vert"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/SSAO.frag"
 )
 SOURCE_GROUP("Shader Files" FILES ${RESOURCES})
 

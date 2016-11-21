@@ -181,7 +181,6 @@ void VKRenderer::StartFrame()
 
 void VKRenderer::EndFrame(uint64_t* gpuMicroSec)
 {
-
 	VK_CHECK_RESULT(vkQueueWaitIdle(m_pWRenderer->m_Queue));
 }
 
@@ -224,7 +223,6 @@ void VKRenderer::VSetLogPath()
 	{
 		perror("Could not open GLRenderLog.txt");
 	}
-
 
 	m_LogFileStr = fopen("../LogInfo/GLLogStreaming.txt", "w");
 	if (!m_LogFileStr)
@@ -434,3 +432,14 @@ void VKRenderer::VLoadTexture(std::string fileName, VkFormat format, bool forceL
 	//overriden
 }
 
+
+void VKRenderer::CreateUniformBuffer(VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size,  VkTools::UniformData& uniformData, void *data)
+{
+	VkResult result  = VkBufferObject::CreateBuffer(m_pWRenderer->m_SwapChain, m_pWRenderer->m_DeviceMemoryProperties, usageFlags, memoryPropertyFlags, size, uniformData, data);
+	if (result == VK_SUCCESS)
+	{
+		uniformData.descriptor.buffer = uniformData.buffer;
+		uniformData.descriptor.offset = 0;
+		uniformData.descriptor.range = size;
+	}
+}

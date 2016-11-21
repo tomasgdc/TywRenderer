@@ -87,19 +87,49 @@ public:
 	VKRenderer();
 	virtual ~VKRenderer();
 
+	/*
+		Cleans all resources used by VKRenderer
+	*/
 	void VShutdown() override;
 
+
+	/*
+		Initializes Vulkan Renderer and Windows
+
+		@param: uint32_t height
+		@param: uint32_t widht
+		@param: bool isFullscreen
+		@param: LRESULT(CALLBACK MainWindowProc)(HWND, UINT, WPARAM, LPARAM)
+	*/
 	bool VInitRenderer(uint32_t height, uint32_t widht, bool isFullscreen, LRESULT(CALLBACK MainWindowProc)(HWND, UINT, WPARAM, LPARAM)) override;
 
-	void VSetBackgroundColor(BYTE bgA, BYTE bgR, BYTE bgG, BYTE bgB)
+
+	/*
+		Used for creating ufnirom buffer object
+
+		@parma: VkBufferUsageFlags usageFlags
+		@param: VkMemoryPropertyFlags memoryPropertyFlags
+		@param: VkDeviceSize size
+		@param: VkTools::UniformData& uniformData
+		@param: void *data
+	*/
+	void CreateUniformBuffer(VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkTools::UniformData& uniformData, void *data);
+
+	inline void VSetBackgroundColor(BYTE bgA, BYTE bgR, BYTE bgG, BYTE bgB)
 	{
-		m_backgroundColor[0] = float(bgA) / 255.0f;
-		m_backgroundColor[1] = float(bgR) / 255.0f;
-		m_backgroundColor[2] = float(bgG) / 255.0f;
-		m_backgroundColor[3] = float(bgB) / 255.0f;
+		m_backgroundColor[0] = static_cast<float>(bgA) / 255.0f;
+		m_backgroundColor[1] = static_cast<float>(bgR) / 255.0f;
+		m_backgroundColor[2] = static_cast<float>(bgG) / 255.0f;
+		m_backgroundColor[3] = static_cast<float>(bgB) / 255.0f;
 	}
 
+	/*
+		Resizes the main swapchain, recreates command buffers and update uniform buffers.
+		TODO: Abstarct better for proper all created new command buffers recreation
 
+		@param: uint32_t iHeight
+		@parma: uint32_t iWidth
+	*/
 	void VWindowResize(uint32_t iHeight, uint32_t iWidth) override;
 
 	bool VPreRender() override;
@@ -110,12 +140,8 @@ public:
 	std::shared_ptr<IRenderState> VPrepareAlphaPass() override;
 	std::shared_ptr<IRenderState> VPrepareSkyBoxPass() override;
 
-
 	//Creates files for logging
 	void VSetLogPath();
-
-	//Clears screens and swaps buffers
-	//void SwapCommandsFinnishRendering(uint64_t* gpuMicroSec);
 
 	virtual void StartFrame();
 	virtual void EndFrame(uint64_t* gpuMicroSec);
@@ -181,6 +207,7 @@ public:
 
 	//overridable
 	virtual void LoadGUI();
+
 protected:
 	//Log Renderer
 	FILE*                     m_LogFile;
@@ -203,6 +230,7 @@ protected:
 	VulkanRendererInitializer			*m_pWRenderer;
 	VkTools::VulkanTextureLoader		*m_pTextureLoader;
 	ImageManager						*m_pImageManager;
+
 protected:
 	// List of shader modules created (stored for cleanup)
 	std::vector<VkShaderModule> m_ShaderModules;

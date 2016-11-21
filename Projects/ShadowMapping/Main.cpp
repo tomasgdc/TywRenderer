@@ -225,7 +225,7 @@ private:
 	// for better shadow map precision
 	//naah need bigger depth
 	float zNear = 1.0f;
-	float zFar = 100.0f; 
+	float zFar = 128.0f; 
 
 
 	struct {
@@ -585,9 +585,9 @@ void Renderer::UpdateLight()
 	}
 
 	// Animate the light sour
-	lightPos.x = sin(glm::radians(timer * 360.0f))*30.0f;
-	lightPos.y = 20.0f;// +sin(glm::radians(timer * 360.0f)) * 20.0f;
-	lightPos.z = 50.0f; // +sin(glm::radians(timer * 360.0f)) *20.0f;
+	lightPos.x = sin(glm::radians(timer * 360.0f))*10.0f;
+	lightPos.y = 10.0f;// +sin(glm::radians(timer * 360.0f)) * 20.0f;
+	lightPos.z = 20.0f; // +sin(glm::radians(timer * 360.0f)) *20.0f;
 	//lightPos = glm::vec3(0, 0, 0);
 
 	modelUniformData.lightPos = lightPos;
@@ -609,6 +609,7 @@ void Renderer::PrepareOffscreenRenderPass()
 	attDesc[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	attDesc[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	attDesc[0].flags = VK_FLAGS_NONE;
+
 
 	attDesc[1].format = DEPTH_FORMAT;
 	attDesc[1].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -825,7 +826,7 @@ void Renderer::BuildOffscreenCommandBuffer()
 	VkCommandBufferBeginInfo cmdBufInfo = VkTools::Initializer::CommandBufferBeginInfo();
 
 	VkClearValue clearValues[2];
-	clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+	clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
 	clearValues[1].depthStencil = { 1.0f, 0 };
 
 	VkRenderPassBeginInfo renderPassBeginInfo = VkTools::Initializer::RenderPassBeginInfo();
@@ -1397,10 +1398,12 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		{
 			// Binding 0 : Vertex shader uniform buffer
 			VkTools::Initializer::WriteDescriptorSet(offscreenDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.offscreenModel.descriptor),
+
+			// Binding 1: Image descriptor
+			VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &offscreenDescriptor)
 		};
 		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, offscreenWriteDescriptorSets.size(), offscreenWriteDescriptorSets.data(), 0, NULL);
 	}
-
 
 	{
 		// Offscreen plane
@@ -1409,6 +1412,9 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		{
 			// Binding 0 : Vertex shader uniform buffer
 			VkTools::Initializer::WriteDescriptorSet(offscreenPlaneDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.offscreenPlane.descriptor),
+
+			// Binding 1: Image descriptor
+			VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &offscreenDescriptor)
 		};
 		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, offscreenWriteDescriptorSets.size(), offscreenWriteDescriptorSets.data(), 0, NULL);
 	}

@@ -43,6 +43,8 @@ void main()
 	
 	// Vertex position in world space
 	vs_out.ws_coords =  vec3(ubo.modelMatrix * tmpPos);
+
+
 	// GL to Vulkan coord space
 	vs_out.ws_coords.y = -vs_out.ws_coords.y;
 	vs_out.texcoord = inUv;

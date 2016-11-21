@@ -5,7 +5,6 @@
 
 layout (binding = 1) uniform highp  sampler2D  positionColor;
 layout (binding = 2) uniform highp  sampler2D  packedTexture; //packed normal, diffuse, specular
-layout (binding = 3) uniform highp  sampler2D  depthBuffer; 
 
 layout (location = 0) in vec3 outUV;
 layout (location = 0) out vec4 outFragColor;
@@ -27,19 +26,31 @@ vec3 float2color(float value)
     return color;
 }
 
+/*
+float LinearizeDepth(float depth)
+{
+  float n = 1.0; // camera z near
+  float f = 128.0; // camera z far
+  float z = depth;
+  return (2.0 * n) / (f + n - z * (f - n));	
+}
+*/
 
 void main() 
 {
 	vec3 packedData = texture(packedTexture, outUV.st).rgb;
+	vec4 posTexture = texture(positionColor, outUV.st).rgba;
 
 	vec3 Components[5];
-	Components[0] = texture(positionColor, outUV.st).rgb;
+	Components[0] = posTexture.xyz;
+
+	vec3 temp = vec3(posTexture.w);
 
 	//Unpacking data
 	Components[1] = float2color(packedData.x);
 	Components[2] =  normalize(float2color(packedData.y));
 	Components[3] = float2color(packedData.z);
-	Components[4] = vec3(1.0, 1.0, 1.0);
+	Components[4] = temp;
 
 	highp int index = int(outUV.z);
 	outFragColor.rgb = Components[index];
