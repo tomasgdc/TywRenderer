@@ -296,6 +296,7 @@ private:
 	VkDescriptorSetLayout ssaoDescriptorSetLayout;
 	VkDescriptorSet  ssaoDescriptorSet;
 	VkCommandBuffer	 ssaoCmdBuffer = VK_NULL_HANDLE;
+	VkTools::VulkanTexture m_NoiseGeneratedTexture;
 
 	struct {
 		glm::mat4 mvp;
@@ -321,11 +322,12 @@ public:
 	void StartFrame() override;
 	void LoadGUI() override;
 
+	void GenerateTexture(std::vector<glm::vec3> &ImageData, uint32_t imageX, uint32_t imageY, uint32_t mipMapLevel, VkFormat format, VkTools::VulkanTexture *texture, VkImageUsageFlags imageUsageFlags); //Add to TywRenderer DLL
 	void InitializeSSAOData();
 	void ChangeLodBias(float delta);
 	void BeginTextUpdate();
 	void CreateFrameBuffer();
-	void CreateAttachement(VkFormat format, VkImageUsageFlagBits usage, FrameBufferAttachment *attachment, VkCommandBuffer layoutCmd);
+	void CreateAttachement(VkFormat format, VkImageUsageFlagBits usage, FrameBufferAttachment *attachment, VkCommandBuffer layoutCmd); //Add to TywRendere DLL
 
 	void PrepareFramebufferCommands();
 	void PrepareSSAOCommands();
@@ -351,6 +353,13 @@ Renderer::Renderer() :m_bViewUpdated(false)
 
 Renderer::~Renderer()
 {
+	//Destroy noise generated texture
+	vkDestroyImageView(m_pWRenderer->m_SwapChain.device, m_NoiseGeneratedTexture.view, nullptr);
+	vkDestroyImage(m_pWRenderer->m_SwapChain.device, m_NoiseGeneratedTexture.image, nullptr);
+	vkFreeMemory(m_pWRenderer->m_SwapChain.device, m_NoiseGeneratedTexture.deviceMemory, nullptr);
+	vkDestroySampler(m_pWRenderer->m_SwapChain.device, m_NoiseGeneratedTexture.sampler, nullptr);
+
+
 	vkDestroySampler(m_pWRenderer->m_SwapChain.device, colorSampler, nullptr);
 
 	//Destroy model data
@@ -463,7 +472,6 @@ void Renderer::InitializeSSAOData()
 {
 	std::uniform_real_distribution<float> randomFloats(0.0f, 1.0f); // random floats between 0.0 - 1.0
 	std::default_random_engine generator;
-	std::vector<glm::vec3> ssaoKernel;
 	for (uint32_t i = 0; i < 64; ++i)
 	{
 		glm::vec3 sample(
@@ -478,7 +486,228 @@ void Renderer::InitializeSSAOData()
 	}
 
 	uboSSAO.projection = m_Camera.matrices.perspective;
+
+
+	std::vector<glm::vec3> ssaoNoise;
+	ssaoNoise.reserve(16);
+	for (uint32_t i = 0; i < 16; i++)
+	{
+		glm::vec3 noise(
+			randomFloats(generator) * 2.0 - 1.0,
+			randomFloats(generator) * 2.0 - 1.0,
+			0.0f);
+		ssaoNoise.push_back(noise);
+	}
+
+	//Generates texture. But cant see anything in debugger in it. Better generate on gpu... at the moment
+	GenerateTexture(ssaoNoise, 4, 4, 1, VK_FORMAT_R16G16B16_SFLOAT, &m_NoiseGeneratedTexture, VK_IMAGE_USAGE_SAMPLED_BIT);
 }
+
+void Renderer::GenerateTexture(std::vector<glm::vec3> &tex2D, uint32_t imageX, uint32_t imageY, uint32_t mipMapLevel, VkFormat format, VkTools::VulkanTexture *texture, VkImageUsageFlags imageUsageFlags)
+{
+	texture->width = imageX;
+	texture->height = imageY;
+	texture->mipLevels = mipMapLevel;
+
+	// Get device properites for the requested texture format
+	VkFormatProperties formatProperties;
+	vkGetPhysicalDeviceFormatProperties(m_pWRenderer->m_SwapChain.physicalDevice, format, &formatProperties);
+
+
+	VkMemoryAllocateInfo memAllocInfo = VkTools::Initializer::MemoryAllocateInfo();
+	VkMemoryRequirements memReqs;
+
+
+	// Use a separate command buffer for texture generation
+	VkCommandBuffer cmdBuffer;
+	VkCommandBufferAllocateInfo cmdBufAllocateInfo =
+		VkTools::Initializer::CommandBufferAllocateInfo(
+			m_pWRenderer->m_CmdPool,
+			VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+			1);
+
+	VK_CHECK_RESULT(vkAllocateCommandBuffers(m_pWRenderer->m_SwapChain.device, &cmdBufAllocateInfo, &cmdBuffer));
+	VkCommandBufferBeginInfo cmdBufInfo = VkTools::Initializer::CommandBufferBeginInfo();
+	VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
+
+
+	// Create a host-visible staging buffer that contains the raw image data
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingMemory;
+
+	VkBufferCreateInfo bufferCreateInfo = VkTools::Initializer::BufferCreateInfo();
+	bufferCreateInfo.size = tex2D.size() * sizeof(glm::vec3);
+
+	// This buffer is used as a transfer source for the buffer copy
+	bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VK_CHECK_RESULT(vkCreateBuffer(m_pWRenderer->m_SwapChain.device, &bufferCreateInfo, nullptr, &stagingBuffer));
+
+	// Get memory requirements for the staging buffer (alignment, memory type bits)
+	vkGetBufferMemoryRequirements(m_pWRenderer->m_SwapChain.device, stagingBuffer, &memReqs);
+
+	memAllocInfo.allocationSize = memReqs.size;
+	// Get memory type index for a host visible buffer
+	memAllocInfo.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_pWRenderer->m_DeviceMemoryProperties);
+
+	VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &memAllocInfo, nullptr, &stagingMemory));
+	VK_CHECK_RESULT(vkBindBufferMemory(m_pWRenderer->m_SwapChain.device, stagingBuffer, stagingMemory, 0));
+
+	// Copy texture data into staging buffer
+	uint8_t *data;
+	VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, stagingMemory, 0, memReqs.size, 0, (void **)&data));
+	memcpy(data, tex2D.data(), tex2D.size() * sizeof(glm::vec3));
+	vkUnmapMemory(m_pWRenderer->m_SwapChain.device, stagingMemory);
+
+	// Setup buffer copy regions for each mip level
+	std::vector<VkBufferImageCopy> bufferCopyRegions;
+	uint32_t offset = 0;
+
+	for (uint32_t i = 0; i < texture->mipLevels; i++)
+	{
+		VkBufferImageCopy bufferCopyRegion = {};
+		bufferCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		bufferCopyRegion.imageSubresource.mipLevel = i;
+		bufferCopyRegion.imageSubresource.baseArrayLayer = 0;
+		bufferCopyRegion.imageSubresource.layerCount = 1;
+		bufferCopyRegion.imageExtent.width = static_cast<uint32_t>(imageX); //not working properly for mip level
+		bufferCopyRegion.imageExtent.height = static_cast<uint32_t>(imageY); //not working properly for mip level
+
+		bufferCopyRegion.imageExtent.depth = 1;
+		bufferCopyRegion.bufferOffset = offset;
+
+		bufferCopyRegions.push_back(bufferCopyRegion);
+		offset += static_cast<uint32_t>(tex2D.size() * sizeof(glm::vec3)); //not working properly for mip level
+	}
+
+	// Create optimal tiled target image
+	VkImageCreateInfo imageCreateInfo = VkTools::Initializer::ImageCreateInfo();
+	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageCreateInfo.format = format;
+	imageCreateInfo.mipLevels = texture->mipLevels;
+	imageCreateInfo.arrayLayers = 1;
+	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	imageCreateInfo.usage = imageUsageFlags;
+	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageCreateInfo.extent = { texture->width, texture->height, 1 };
+	imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+	VK_CHECK_RESULT(vkCreateImage(m_pWRenderer->m_SwapChain.device, &imageCreateInfo, nullptr, &texture->image));
+
+	vkGetImageMemoryRequirements(m_pWRenderer->m_SwapChain.device, texture->image, &memReqs);
+
+	memAllocInfo.allocationSize = memReqs.size;
+
+	memAllocInfo.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_pWRenderer->m_DeviceMemoryProperties);
+	VK_CHECK_RESULT(vkAllocateMemory(m_pWRenderer->m_SwapChain.device, &memAllocInfo, nullptr, &texture->deviceMemory));
+	VK_CHECK_RESULT(vkBindImageMemory(m_pWRenderer->m_SwapChain.device, texture->image, texture->deviceMemory, 0));
+
+	VkImageSubresourceRange subresourceRange = {};
+	subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	subresourceRange.baseMipLevel = 0;
+	subresourceRange.levelCount = texture->mipLevels;
+	subresourceRange.layerCount = 1;
+
+	// Image barrier for optimal image (target)
+	// Optimal image will be used as destination for the copy
+	VkTools::SetImageLayout(
+		cmdBuffer,
+		texture->image,
+		VK_IMAGE_ASPECT_COLOR_BIT,
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		subresourceRange);
+
+	// Copy mip levels from staging buffer
+	vkCmdCopyBufferToImage(
+		cmdBuffer,
+		stagingBuffer,
+		texture->image,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		static_cast<uint32_t>(bufferCopyRegions.size()),
+		bufferCopyRegions.data()
+	);
+
+	// Change texture image layout to shader read after all mip levels have been copied
+	texture->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	VkTools::SetImageLayout(
+		cmdBuffer,
+		texture->image,
+		VK_IMAGE_ASPECT_COLOR_BIT,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		texture->imageLayout,
+		subresourceRange);
+
+	// Submit command buffer containing copy and image layout commands
+	VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffer));
+
+	// Create a fence to make sure that the copies have finished before continuing
+	VkFence copyFence;
+	VkFenceCreateInfo fenceCreateInfo = VkTools::Initializer::FenceCreateInfo(VK_FLAGS_NONE);
+	VK_CHECK_RESULT(vkCreateFence(m_pWRenderer->m_SwapChain.device, &fenceCreateInfo, nullptr, &copyFence));
+
+	VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &cmdBuffer;
+
+	VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, copyFence));
+	VK_CHECK_RESULT(vkWaitForFences(m_pWRenderer->m_SwapChain.device, 1, &copyFence, VK_TRUE, DEFAULT_FENCE_TIMEOUT));
+
+	vkDestroyFence(m_pWRenderer->m_SwapChain.device, copyFence, nullptr);
+
+	// Clean up staging resources
+	vkFreeMemory(m_pWRenderer->m_SwapChain.device, stagingMemory, nullptr);
+	vkDestroyBuffer(m_pWRenderer->m_SwapChain.device, stagingBuffer, nullptr);
+
+
+	// Create sampler
+	VkSamplerCreateInfo sampler = {};
+	sampler.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	sampler.magFilter = VK_FILTER_LINEAR;
+	sampler.minFilter = VK_FILTER_LINEAR;
+	sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler.mipLodBias = 0.0f;
+	sampler.compareOp = VK_COMPARE_OP_NEVER;
+	sampler.minLod = 0.0f;
+	// Max level-of-detail should match mip level count
+	sampler.maxLod = texture->mipLevels;
+	// Enable anisotropic filtering
+	sampler.maxAnisotropy = 8;
+	sampler.anisotropyEnable = VK_TRUE;
+	sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+	VK_CHECK_RESULT(vkCreateSampler(m_pWRenderer->m_SwapChain.device, &sampler, nullptr, &texture->sampler));
+
+	// Create image view
+	// Textures are not directly accessed by the shaders and
+	// are abstracted by image views containing additional
+	// information and sub resource ranges
+	VkImageViewCreateInfo view = {};
+	view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	view.pNext = NULL;
+	view.image = VK_NULL_HANDLE;
+	view.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	view.format = format;
+	view.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
+	view.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+	// Linear tiling usually won't support mip maps
+	// Only set mip map count if optimal tiling is used
+	view.subresourceRange.levelCount = texture->mipLevels;
+	view.image = texture->image;
+	VK_CHECK_RESULT(vkCreateImageView(m_pWRenderer->m_SwapChain.device, &view, nullptr, &texture->view));
+
+	// Fill descriptor image info that can be used for setting up descriptor sets
+	texture->descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	texture->descriptor.imageView = texture->view;
+	texture->descriptor.sampler = texture->sampler;
+//	return true;
+}
+
 
 void Renderer::UpdateUniformBuffersLights()
 {
@@ -578,7 +807,7 @@ void Renderer::LoadGUI()
 
 void Renderer::GenerateQuad()
 {
-#define NUM_QUADS 5
+#define NUM_QUADS 6
 	std::vector<drawVert> vertData;
 	vertData.reserve(NUM_QUADS * 4);
 
@@ -736,21 +965,8 @@ void Renderer::PrepareSSAOCommands()
 
 	vkCmdBeginRenderPass(ssaoCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 	vkCmdBindPipeline(ssaoCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, ssaoPipeline);
+	vkCmdBindDescriptorSets(GBufferScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, ssaoPipelineLayout, 0, 1, &ssaoDescriptorSet, 0, NULL);
 
-	// Bind triangle vertex buffer (contains position and colors)
-	VkDeviceSize offsets[1] = { 0 };
-	for (int j = 0; j < listLocalBuffers.size(); j++)
-	{
-		// Bind descriptor sets describing shader binding points
-		vkCmdBindDescriptorSets(GBufferScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, frameBufferPipelineLayout, 0, 1, &listDescriptros[j], 0, NULL);
-
-		//Bind Buffer
-		vkCmdBindVertexBuffers(GBufferScreenCmdBuffer, VERTEX_BUFFER_BIND_ID, 1, &listLocalBuffers[j].buffer, offsets);
-
-		//Draw
-		//vkCmdDrawIndirect(GBufferScreenCmdBuffer, nullptr , 0, 3, 0);
-		vkCmdDraw(GBufferScreenCmdBuffer, meshSize[j], 3, 0, 0);
-	}
 	vkCmdEndRenderPass(ssaoCmdBuffer);
 	VK_CHECK_RESULT(vkEndCommandBuffer(ssaoCmdBuffer));
 }
@@ -1331,6 +1547,10 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 			offScreenFrameBuf.ssao.view,
 			VK_IMAGE_LAYOUT_GENERAL);
 
+	//Noise generated texture 
+	VkDescriptorImageInfo noiseImage = VkTools::Initializer::DescriptorImageInfo
+	(m_NoiseGeneratedTexture.sampler, m_NoiseGeneratedTexture.view, VK_IMAGE_LAYOUT_GENERAL);
+
 
 	// Debug Descriptor
 	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfo, &quadDescriptorSet));
@@ -1344,6 +1564,9 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 
 		// Binding 2: Image descriptor
 		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &GBufferNM),
+
+		//Binding 3: SSAO image
+		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &ssaoImage)
 
 	};
 	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, quadWriteDescriptorSets.size(), quadWriteDescriptorSets.data(), 0, NULL);
@@ -1385,7 +1608,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &GBufferNM),
 
 		// Binding 3: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &GBufferNM),
+		//VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &noiseImage),
 
 		//Binding 4: Image descriptor
 		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &ssaoImage),
@@ -1560,7 +1783,8 @@ void Renderer::PreparePipeline()
 	//SSAO Pipeline
 	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/SSAO.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/SSAO.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-	pipelineCreateInfo.pVertexInputState = &quadMesh.vertex.inputState;
+	pipelineCreateInfo.pVertexInputState = nullptr;
+	pipelineCreateInfo.layout = ssaoPipelineLayout;
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &ssaoPipeline));
 
 
@@ -1732,6 +1956,12 @@ void Renderer::StartFrame()
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = &GBufferSemaphore;
 		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+		//Draw SSAO
+		//submitInfo.pWaitSemaphores = &GBufferSemaphore;
+		//submitInfo.pSignalSemaphores = &Semaphores.ssaoSemaphore;
+		//submitInfo.pCommandBuffers = &ssaoCmdBuffer;
+		//VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
 
 		//Draw Model
 		submitInfo.pWaitSemaphores = &GBufferSemaphore;

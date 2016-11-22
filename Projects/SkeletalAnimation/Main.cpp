@@ -1009,7 +1009,7 @@ Renderer g_Renderer;
 
 int main()
 {
-	g_bPrepared = g_Renderer.VInitRenderer(800, 600, false, HandleWindowMessages);
+	g_bPrepared = g_Renderer.VInitRenderer(720, 1280, false, HandleWindowMessages);
 	
 #if defined(_WIN32)
 	MSG msg;

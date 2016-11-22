@@ -25,9 +25,6 @@ layout (binding = 0) uniform UBO
 int kernelSize = 64;
 float radius = 1.0;
 
-// tile noise texture over screen based on screen dimensions divided by noise size
-const vec2 noiseScale = vec2(800.0f/4.0f, 600.0f/4.0f); 
-
 
 // c_precision of 128 fits within 7 base-10 digits
 const float c_precision = 128.0;
@@ -45,6 +42,13 @@ vec3 float2color(float value)
     return color;
 }
 
+//http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
+float rand(vec2 co){
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
+// tile noise texture over screen based on screen dimensions divided by noise size
+const vec2 noiseScale = vec2(1280.0f/4.0f, 720.0f/4.0f); 
 
 void main()
 {
@@ -55,10 +59,13 @@ void main()
 	vec3 packedData = texture(packedTexture, inUV.st).rgb;
     vec3 normal = normalize(float2color(packedData.y));
 
-    vec3 randomVec = texture(texNoise, inUV.st * noiseScale).xyz;
+	float n =  rand( inUV.st * noiseScale);
+	vec3 randomVec = vec3(n,n,n);
+    //vec3 randomVec = texture(texNoise, inUV.st * noiseScale).xyz;
 
     // Create TBN change-of-basis matrix: from tangent-space to view-space
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
+
     vec3 bitangent = cross(normal, tangent);
     mat3 TBN = mat3(tangent, bitangent, normal);
 
