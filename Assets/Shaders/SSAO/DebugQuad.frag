@@ -42,7 +42,7 @@ void main()
 {
 	vec3 packedData = texture(packedTexture, outUV.st).rgb;
 	vec4 posTexture = texture(positionColor, outUV.st).rgba;
-	vec3 ssaoTexture = texture(ssaoImage,    outUV.st).rgb;
+	float ssaoTexture = texture(ssaoImage,    outUV.st).r;
 
 	vec3 Components[6];
 	Components[0] = posTexture.xyz;
@@ -54,7 +54,7 @@ void main()
 	Components[2] =  normalize(float2color(packedData.y));
 	Components[3] = float2color(packedData.z);
 	Components[4] = depthTexture;
-	Components[5] = ssaoTexture;
+	Components[5] = vec3(ssaoTexture);
 
 	highp int index = int(outUV.z);
 	outFragColor.rgb = Components[index];

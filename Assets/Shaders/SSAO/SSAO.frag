@@ -4,13 +4,15 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 
-layout (location = 0) in vec3 inUV;
+layout (location = 0) in vec2 inUV;
 
 
 layout (binding = 1) uniform highp  sampler2D  positionColor;
 layout (binding = 2) uniform highp  sampler2D  packedTexture; //packed normal, diffuse, specular
 layout (binding = 3) uniform highp  sampler2D texNoise;
-layout (location = 4) out float FragColor;
+
+//Output 
+layout (location = 0) out float FragColor;
 
 
 layout (binding = 0) uniform UBO 
@@ -53,15 +55,14 @@ const vec2 noiseScale = vec2(1280.0f/4.0f, 720.0f/4.0f);
 void main()
 {
     // Get input for SSAO algorithm
-    vec4 fragPos = texture(positionColor, inUV.st).rgba;
+    vec4 fragPos = texture(positionColor, inUV).rgba;
 
 	//Get normal
-	vec3 packedData = texture(packedTexture, inUV.st).rgb;
+	vec3 packedData = texture(packedTexture, inUV).rgb;
     vec3 normal = normalize(float2color(packedData.y));
 
-	float n =  rand( inUV.st * noiseScale);
-	vec3 randomVec = vec3(n,n,n);
-    //vec3 randomVec = texture(texNoise, inUV.st * noiseScale).xyz;
+	float n =  rand( inUV * noiseScale);
+    vec3 randomVec = texture(texNoise, inUV * noiseScale).xyz;
 
     // Create TBN change-of-basis matrix: from tangent-space to view-space
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
