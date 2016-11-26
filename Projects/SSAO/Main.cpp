@@ -1260,14 +1260,14 @@ void Renderer::CreateFrameBuffer()
 	frameBuffersSSAO.ssao.height = GBUFF_DIM;
 
 
-	//Normal, Diffuse And Specular
+	//Normal, Diffuse - Packed
 	CreateAttachement(VK_FORMAT_R32G32B32A32_UINT,
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		&offScreenFrameBuf.nm,
 		layoutCmd);
 
-	//Position
-	CreateAttachement(VK_FORMAT_R16G16B16A16_SFLOAT,
+	//Position, Specular, Depth - Packed
+	CreateAttachement(VK_FORMAT_R32G32B32A32_UINT,
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		&offScreenFrameBuf.position,
 		layoutCmd);

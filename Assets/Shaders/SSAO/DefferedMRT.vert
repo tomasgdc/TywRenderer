@@ -37,6 +37,7 @@ void main()
 	//Calculate TBN
 	mat3 mNormal = transpose(inverse(mat3(ubo.modelMatrix)));
 	vec3 N = normalize(mNormal * inNormal);
+	N.y = -N.y;
     vec3 T = normalize(mNormal * inTangent);
     vec3 B = normalize(mNormal * inBinormal);
 	vs_out.TBN = mat3(T, B, N);

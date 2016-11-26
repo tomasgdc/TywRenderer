@@ -24,8 +24,8 @@ layout (binding = 0) uniform UBO
 
 
 // parameters (you'd probably want to use them as uniforms to more easily tweak the effect)
-int kernelSize = 64;
-float radius = 1.0;
+const int kernelSize = 64;
+const float radius = 1.0;
 
 
 // c_precision of 128 fits within 7 base-10 digits
@@ -91,7 +91,7 @@ void main()
        float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth ));
         occlusion += (sampleDepth >= Sample.z ? 1.0 : 0.0) * rangeCheck;           
     }
+
     occlusion = 1.0 - (occlusion / kernelSize);
-    
     FragColor = occlusion;
 }
