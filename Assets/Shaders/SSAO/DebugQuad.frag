@@ -3,8 +3,8 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout (binding = 1) uniform   usampler2D  PosDepthAndSpecularPacked;
-layout (binding = 2) uniform   usampler2D  DiffuseAndNormalPacked;
+layout (binding = 1) uniform   usampler2D  PosAndSpecularPacked;
+layout (binding = 2) uniform   usampler2D  DiffuseNormalAndDepthPacked;
 layout (binding = 3) uniform   sampler2D  ssaoImage; 
 
 layout (location = 0) in vec3 outUV;
@@ -37,53 +37,53 @@ float LinearizeDepth(float depth)
 }
 */
 
+
 vec3 VisFragment(int index)
 {
 	//Results
+	vec2 P = gl_FragCoord.xy / textureSize(DiffuseNormalAndDepthPacked, 0);
 	vec3 result = vec3(1.0);
 
 	if(index == 0)
 	{
-		uvec4 uvec4_PosDepthAndSpecularPacked = texelFetch(PosDepthAndSpecularPacked, ivec2(gl_FragCoord.xy * 5.0), 0);
+		uvec2 uvec2_PosAndSpecularPacked = textureLod(PosAndSpecularPacked, P, 0).rg;
 
-		vec2 tempPosition0 = unpackHalf2x16(uvec4_PosDepthAndSpecularPacked.x);
-		vec2 tempPosAndDepth = unpackHalf2x16(uvec4_PosDepthAndSpecularPacked.y);
+		vec2 tempPosition0 = unpackHalf2x16(uvec2_PosAndSpecularPacked.x);
+		vec2 tempPosAndSpec = unpackHalf2x16(uvec2_PosAndSpecularPacked.y);
 
-		result = vec3(tempPosition0, tempPosAndDepth.x);
+		result = vec3(tempPosition0, tempPosAndSpec.x);
 	}
 	else if(index == 1)
 	{
-		uvec4 uvec4_DiffuseAndNormalPacked = texelFetch(DiffuseAndNormalPacked, ivec2(gl_FragCoord.xy * 5.0), 0);
+		uvec2 uvec2_DiffuseNormal = textureLod(DiffuseNormalAndDepthPacked, P, 0).rg;
 
-		vec2 tempDiffuse0 = unpackHalf2x16(uvec4_DiffuseAndNormalPacked.x);
-		vec2 tempDiffAndNormal = unpackHalf2x16(uvec4_DiffuseAndNormalPacked.y);
+		vec2 tempDiffuse0 = unpackHalf2x16(uvec2_DiffuseNormal.x);
+		vec2 tempDiffAndNormal = unpackHalf2x16(uvec2_DiffuseNormal.y);
 
 		result = vec3(tempDiffuse0.xy, tempDiffAndNormal.x);
 	}
 	else if(index == 2)
 	{
-		uvec4 uvec4_DiffuseAndNormalPacked = texelFetch(DiffuseAndNormalPacked, ivec2(gl_FragCoord.xy * 5.0), 0);
+		uvec2 uvec2_DiffuseNormal = textureLod(DiffuseNormalAndDepthPacked, P, 0).gb;
 
-		vec2 tempDiffAndNormal = unpackHalf2x16(uvec4_DiffuseAndNormalPacked.y);
-		vec2 tempNormal = unpackHalf2x16(uvec4_DiffuseAndNormalPacked.z);
+		vec2 tempDiffAndNormal = unpackHalf2x16(uvec2_DiffuseNormal.x);
+		vec2 tempNormal = unpackHalf2x16(uvec2_DiffuseNormal.y);
 
 		result = normalize(vec3(tempDiffAndNormal.y, tempNormal));
 	}
 	else if(index == 3)
 	{
-		uvec4 uvec4_PosDepthAndSpecularPacked = texelFetch(PosDepthAndSpecularPacked, ivec2(gl_FragCoord.xy * 5.0), 0);
+		uvec2 uvec2_PosAndSpecularPacked = textureLod(PosAndSpecularPacked, P, 0).gb;
 
-		vec2 tempSpecularXY = unpackHalf2x16(uvec4_PosDepthAndSpecularPacked.z);
-		vec2 tempSpecularX = unpackHalf2x16(uvec4_PosDepthAndSpecularPacked.w);
+		vec2 tempSpecularY = unpackHalf2x16(uvec2_PosAndSpecularPacked.x);
+		vec2 tempSpecularXY = unpackHalf2x16(uvec2_PosAndSpecularPacked.y);
 
-		result = vec3(tempSpecularXY, tempSpecularX.x);
+		result = vec3(tempSpecularY.y, tempSpecularXY);
 	}
 	else if(index == 4)
 	{
-		uvec4 uvec4_PosDepthAndSpecularPacked = texelFetch(PosDepthAndSpecularPacked, ivec2(gl_FragCoord.xy * 5.0), 0);
-
-		vec2 tempPosAndDepth = unpackHalf2x16(uvec4_PosDepthAndSpecularPacked.y);
-		result = vec3(tempPosAndDepth.y);
+		uint depth = textureLod(DiffuseNormalAndDepthPacked, P, 0).a;
+		result = vec3(uintBitsToFloat(depth));
 	}
 	else if(index == 5)
 	{

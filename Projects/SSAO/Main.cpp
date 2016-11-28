@@ -747,23 +747,23 @@ void Renderer::UpdateUniformBuffersLights()
 	// White
 	uboFragmentLights.lights[0].position = glm::vec4(0.0f, -4.0f, 0.0f, 0.0f);
 	uboFragmentLights.lights[0].color = glm::vec3(1.5f);
-	uboFragmentLights.lights[0].radius = 25.0f;
+	uboFragmentLights.lights[0].radius = 20.0f;
 	// Red
 	uboFragmentLights.lights[1].position = glm::vec4(0.0f, -4.0f, 0.0f, 0.0f);
 	uboFragmentLights.lights[1].color = glm::vec3(1.0f, 0.0f, 0.0f);
-	uboFragmentLights.lights[1].radius = 25.0f;
+	uboFragmentLights.lights[1].radius = 15.0f;
 	// Blue
 	uboFragmentLights.lights[2].position = glm::vec4(0.0f, -4.0f, 0.0f, 0.0f);
 	uboFragmentLights.lights[2].color = glm::vec3(0.0f, 0.0f, 2.5f);
-	uboFragmentLights.lights[2].radius = 25.0f;
+	uboFragmentLights.lights[2].radius = 10.0f;
 	// Yellow
 	uboFragmentLights.lights[3].position = glm::vec4(0.0f, -4.0f, 0.0f, 0.0f);
 	uboFragmentLights.lights[3].color = glm::vec3(1.0f, 1.0f, 0.0f);
-	uboFragmentLights.lights[3].radius = 25.0f;
+	uboFragmentLights.lights[3].radius = 5.0f;
 	// Green
 	uboFragmentLights.lights[4].position = glm::vec4(0.0f, -4.0f, 0.0f, 0.0f);
 	uboFragmentLights.lights[4].color = glm::vec3(0.0f, 1.0f, 0.2f);
-	uboFragmentLights.lights[4].radius = 25.0f;
+	uboFragmentLights.lights[4].radius = 15.0f;
 	// Yellow
 	uboFragmentLights.lights[5].position = glm::vec4(0.0f, -4.0f, 0.0f, 0.0f);
 	uboFragmentLights.lights[5].color = glm::vec3(1.0f, 0.7f, 0.3f);
@@ -1260,20 +1260,20 @@ void Renderer::CreateFrameBuffer()
 	frameBuffersSSAO.ssao.height = GBUFF_DIM;
 
 
-	//Normal, Diffuse - Packed
+	//Normal, Diffuse, Depth - Packed
 	CreateAttachement(VK_FORMAT_R32G32B32A32_UINT,
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		&offScreenFrameBuf.nm,
 		layoutCmd);
 
-	//Position, Specular, Depth - Packed
+	//Position, Specular - Packed
 	CreateAttachement(VK_FORMAT_R32G32B32A32_UINT,
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		&offScreenFrameBuf.position,
 		layoutCmd);
 
 	//SSAO
-	CreateAttachement(VK_FORMAT_R8_UNORM,
+	CreateAttachement(VK_FORMAT_R32_SFLOAT,
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		&frameBuffersSSAO.ssao.attachement,
 		layoutCmd);
@@ -1679,7 +1679,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	std::vector<VkWriteDescriptorSet> ssaoWriteModelDescriptorSet =
 	{
 		// Binding 0 : Vertex shader uniform buffer
-		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.quad.descriptor),
+		//VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.quad.descriptor),
 
 		// Binding 0 : Fragment uniform buffer
 		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformData.ssao.descriptor),
@@ -1956,7 +1956,7 @@ void Renderer::SetupDescriptorSetLayout()
 		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings =
 		{
 			// Binding 0 : Vertex shader uniform buffer
-			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,0),
+			//VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,0),
 
 			// Binding 0 : Fragment Uniform
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT, 0),

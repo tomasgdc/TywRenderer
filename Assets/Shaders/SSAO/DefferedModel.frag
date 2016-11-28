@@ -17,8 +17,8 @@ layout (binding = 4) uniform UBO
 	vec4 viewPos;
 } ubo;
 
-layout (binding = 1) uniform   usampler2D  PosDepthAndSpecularPacked;
-layout (binding = 2) uniform   usampler2D  DiffuseAndNormalPacked;
+layout (binding = 1) uniform   usampler2D  PosSpecularPacked;
+layout (binding = 2) uniform   usampler2D  DiffuseNormalAndDepthPacked;
 layout (binding = 3) uniform   sampler2D   ssaoImage; 
 
 
@@ -28,28 +28,30 @@ layout (location = 0) out vec4 outFragColor;
 #define ambient 0.0
 vec3 DefferedPass()
 {
-	uvec4 uvec4_PosDepthAndSpecularPacked = texelFetch(PosDepthAndSpecularPacked, ivec2(gl_FragCoord.xy * 2.0), 0);
-	uvec4 uvec4_DiffuseAndNormalPacked = texelFetch(DiffuseAndNormalPacked, ivec2(gl_FragCoord.xy * 2.0), 0);
+	vec2 P0 = gl_FragCoord.xy / textureSize(DiffuseNormalAndDepthPacked, 0);
+	vec2 P1 = gl_FragCoord.xy / textureSize(PosSpecularPacked, 0);
+
+	uvec3 uvec3_PosSpecularPacked = textureLod(PosSpecularPacked, P1, 0).rgb;
+	uvec4 uvec4_DiffuseNormalAndDepthPacked = textureLod(DiffuseNormalAndDepthPacked, P0, 0);
 
 	//Get position texture
-	vec2 tempPosition0 = unpackHalf2x16(uvec4_PosDepthAndSpecularPacked.x);
-	vec2 tempPosAndDepth = unpackHalf2x16(uvec4_PosDepthAndSpecularPacked.y);
+	vec2 tempPosition0 = unpackHalf2x16(uvec3_PosSpecularPacked.x);
+	vec2 tempPosSpec = unpackHalf2x16(uvec3_PosSpecularPacked.y);
 
-	vec3 positionTexture = vec3(tempPosition0, tempPosAndDepth.x);
+	vec3 positionTexture = vec3(tempPosition0, tempPosSpec.x);
 
 	//Get Diffuse And Normal
-	vec2 tempDiffuse0 = unpackHalf2x16(uvec4_DiffuseAndNormalPacked.x);
-	vec2 tempDiffAndNormal = unpackHalf2x16(uvec4_DiffuseAndNormalPacked.y);
-	vec2 tempNormal = unpackHalf2x16(uvec4_DiffuseAndNormalPacked.z);
+	vec2 tempDiffuse0 = unpackHalf2x16(uvec4_DiffuseNormalAndDepthPacked.x);
+	vec2 tempDiffAndNormal = unpackHalf2x16(uvec4_DiffuseNormalAndDepthPacked.y);
+	vec2 tempNormal = unpackHalf2x16(uvec4_DiffuseNormalAndDepthPacked.z);
 
 	vec3 diffuseTexture = vec3(tempDiffuse0, tempDiffAndNormal.x);
 	vec3 normalTexture =  normalize(vec3(tempDiffAndNormal.y, tempNormal));
 
 	//Get Specular
-	vec2 tempSpecularXY = unpackHalf2x16(uvec4_PosDepthAndSpecularPacked.z);
-	vec2 tempSpecularX = unpackHalf2x16(uvec4_PosDepthAndSpecularPacked.w);
+	vec2 tempSpecularYZ = unpackHalf2x16(uvec3_PosSpecularPacked.z);
 
-	vec3 specularTexture = vec3(tempSpecularXY, tempSpecularX);
+	vec3 specularTexture = vec3(tempPosSpec.y, tempSpecularYZ);
 
 
 	// Ambient part

@@ -17,10 +17,10 @@ layout (binding = 3) uniform sampler2D samplerSpecular;
 
 
 
-//Position, Depth, Specular
+//Position, Specular
 layout (location = 0) out uvec4 color0;
 
-//Normal, Diffuse
+//Normal, Diffuse, Depth
 layout (location = 1) out uvec4 color1;
 
 
@@ -63,12 +63,12 @@ void main()
 	//Position
 	outvec0.x = packHalf2x16(fs_in.ws_coords.xy);
 
-	//Depth and Position
-	outvec0.y = packHalf2x16(vec2(fs_in.ws_coords.z, LinearizeDepth(gl_FragCoord.z)));
+	//Pos And Specular
+	outvec0.y = packHalf2x16(vec2(fs_in.ws_coords.z, specularTexture.x));
 
 	//Specular texture
-	outvec0.z = packHalf2x16(specularTexture.xy);
-	outvec0.w = packHalf2x16(vec2(specularTexture.z, 1.0));
+	outvec0.z = packHalf2x16(specularTexture.yz);
+	//outvec0.w = packHalf2x16(vec2(specularTexture.z, 1.0));
 
 	//Diffuse texture
 	outvec1.x = packHalf2x16(diffuseTexture.xy);
@@ -78,6 +78,9 @@ void main()
 
 	//Normal
 	outvec1.z = packHalf2x16(normalTexture.yz);
+
+	//Depth value
+	outvec1.w = floatBitsToUint(LinearizeDepth(gl_FragCoord.z));
 
     color0 = outvec0;
     color1 = outvec1;
