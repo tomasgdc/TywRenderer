@@ -57,7 +57,6 @@ There are still some strange edge bleeding which I do not know really why.
 ## [Normal Mapping](Projects/NormalMapping)
 <img src="ScreenShots/NormallMapping.png" height="96px" align="right">
 Shader - [Normal Mapping Shader](Assets/Shaders/NormalMapping)
-This deferred renering uses two texture. One texture is compressed Diffuse, Normal and Specular combination and other one is world position. The compressed texture is 32UI bit and world position is 16SFLOAT bit.
 
 
 ## [Static Model](Projects/StaticModel)
@@ -83,8 +82,7 @@ GPU skinning of MD5 file. MD5 file usually have less then 9 bones per vertex (us
 ## [Deferred Rendering](Projects/DeferredShading)
 <img src="ScreenShots/DeferredRendering.png" height="126px" align="right">
 [Deferred Rendering Shader](Assets/Shaders/DeferredShading)
-It uses only two textures. One texture is compressed in which encoded diffuse, normal and specular. Other one is world position coords.
-The compressed texture format is 32UI and the world coord texture is 16SFLOAT. The compression algorithm I got somewhere from website. If you going to look Encoding floats to RGBA. You will definetily find something.
+It uses only two textures. Both textures are compressed and their format is VK_FORMAT_R32G32B32A32_UINT. First texture has compressed position and specular texture, both of them are vec3 type. We waste one A32 component. For some reason got it working only with 4 components (will need to try fixing it). Second texture has packed Normal, Diffuse and Depth textures. If you would look at better compression algorithms, you could definetily find a way to pack Position, Diffuse and Specular in single R32G32B32 but of course you would lose precision. The solution I'm using this time gave the best results without any loss in quality. The only problem is that the output looks litlle bit squashed.
 Some usefull links on this thing:
 > http://aras-p.info/blog/2009/07/30/encoding-floats-to-rgba-the-final/
 > http://stackoverflow.com/questions/6893302/decode-rgb-value-to-single-float-without-bit-shift-in-glsl
