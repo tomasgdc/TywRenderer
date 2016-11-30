@@ -17,45 +17,45 @@ layout (binding = 4) uniform UBO
 	vec4 viewPos;
 } ubo;
 
-layout (binding = 1) uniform highp sampler2D samplerPosition;
-layout (binding = 2) uniform highp sampler2D packedTexture;
-
-// c_precision of 128 fits within 7 base-10 digits
-const float c_precision = 128.0;
-const float c_precisionp1 = c_precision + 1.0;
-
-/*
-\param value 3-component encoded float
-\returns normalized RGB value
-*/
-vec3 float2color(float value) 
-{
-    vec3 color;
-    color.r = mod(value, c_precisionp1) / c_precision;
-    color.b = mod(floor(value / c_precisionp1), c_precisionp1) / c_precision;
-    color.g = floor(value / (c_precisionp1 * c_precisionp1)) / c_precision;
-    return color;
-}
+layout (binding = 1) uniform   usampler2D  PosSpecularPacked;
+layout (binding = 2) uniform   usampler2D  DiffuseNormalAndDepthPacked;
+layout (binding = 3) uniform   sampler2D   ssaoImage; 
 
 
 layout (location = 0) out vec4 outFragColor;
-void main() 
+
+#define lightCount 6
+#define ambient 0.0
+vec3 DefferedPass()
 {
-	vec3 positionTexture = texture(samplerPosition, inUV).rgb;
-	vec3 packedData = texture(packedTexture, inUV).rgb;
-	
-	//Unpacking data
-	vec3 diffuseTexture = float2color(packedData.x);
-	vec3 normalTexture =  normalize(float2color(packedData.y));
-	vec3 specularTexture = float2color(packedData.z);
-	
-    
-	#define lightCount 6
-	#define ambient 0.0
-	
+	vec2 P0 = gl_FragCoord.xy / textureSize(DiffuseNormalAndDepthPacked, 0);
+	vec2 P1 = gl_FragCoord.xy / textureSize(PosSpecularPacked, 0);
+
+	uvec3 uvec3_PosSpecularPacked = textureLod(PosSpecularPacked, P1, 0).rgb;
+	uvec4 uvec4_DiffuseNormalAndDepthPacked = textureLod(DiffuseNormalAndDepthPacked, P0, 0);
+
+	//Get position texture
+	vec2 tempPosition0 = unpackHalf2x16(uvec3_PosSpecularPacked.x);
+	vec2 tempPosSpec = unpackHalf2x16(uvec3_PosSpecularPacked.y);
+
+	vec3 positionTexture = vec3(tempPosition0, tempPosSpec.x);
+
+	//Get Diffuse And Normal
+	vec2 tempDiffuse0 = unpackHalf2x16(uvec4_DiffuseNormalAndDepthPacked.x);
+	vec2 tempDiffAndNormal = unpackHalf2x16(uvec4_DiffuseNormalAndDepthPacked.y);
+	vec2 tempNormal = unpackHalf2x16(uvec4_DiffuseNormalAndDepthPacked.z);
+
+	vec3 diffuseTexture = vec3(tempDiffuse0, tempDiffAndNormal.x);
+	vec3 normalTexture =  normalize(vec3(tempDiffAndNormal.y, tempNormal));
+
+	//Get Specular
+	vec2 tempSpecularYZ = unpackHalf2x16(uvec3_PosSpecularPacked.z);
+
+	vec3 specularTexture = vec3(tempPosSpec.y, tempSpecularYZ);
+
+
 	// Ambient part
 	vec3 fragcolor  = diffuseTexture.rgb * ambient;
-	
 	for(int i = 0; i < lightCount; ++i)
 	{
 		// Vector to light
@@ -95,7 +95,13 @@ void main()
 			//Final color
 			fragcolor += diff + spec;	
 		}	
-	}    	
-   
-  outFragColor = vec4(fragcolor, 1.0);
+	}  
+
+	return fragcolor;
+}
+
+
+void main() 
+ {
+	outFragColor = vec4(DefferedPass(), 1.0);
 }

@@ -46,9 +46,9 @@ void main()
     // object coordinates into tangent space
 	mat3 tbnMatrix;
 	mat3 mNormal =  transpose(inverse(mat3(ubo.modelMatrix)));
-    tbnMatrix[0] =  normalize(mNormal * inTangent);
-	tbnMatrix[1] =  normalize(mNormal * inBinormal);
-	tbnMatrix[2] =  normalize(mNormal * inNormal);
+    tbnMatrix[0] =  normalize(mat3(mNormal) * inTangent);
+	tbnMatrix[1] =  normalize(mat3(mNormal) * inBinormal);
+	tbnMatrix[2] =  normalize(mat3(mNormal) * inNormal);
     
 	// The light vector (L) is the vector from the point of interest to
     // the light. Calculate that and multiply it by the TBN matrix.
@@ -71,5 +71,5 @@ void main()
 
 	vs_out.texcoord = inUv;
 	vs_out.loadBias = ubo.lodBias;
-	gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(inPos.xyz, 1.0);
+	gl_Position = ubo.projectionMatrix * mvMatrix * vec4(inPos.xyz, 1.0);
 }

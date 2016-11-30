@@ -24,7 +24,7 @@ void main()
 	vec2 flipped_texcoord = vec2(fs_in.texcoord.x, 1.0 - fs_in.texcoord.y);
 
 	vec3 diffuseTexture = texture(samplerDiffuse, flipped_texcoord, fs_in.loadBias).rgb;
-	vec3 normalTexture  = normalize( (1.0 - texture(samplerNormal, flipped_texcoord).rgb) * 2.0);
+	vec3 normalTexture  = normalize(vec3(1.0) - texture(samplerNormal, flipped_texcoord).rgb * 2.0);
 	vec3 specularTexture = texture(samplerSpecular, flipped_texcoord, fs_in.loadBias).rgb;
 	
     
@@ -36,7 +36,7 @@ void main()
     vec3 R = reflect(-L, normalTexture);
 
     // Calculate diffuse color with simple N dot L.
-	vec3 diffuse = max(dot(normalTexture, V), 0.0) * diffuseTexture.rgb;
+	vec3 diffuse = max(dot(normalTexture, L), 0.0) * diffuseTexture.rgb;
 
     // Assume that specular albedo is white - it could also come from a texture
     vec3 specular_albedo = vec3(1.0);

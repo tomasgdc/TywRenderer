@@ -41,7 +41,7 @@ float LinearizeDepth(float depth)
 vec3 VisFragment(int index)
 {
 	//Results
-	vec2 P = gl_FragCoord.xy / textureSize(DiffuseNormalAndDepthPacked, 0);
+	vec2 P = (gl_FragCoord.xy / textureSize(DiffuseNormalAndDepthPacked, 0)) *2.0;
 	vec3 result = vec3(1.0);
 
 	if(index == 0)
