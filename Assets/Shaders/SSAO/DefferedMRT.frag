@@ -11,8 +11,8 @@ layout(location = 5) in struct
     vec2 texcoord;
 } fs_in;
 
-layout (binding = 1) uniform sampler2D samplerNormal;
-layout (binding = 2) uniform sampler2D samplerDiffuse;
+layout (binding = 1) uniform sampler2D samplerDiffuse;
+layout (binding = 2) uniform sampler2D samplerNormal;
 layout (binding = 3) uniform sampler2D samplerSpecular;
 
 
@@ -53,7 +53,7 @@ void main()
 	//Get correct coords
 	vec2 flipped_texcoord = vec2(fs_in.texcoord.x, 1.0 - fs_in.texcoord.y);
 	vec3 diffuseTexture = texture(samplerDiffuse, flipped_texcoord).rgb;
-	vec3 normalTexture  = fs_in.TBN * normalize(vec3(1.0) - (texture(samplerNormal, flipped_texcoord).rgb) * 2.0);
+	vec3 normalTexture  = normalize((texture(samplerNormal, flipped_texcoord).rgb));
 	vec3 specularTexture = texture(samplerSpecular, flipped_texcoord).rgb;
 	
 

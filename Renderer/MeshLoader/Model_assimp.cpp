@@ -135,7 +135,12 @@ void RenderModelAssimp::Clear(VkDevice device)
 	{
 		SAFE_DELETE_ARRAY(mesh.geometry->indexes);
 		SAFE_DELETE_ARRAY(mesh.geometry->verts);
-		SAFE_DELETE_ARRAY(mesh.material);
+		
+		if (mesh.material != nullptr)
+		{
+			mesh.material->Clear(device);
+			SAFE_DELETE_ARRAY(mesh.material);
+		}
 		SAFE_DELETE(mesh.geometry);
 	}
 
@@ -162,15 +167,12 @@ bool InitFromScene(const aiScene* pScene, const std::string& Filename, std::vect
 
 		//Total vertices
 		numVertices += pScene->mMeshes[i]->mNumVertices;
-	}
 
-	// Initialize the meshes in the scene one by one
-	for (unsigned int i = 0; i < entries.size(); i++)
-	{
+
+		//Initialize the meshes
 		const aiMesh* paiMesh = pScene->mMeshes[i];
 		InitMesh(i, paiMesh, pScene, entries, materialMap, Filename);
 	}
-
 	return true;
 }
 
@@ -180,20 +182,15 @@ void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, 
 	aiColor3D pColor(0.f, 0.f, 0.f);
 	pScene->mMaterials[paiMesh->mMaterialIndex]->Get(AI_MATKEY_COLOR_DIFFUSE, pColor);
 
-
-	
-	for (unsigned int i = 0; i < pScene->mNumMaterials; i++)
+	for (uint32_t i = 0; i < pScene->mNumMaterials; i++)
 	{
 		const aiMaterial* material = pScene->mMaterials[i];
 
 		std::vector<std::tuple<std::string, VkTools::VulkanTexture*>> vkTextures;
 		uint32_t NumbTextures = 0;
 
-		int texIndex = 0;
-		aiReturn texFound = AI_SUCCESS;
+		uint32_t texIndex = 0;
 		aiString path;
-
-		
 
 		if (material->GetTexture(aiTextureType_DIFFUSE, texIndex, &path) == AI_SUCCESS)
 		{
@@ -213,17 +210,18 @@ void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, 
 
 
 		Material* mat = TYW_NEW Material[NumbTextures];
-		for (int i = 0; i < vkTextures.size(); i++)
+		for (uint32_t j = 0; j < vkTextures.size(); j++)
 		{
-			mat[i].setTexture(std::get<1>(vkTextures[i]), false);
+			mat[j].setTexture(std::get<1>(vkTextures[j]), false);
 		}
 		//materialMap.insert(std::pair<std::string, Material*>(std::get<0>(vkTextures[0]), mat));
 		entries[index].material = mat;
+		entries[index].numMaterials = NumbTextures;
 	}
 
 
 	aiVector3D Zero3D(0.0f, 0.0f, 0.0f);
-	for (unsigned int i = 0; i < paiMesh->mNumVertices; i++) 
+	for (uint32_t i = 0; i < paiMesh->mNumVertices; i++) 
 	{
 		aiVector3D* pPos = &(paiMesh->mVertices[i]);
 		aiVector3D* pNormal = &(paiMesh->mNormals[i]);
@@ -267,7 +265,7 @@ void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, 
 	std::vector<uint32_t> test;
 	test.resize(paiMesh->mNumFaces * 3);
 
-	for (unsigned int i = 0; i < paiMesh->mNumFaces; i++)
+	for (uint32_t i = 0; i < paiMesh->mNumFaces; i++)
 	{
 		const aiFace& Face = paiMesh->mFaces[i];
 		if (Face.mNumIndices != 3)

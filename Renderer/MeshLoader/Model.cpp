@@ -114,39 +114,39 @@ bool RenderModelStatic::ConvertOBJToModelSurfaces(const struct objModel_a* obj) 
 		Material* mat = TYW_NEW Material[material->count];
 		uint32_t matNumber = 0;
 
-		if (strlen(material->map_bump) != 0) {
-			//globalImage->GetImage(material->map_bump, VkFormat::VK_FORMAT_UNDEFINED);
-			
+		if (strlen(material->map_bump) != 0) 
+		{
+			mat[matNumber].setTextureName(material->map_bump);
 			mat[matNumber].setTexture(globalImage->GetImage(material->map_bump, "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED), false);
 			matNumber++;
 		}
-		if (strlen(material->map_d) != 0) {
-			//globalImage->GetImage(material->map_d, VkFormat::VK_FORMAT_UNDEFINED);
-
+		if (strlen(material->map_d) != 0) 
+		{
+			mat[matNumber].setTextureName(material->map_d);
 			mat[matNumber].setTexture(globalImage->GetImage(material->map_d, "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED), false);
 			matNumber++;
 		}
-		if (strlen(material->map_Ka) != 0) {
-			//globalImage->GetImage(material->map_Ka, VkFormat::VK_FORMAT_UNDEFINED);
-
+		if (strlen(material->map_Ka) != 0) 
+		{
+			mat[matNumber].setTextureName(material->map_Ka);
 			mat[matNumber].setTexture(globalImage->GetImage(material->map_Ka, "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED), false);
 			matNumber++;
 		}
-		if (strlen(material->map_Kd) != 0) {
-			//globalImage->GetImage(material->map_Kd, VkFormat::VK_FORMAT_UNDEFINED);
-
+		if (strlen(material->map_Kd) != 0) 
+		{
+			mat[matNumber].setTextureName(material->map_Kd);
 			mat[matNumber].setTexture(globalImage->GetImage(material->map_Kd, "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED), false);
 			matNumber++;
 		}
-		if (strlen(material->map_Ks) != 0) {
-			//globalImage->GetImage(material->map_Ks, VkFormat::VK_FORMAT_UNDEFINED);
-
+		if (strlen(material->map_Ks) != 0) 
+		{
+			mat[matNumber].setTextureName(material->map_Ks);
 			mat[matNumber].setTexture(globalImage->GetImage(material->map_Ks, "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED), false);
 			matNumber++;
 		}
-		if (strlen(material->map_Ns) != 0) {
-			//globalImage->GetImage(material->map_Ns, VkFormat::VK_FORMAT_UNDEFINED);
-
+		if (strlen(material->map_Ns) != 0) 
+		{
+			mat[matNumber].setTextureName(material->map_Ns);
 			mat[matNumber].setTexture(globalImage->GetImage(material->map_Ns, "../../../Assets/Textures/", VkFormat::VK_FORMAT_UNDEFINED), false);
 			matNumber++;
 		}

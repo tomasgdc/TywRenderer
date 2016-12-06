@@ -39,6 +39,8 @@ public:
 				//if copy false, then it just copy the location of the data
 	void		setTexture(VkTools::VulkanTexture* texture, bool copy);
 
+	void		setTextureName(const std::string& strName) { m_strTextureName = strName; }
+
 	VkTools::VulkanTexture*    getTexture() const { return m_texture; }
 	GLXMATERIAL*  getLighting()  { return static_cast<GLXMATERIAL*> (&m_lighting); }
 
@@ -52,7 +54,9 @@ public:
 	void SetAlpha(const float alpha) { m_lighting.diffuse.w = alpha; }
 	bool HasAlpha() const { return GetAlpha() != 1.0f; }
 	float GetAlpha() const { return m_lighting.diffuse.w; }
+
 private:
+	std::string					m_strTextureName;
 	VkTools::VulkanTexture*		m_texture;
-	GLXMATERIAL		m_lighting;
+	GLXMATERIAL					m_lighting;
 };

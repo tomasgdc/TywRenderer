@@ -1260,7 +1260,9 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		//Get all materials
 		for (uint32_t j = 0; j < staticModel.surfaces[i].numMaterials; j++)
 		{
-			VkTools::VulkanTexture* pTexture = staticModel.surfaces[i].material[j].getTexture();
+			const Material& pMat = staticModel.surfaces[i].material[j];
+			VkTools::VulkanTexture* pTexture = pMat.getTexture();
+
 			descriptors.push_back(VkTools::Initializer::DescriptorImageInfo(pTexture->sampler, pTexture->view, VK_IMAGE_LAYOUT_GENERAL));
 			writeDescriptorSets.push_back(VkTools::Initializer::WriteDescriptorSet(listDescriptros[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, j + 1, &descriptors[j]));
 		}
@@ -1362,8 +1364,8 @@ void Renderer::PreparePipeline()
 	// Load shaders
 	//Shaders are loaded from the SPIR-V format, which can be generated from glsl
 	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
-	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/DefferedModel.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/DefferedModel.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/DeferredShading/DefferedModel.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/DeferredShading/DefferedModel.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
 
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo =
@@ -1388,8 +1390,8 @@ void Renderer::PreparePipeline()
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &pipeline));
 
 	//Debug Quad Pipeline
-	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/DebugQuad.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/DebugQuad.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/DeferredShading/DebugQuad.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/DeferredShading/DebugQuad.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 	pipelineCreateInfo.pVertexInputState = &quadMesh.vertex.inputState;
 
 	//Turn off culling
@@ -1403,8 +1405,8 @@ void Renderer::PreparePipeline()
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &quadPipeline));
 
 	//G-Buffer
-	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/DefferedMRT.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/DefferedMRT.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/DeferredShading/DefferedMRT.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/DeferredShading/DefferedMRT.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	// Separate render pass
 	pipelineCreateInfo.renderPass = offScreenFrameBuf.renderPass;

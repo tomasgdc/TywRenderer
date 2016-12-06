@@ -30,7 +30,7 @@ private:
 	//Insert image into map
 	void									InsertImage(VkTools::VulkanTexture* image, const std::string& fileName);
 
-	typedef std::map<std::string, VkTools::VulkanTexture*>		map;
+	typedef std::unordered_map<std::string, VkTools::VulkanTexture*>		map;
 	map															m_images;
 	map::iterator												m_it;
 

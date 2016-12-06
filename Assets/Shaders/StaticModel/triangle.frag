@@ -47,4 +47,5 @@ void main()
 
     // Final color is diffuse + specular
     outFragColor = vec4(diffuse + specular, 1.0);
+	//outFragColor = vec4(normalTexture);
 }

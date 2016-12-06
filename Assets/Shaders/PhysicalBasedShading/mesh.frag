@@ -113,12 +113,12 @@ vec3 Color(vec3 normal, vec3 LightVec, vec3 EyeDirection)
 
 	 //Specular
 	float alphaG = lightData.roughnessValue * lightData.roughnessValue;
-    //float G = G_CookTolerance(NdotH, NdotV, VdotH, NdotL);
+    float G = G_CookTolerance(NdotH, NdotV, VdotH, NdotL);
 	float V = V_SmithGGXCorrelated (NdotL , NdotV , alphaG);
 	float F = F_Schlick(lightData.F0, VdotH);
 	float D = D_GGX(NdotH, alphaG);
 
-    specular = (D  * V * F) / (4 * NdotV * NdotL);
+    specular = (D  * V * F * G) / (4 * NdotV * NdotL);
     specular = (lightData.k + specular * (1.0 - lightData.k));
 
 	//Diffuse

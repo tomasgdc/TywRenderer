@@ -210,7 +210,8 @@ private:
 	uint32_t numUvs = 0;
 	uint32_t numNormals = 0;
 
-	std::vector<VkBufferObject_s>	listLocalBuffers;
+	std::vector<VkBufferObject_s>	listLocalBuffersVerts;
+	std::vector<VkBufferObject_s>	listLocalBuffersIndexes;
 	std::vector<VkDescriptorSet>	listDescriptros;
 	std::vector<uint32_t>			meshSize;
 
@@ -275,7 +276,7 @@ private:
 
 	struct
 	{
-		Light lights[6];
+		Light lights[17];
 		glm::vec4 viewPos;
 	} uboFragmentLights;
 
@@ -324,7 +325,8 @@ private:
 		glm::mat4 mvp;
 	} quadUniformData;
 
-	RenderModelStatic staticModel;
+	//RenderModelStatic staticModel;
+	RenderModelAssimp staticModel;
 	VkCommandBuffer  cmdGui;
 public:
 	Renderer();
@@ -359,6 +361,9 @@ public:
 	void UpdateQuadUniformData(const glm::vec3& pos = glm::vec3(1.0, 1.0, 0.0));
 	void UpdateUniformBuffersLights();
 	void ImguiRender();
+
+	void SetupLights();
+	void SetupLight(Light *light, glm::vec3 pos, glm::vec3 color, float radius);
 };
 
 Renderer::Renderer() :m_bViewUpdated(false)
@@ -369,8 +374,10 @@ Renderer::Renderer() :m_bViewUpdated(false)
 	m_Camera.rotationSpeed = 0.25f;
 #endif
 	m_Camera.position = { 0.47f, -3.8f, -3.34f };
-	m_Camera.setRotation(glm::vec3(-164.0f, -164.0f, 0.0f));
-	m_Camera.setPerspective(60.0f, (float)1280 / (float)720, 0.1f, 256.0f);
+	m_Camera.setRotation(glm::vec3(7.0f, -75.0f, 0.0f));
+	m_Camera.setTranslation(glm::vec3(-81.0f, 6.25f, -14.0f));
+	m_Camera.setPerspective(60.0f, 1280.0f / 720.0f, 0.1f, 256.0f);
+	m_Camera.movementSpeed = 20.0f * 2.0f;
 }
 
 Renderer::~Renderer()
@@ -384,14 +391,20 @@ Renderer::~Renderer()
 
 	vkDestroySampler(m_pWRenderer->m_SwapChain.device, colorSampler, nullptr);
 
+
 	//Destroy model data
 	staticModel.Clear(m_pWRenderer->m_SwapChain.device);
 
 
 	//Delete memory
-	for (int i = 0; i < listLocalBuffers.size(); i++)
+	for (int i = 0; i < listLocalBuffersVerts.size(); i++)
 	{
-		VkBufferObject::DeleteBufferMemory(m_pWRenderer->m_SwapChain.device, listLocalBuffers[i], nullptr);
+		VkBufferObject::DeleteBufferMemory(m_pWRenderer->m_SwapChain.device, listLocalBuffersVerts[i], nullptr);
+	}
+
+	for (int i = 0; i < listLocalBuffersIndexes.size(); i++)
+	{
+		VkBufferObject::DeleteBufferMemory(m_pWRenderer->m_SwapChain.device, listLocalBuffersIndexes[i], nullptr);
 	}
 
 
@@ -462,8 +475,8 @@ Renderer::~Renderer()
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.defferedSemaphore, nullptr);
 
 	//ssao
-	vkFreeCommandBuffers(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_CmdPool, 1, &ssaoCmdBuffer);
-	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.ssaoSemaphore, nullptr);
+//	vkFreeCommandBuffers(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_CmdPool, 1, &ssaoCmdBuffer);
+//	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.ssaoSemaphore, nullptr);
 
 	//Release semaphores
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.presentComplete, nullptr);
@@ -735,6 +748,55 @@ void Renderer::GenerateTexture(std::vector<glm::vec3> &tex2D, uint32_t imageX, u
 }
 
 
+void Renderer::SetupLights()
+{
+	// 5 fixed lights
+	std::array<glm::vec3, 5> lightColors;
+	lightColors[0] = glm::vec3(1.0f, 0.0f, 0.0f);
+	lightColors[1] = glm::vec3(1.0f, 0.7f, 0.7f);
+	lightColors[2] = glm::vec3(1.0f, 0.0f, 0.0f);
+	lightColors[3] = glm::vec3(0.0f, 0.0f, 1.0f);
+	lightColors[4] = glm::vec3(1.0f, 0.0f, 0.0f);
+
+	for (int32_t i = 0; i < lightColors.size(); i++)
+	{
+		SetupLight(&uboFragmentLights.lights[i], glm::vec3((float)(i - 2.5f) * 50.0f, 10.0f, 0.0f), lightColors[i], 120.0f);
+	}
+
+	// Dynamic light moving over the floor
+	SetupLight(&uboFragmentLights.lights[0], { -sin(glm::radians(360.0f * timer)) * 120.0f , 2.5f, cos(glm::radians(360.0f * timer * 8.0f)) * 10.0f }, glm::vec3(1.0f), 100.0f);
+
+	// Fire bowls
+	SetupLight(&uboFragmentLights.lights[5], { -48.75f, 16.0f, -17.8f }, { 1.0f, 0.6f, 0.0f }, 45.0f);
+	SetupLight(&uboFragmentLights.lights[6], { -48.75f, 16.0f,  18.4f }, { 1.0f, 0.6f, 0.0f }, 45.0f);
+	// -62.5, 15, -18.5
+	SetupLight(&uboFragmentLights.lights[7], { 62.0f, 16.0f, -17.8f }, { 1.0f, 0.6f, 0.0f }, 45.0f);
+	SetupLight(&uboFragmentLights.lights[8], { 62.0f, 16.0f,  18.4f }, { 1.0f, 0.6f, 0.0f }, 45.0f);
+
+	// 112.5 13.6 -42.8
+	SetupLight(&uboFragmentLights.lights[9], { 120.0f, 20.0f, -43.75f }, { 1.0f, 0.8f, 0.3f }, 75.0f);
+	SetupLight(&uboFragmentLights.lights[10], { 120.0f, 20.0f, 41.75f }, { 1.0f, 0.8f, 0.3f }, 75.0f);
+
+	SetupLight(&uboFragmentLights.lights[11], { -110.0f, 20.0f, -43.75f }, { 1.0f, 0.8f, 0.3f }, 75.0f);
+	SetupLight(&uboFragmentLights.lights[12], { -110.0f, 20.0f, 41.75f }, { 1.0f, 0.8f, 0.3f }, 75.0f);
+
+	// Lion eyes
+	SetupLight(&uboFragmentLights.lights[13], { -122.0f, 18.0f, -3.2f }, { 1.0f, 0.3f, 0.3f }, 25.0f);
+	SetupLight(&uboFragmentLights.lights[14], { -122.0f, 18.0f,  3.2f }, { 0.3f, 1.0f, 0.3f }, 25.0f);
+
+	SetupLight(&uboFragmentLights.lights[15], { 135.0f, 18.0f, -3.2f }, { 0.3f, 0.3f, 1.0f }, 25.0f);
+	SetupLight(&uboFragmentLights.lights[16], { 135.0f, 18.0f,  3.2f }, { 1.0f, 1.0f, 0.3f }, 25.0f);
+}
+
+
+void Renderer::SetupLight(Light *light, glm::vec3 pos, glm::vec3 color, float radius)
+{
+	light->position = glm::vec4(pos, 1.0f);
+	light->color = glm::vec3(color);
+	light->radius = radius;
+}
+
+
 void Renderer::UpdateUniformBuffersLights()
 {
 	timer += timerSpeed * frameTimer;
@@ -745,48 +807,9 @@ void Renderer::UpdateUniformBuffersLights()
 
 
 	// White
-	uboFragmentLights.lights[0].position = glm::vec4(0.0f, -4.0f, 0.0f, 0.0f);
-	uboFragmentLights.lights[0].color = glm::vec3(1.5f);
-	uboFragmentLights.lights[0].radius = 20.0f;
-	// Red
-	uboFragmentLights.lights[1].position = glm::vec4(0.0f, -4.0f, 0.0f, 0.0f);
-	uboFragmentLights.lights[1].color = glm::vec3(1.0f, 0.0f, 0.0f);
-	uboFragmentLights.lights[1].radius = 15.0f;
-	// Blue
-	uboFragmentLights.lights[2].position = glm::vec4(0.0f, -4.0f, 0.0f, 0.0f);
-	uboFragmentLights.lights[2].color = glm::vec3(0.0f, 0.0f, 2.5f);
-	uboFragmentLights.lights[2].radius = 10.0f;
-	// Yellow
-	uboFragmentLights.lights[3].position = glm::vec4(0.0f, -4.0f, 0.0f, 0.0f);
-	uboFragmentLights.lights[3].color = glm::vec3(1.0f, 1.0f, 0.0f);
-	uboFragmentLights.lights[3].radius = 5.0f;
-	// Green
-	uboFragmentLights.lights[4].position = glm::vec4(0.0f, -4.0f, 0.0f, 0.0f);
-	uboFragmentLights.lights[4].color = glm::vec3(0.0f, 1.0f, 0.2f);
-	uboFragmentLights.lights[4].radius = 15.0f;
-	// Yellow
-	uboFragmentLights.lights[5].position = glm::vec4(0.0f, -4.0f, 0.0f, 0.0f);
-	uboFragmentLights.lights[5].color = glm::vec3(1.0f, 0.7f, 0.3f);
-	uboFragmentLights.lights[5].radius = 25.0f;
+	//SetupLight(&uboFragmentLights.lights[0], m_Camera.position, glm::vec3(1.5f), 20.0f);
+	SetupLight(&uboFragmentLights.lights[0], { -sin(glm::radians(360.0f * timer)) * 120.0f , 2.5f, cos(glm::radians(360.0f * timer * 8.0f)) * 10.0f }, glm::vec3(1.0f), 100.0f);
 
-	//Update lights
-	uboFragmentLights.lights[0].position.x = -4.0f + sin(glm::radians(-360.0f * timer)) * 5.0f;
-	uboFragmentLights.lights[0].position.z = 0.0f - cos(glm::radians(-360.0f * timer)) * 5.0f;
-
-	uboFragmentLights.lights[1].position.x = -4.0f + sin(glm::radians(-360.0f * timer + 135.0f)) * 5.0f;
-	uboFragmentLights.lights[1].position.z = 0.0f + cos(glm::radians(360.0f * timer) + 45.0f) * 5.0f;
-
-	uboFragmentLights.lights[2].position.x = -4.0f + sin(glm::radians(-360.0f * timer + 45.0f)) * 5.0f;
-	uboFragmentLights.lights[2].position.z = 0.0f + cos(glm::radians(360.0f * timer + 45.0f)) * 5.0f;
-
-	uboFragmentLights.lights[3].position.x = -4.0f + sin(glm::radians(-360.0f * timer + 135.0f)) * 5.0f;
-	uboFragmentLights.lights[3].position.x = 0.0f - cos(glm::radians(360.0f * timer + 45.0f)) * 5.0f;
-
-	uboFragmentLights.lights[4].position.x = -4.0f + sin(glm::radians(-360.0f * timer + 90.0f)) * 5.0f;
-	uboFragmentLights.lights[4].position.z = 0.0f - cos(glm::radians(360.0f * timer + 45.0f)) * 5.0f;
-
-	uboFragmentLights.lights[5].position.x = -4.0f + sin(glm::radians(-360.0f * timer + 135.0f)) * 5.0f;
-	uboFragmentLights.lights[5].position.z = 0.0f - cos(glm::radians(-360.0f * timer - 45.0f)) * 5.0f;
 
 	// Current view position
 	uboFragmentLights.viewPos = glm::vec4(m_Camera.position, 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
@@ -1155,17 +1178,19 @@ void Renderer::PrepareFramebufferCommands()
 
 	// Bind triangle vertex buffer (contains position and colors)
 	VkDeviceSize offsets[1] = { 0 };
-	for (int j = 0; j < listLocalBuffers.size(); j++)
+	for (int j = 0; j < listLocalBuffersVerts.size(); j++)
 	{
 		// Bind descriptor sets describing shader binding points
 		vkCmdBindDescriptorSets(GBufferScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, frameBufferPipelineLayout, 0, 1, &listDescriptros[j], 0, NULL);
 
 		//Bind Buffer
-		vkCmdBindVertexBuffers(GBufferScreenCmdBuffer, VERTEX_BUFFER_BIND_ID, 1, &listLocalBuffers[j].buffer, offsets);
+		vkCmdBindVertexBuffers(GBufferScreenCmdBuffer, VERTEX_BUFFER_BIND_ID, 1, &listLocalBuffersVerts[j].buffer, offsets);
+		vkCmdBindIndexBuffer(GBufferScreenCmdBuffer, listLocalBuffersIndexes[j].buffer, 0, VK_INDEX_TYPE_UINT32);
 
 		//Draw
+		vkCmdDrawIndexed(GBufferScreenCmdBuffer, meshSize[j], 1, 0, 0, 1);
 		//vkCmdDrawIndirect(GBufferScreenCmdBuffer, nullptr , 0, 3, 0);
-		vkCmdDraw(GBufferScreenCmdBuffer, meshSize[j], 3, 0, 0);
+		//vkCmdDraw(GBufferScreenCmdBuffer, meshSize[j], 3, 0, 0);
 	}
 	vkCmdEndRenderPass(GBufferScreenCmdBuffer);
 	VK_CHECK_RESULT(vkEndCommandBuffer(GBufferScreenCmdBuffer));
@@ -1488,7 +1513,7 @@ void Renderer::BuildCommandBuffers()
 	PrepareFramebufferCommands();
 
 	//Prepare SSAO Commands
-	PrepareSSAOCommands();
+//	PrepareSSAOCommands();
 
 	//Main Rendere Commands
 	PrepareMainRendererCommands();
@@ -1509,11 +1534,10 @@ void Renderer::UpdateUniformBuffers()
 	//m_uboVS.normal = glm::inverseTranspose(m_uboVS.modelMatrix);
 	//m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
 
-	m_Camera.updateAspectRatio((float)m_WindowWidth / (float)m_WindowHeight);
 	m_uboVS.projectionMatrix = m_Camera.matrices.perspective;
 	m_uboVS.viewMatrix = m_Camera.matrices.view;
-	m_uboVS.modelMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, g_zoom, 0.0f));
-	m_uboVS.modelMatrix = glm::scale(m_uboVS.modelMatrix, glm::vec3(0.2, 0.2, 0.2));
+	m_uboVS.modelMatrix = glm::mat4();
+	//m_uboVS.modelMatrix = glm::scale(m_uboVS.modelMatrix, glm::vec3(0.2, 0.2, 0.2));
 	{
 		// Map uniform buffer and update it
 		uint8_t *pData;
@@ -1583,6 +1607,8 @@ void Renderer::PrepareUniformBuffers()
 	m_uboVS.instancePos[2] = glm::vec4(4.0f, 0.0, -4.0f, 0.0f);
 
 	InitializeSSAOData();
+	SetupLights();
+
 	UpdateUniformBuffers();
 	UpdateQuadUniformData();
 	UpdateUniformBuffersLights();
@@ -1597,17 +1623,26 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	GenerateQuad();
 
 
-	staticModel.InitFromFile("Geometry/nanosuit/nanosuit2.obj", GetAssetPath());
 
-	std::vector<VkBufferObject_s> listStagingBuffers;
-	listLocalBuffers.resize(staticModel.surfaces.size());
-	listStagingBuffers.resize(staticModel.surfaces.size());
-	listDescriptros.resize(staticModel.surfaces.size());
+	staticModel.InitFromFile("Geometry/Sponza/sponza.dae", GetAssetPath());
+
+	std::vector<VkBufferObject_s> listStagingBuffersVertices;
+	std::vector<VkBufferObject_s> listStagingBuffersIndexes;
+
+	//Local buffers
+	listLocalBuffersVerts.resize(staticModel.m_Entries.size());
+	listLocalBuffersIndexes.resize(staticModel.m_Entries.size());
+
+	//Stagging buffers
+	listStagingBuffersVertices.resize(staticModel.m_Entries.size());
+	listStagingBuffersIndexes.resize(staticModel.m_Entries.size());
+
+	//Descriptor buffer
+	listDescriptros.resize(staticModel.m_Entries.size());
 
 	m_pWRenderer->m_DescriptorPool = VK_NULL_HANDLE;
 	SetupDescriptorPool();
 	VkDescriptorSetAllocateInfo allocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &descriptorSetLayout, 1);
-
 
 	// Image descriptor for the color attachement
 	VkDescriptorImageInfo GBufferPosition =
@@ -1667,6 +1702,9 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		// Binding 2: Image descriptor
 		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &GBufferNM),
 
+		//Binding 3:
+		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &ssaoImage),
+
 		//Binding 4
 		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4, &uniformData.fsLights.descriptor),
 	};
@@ -1695,10 +1733,13 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	};
 	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, ssaoWriteModelDescriptorSet.size(), ssaoWriteModelDescriptorSet.data(), 0, NULL);
 
-	for (int i = 0; i < staticModel.surfaces.size(); i++)
+
+	for (uint32_t i = 0; i < staticModel.m_Entries.size(); i++)
 	{
+		modelSurface_t& surface = staticModel.m_Entries[i];
+
 		//Get triangles
-		srfTriangles_t* tr = staticModel.surfaces[i].geometry;
+		srfTriangles_t* tr = surface.geometry;
 
 
 		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfo, &listDescriptros[i]));
@@ -1712,12 +1753,12 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		//So if we delete it before update descriptor sets. The data will not be sented to gpu. Will pointing to memory address in which nothing exist anymore
 		//The program won't break. But you will see problems in fragment shader
 		std::vector<VkDescriptorImageInfo> descriptors;
-		descriptors.reserve(staticModel.surfaces[i].numMaterials);
+		descriptors.reserve(surface.numMaterials);
 
 		//Get all materials
-		for (uint32_t j = 0; j < staticModel.surfaces[i].numMaterials; j++)
+		for (uint32_t j = 0; j < surface.numMaterials; j++)
 		{
-			VkTools::VulkanTexture* pTexture = staticModel.surfaces[i].material[j].getTexture();
+			VkTools::VulkanTexture* pTexture = surface.material[j].getTexture();
 			descriptors.push_back(VkTools::Initializer::DescriptorImageInfo(pTexture->sampler, pTexture->view, VK_IMAGE_LAYOUT_GENERAL));
 			writeDescriptorSets.push_back(VkTools::Initializer::WriteDescriptorSet(listDescriptros[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, j + 1, &descriptors[j]));
 		}
@@ -1725,40 +1766,80 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, NULL);
 
 
-		//Create stagging buffer first
+		//Create stagging buffer for vertices
 		VkBufferObject::CreateBuffer(
 			m_pWRenderer->m_SwapChain,
 			m_pWRenderer->m_DeviceMemoryProperties,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 			static_cast<uint32_t>(sizeof(drawVert) * tr->numVerts),
-			listStagingBuffers[i],
+			listStagingBuffersVertices[i],
 			tr->verts);
 
-		//Create Local Copy
+		//Create Local Copy for vertices
 		VkBufferObject::CreateBuffer(
 			m_pWRenderer->m_SwapChain,
 			m_pWRenderer->m_DeviceMemoryProperties,
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			static_cast<uint32_t>(sizeof(drawVert) * tr->numVerts),
-			listLocalBuffers[i]);
+			listLocalBuffersVerts[i]);
 
 
-		//Create new command buffer
-		VkCommandBuffer copyCmd = GetCommandBuffer(true);
+		//Create stagging buffer for faces
+		VkBufferObject::CreateBuffer(
+			m_pWRenderer->m_SwapChain,
+			m_pWRenderer->m_DeviceMemoryProperties,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			(sizeof(uint32_t) * tr->numIndexes),
+			listStagingBuffersIndexes[i],
+			tr->indexes);
+
+		//Create Local Copy for faces
+		VkBufferObject::CreateBuffer(
+			m_pWRenderer->m_SwapChain,
+			m_pWRenderer->m_DeviceMemoryProperties,
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			(sizeof(uint32_t) * tr->numIndexes),
+			listLocalBuffersIndexes[i]);
 
 
-		//Submit info to the queue
-		VkBufferObject::SubmitBufferObjects(
-			copyCmd,
-			m_pWRenderer->m_Queue,
-			*m_pWRenderer,
-			static_cast<uint32_t>(sizeof(drawVert) * tr->numVerts),
-			listStagingBuffers[i],
-			listLocalBuffers[i], (drawVertFlags::Vertex | drawVertFlags::Normal | drawVertFlags::Uv | drawVertFlags::Tangent | drawVertFlags::Binormal));
+		/*
+			SUBMITTING VERTICES
+		*/
+		{
+			//Create new command buffer
+			VkCommandBuffer copyCmd = GetCommandBuffer(true);
 
-		meshSize.push_back(tr->numVerts);
+			//Submit vertices to queue
+			VkBufferObject::SubmitBufferObjects(
+				copyCmd,
+				m_pWRenderer->m_Queue,
+				*m_pWRenderer,
+				static_cast<uint32_t>(sizeof(drawVert) * tr->numVerts),
+				listStagingBuffersVertices[i],
+				listLocalBuffersVerts[i], (drawVertFlags::Vertex | drawVertFlags::Normal | drawVertFlags::Uv | drawVertFlags::Tangent | drawVertFlags::Binormal));
+		}
+
+		/*
+			SUBMITTING INDEXES
+		*/
+		{
+			//Create new command buffer
+			VkCommandBuffer copyCmd = GetCommandBuffer(true);
+
+			VkBufferObject::SubmitBufferObjects(
+				copyCmd,
+				m_pWRenderer->m_Queue,
+				*m_pWRenderer,
+				(sizeof(uint32_t) * tr->numIndexes),
+				listStagingBuffersIndexes[i],
+				listLocalBuffersIndexes[i], drawVertFlags::None);
+		}
+
+		meshSize.push_back(tr->numIndexes);
 
 		numVerts += tr->numVerts;
 		numUvs += tr->numVerts;
@@ -1899,7 +1980,7 @@ void Renderer::PreparePipeline()
 	colorBlendState.attachmentCount = static_cast<uint32_t>(blendAttachmentStates.size());
 	colorBlendState.pAttachments = blendAttachmentStates.data();
 
-	pipelineCreateInfo.pVertexInputState = &listLocalBuffers[0].inputState;
+	pipelineCreateInfo.pVertexInputState = &listLocalBuffersVerts[0].inputState;
 
 	//Turn on culling again
 	rasterizationState =
@@ -1987,11 +2068,11 @@ void Renderer::SetupDescriptorPool()
 	// Example uses one ubo and one image sampler
 	std::vector<VkDescriptorPoolSize> poolSizes =
 	{
-		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 23),
-		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 8 * 4 + 4)
+		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100),
+		VkTools::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100)
 	};
 
-	VkDescriptorPoolCreateInfo descriptorPoolInfo = VkTools::Initializer::DescriptorPoolCreateInfo(poolSizes.size(), poolSizes.data(), 10);
+	VkDescriptorPoolCreateInfo descriptorPoolInfo = VkTools::Initializer::DescriptorPoolCreateInfo(poolSizes.size(), poolSizes.data(), 35);
 	VK_CHECK_RESULT(vkCreateDescriptorPool(m_pWRenderer->m_SwapChain.device, &descriptorPoolInfo, nullptr, &m_pWRenderer->m_DescriptorPool));
 }
 
@@ -2042,13 +2123,14 @@ void Renderer::StartFrame()
 		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
 
 		//Start SSAO Pass
-		submitInfo.pWaitSemaphores = &Semaphores.defferedSemaphore;
-		submitInfo.pSignalSemaphores = &Semaphores.ssaoSemaphore;
-		submitInfo.pCommandBuffers = &ssaoCmdBuffer;
-		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+//		submitInfo.pWaitSemaphores = &Semaphores.defferedSemaphore;
+//		submitInfo.pSignalSemaphores = &Semaphores.ssaoSemaphore;
+//		submitInfo.pCommandBuffers = &ssaoCmdBuffer;
+//		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
 
 		//Start Main Pass (Combines all images and does calculation for all lights)
-		submitInfo.pWaitSemaphores = &Semaphores.ssaoSemaphore;
+//		submitInfo.pWaitSemaphores = &Semaphores.ssaoSemaphore;
+		submitInfo.pWaitSemaphores = &Semaphores.defferedSemaphore;
 		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
 		submitInfo.pCommandBuffers = &m_pWRenderer->m_DrawCmdBuffers[m_pWRenderer->m_currentBuffer];
 		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
@@ -2276,6 +2358,7 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		if (g_bPrepared)
 		{
 			g_Renderer.VWindowResize(g_iDesktopHeight, g_iDesktopWidth);
+			g_Renderer.m_Camera.updateAspectRatio((float)g_iDesktopWidth / (float)g_iDesktopHeight);
 		}
 		break;
 	}

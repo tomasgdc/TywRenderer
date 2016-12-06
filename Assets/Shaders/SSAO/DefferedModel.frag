@@ -13,7 +13,7 @@ struct Light {
 
 layout (binding = 4) uniform UBO 
 {
-	Light lights[6];
+	Light lights[17];
 	vec4 viewPos;
 } ubo;
 
@@ -24,15 +24,15 @@ layout (binding = 3) uniform   sampler2D   ssaoImage;
 
 layout (location = 0) out vec4 outFragColor;
 
-#define lightCount 6
+#define lightCount 17
 #define ambient 0.0
 vec3 DefferedPass()
 {
-	vec2 P0 = gl_FragCoord.xy / textureSize(DiffuseNormalAndDepthPacked, 0);
-	vec2 P1 = gl_FragCoord.xy / textureSize(PosSpecularPacked, 0);
+	ivec2 P0 = ivec2(inUV * textureSize(DiffuseNormalAndDepthPacked, 0));
+	ivec2 P1 = ivec2(inUV * textureSize(PosSpecularPacked, 0));
 
-	uvec3 uvec3_PosSpecularPacked = textureLod(PosSpecularPacked, P1, 0).rgb;
-	uvec4 uvec4_DiffuseNormalAndDepthPacked = textureLod(DiffuseNormalAndDepthPacked, P0, 0);
+	uvec3 uvec3_PosSpecularPacked = texelFetch(PosSpecularPacked, P1, 0).rgb;
+	uvec4 uvec4_DiffuseNormalAndDepthPacked = texelFetch(DiffuseNormalAndDepthPacked, P0, 0);
 
 	//Get position texture
 	vec2 tempPosition0 = unpackHalf2x16(uvec3_PosSpecularPacked.x);
@@ -103,5 +103,8 @@ vec3 DefferedPass()
 
 void main() 
  {
+	float ssaoTexture = texture(ssaoImage, inUV).r;
+	//outFragColor = vec4(ssaoTexture);
+
 	outFragColor = vec4(DefferedPass(), 1.0);
 }

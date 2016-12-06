@@ -76,9 +76,12 @@ float SSAOAlgo0()
 
     vec3 normal = normalize(vec3(tempDiffAndNormal.y, tempNormal));
 
-	//Random vec
+	//Random vec using noise lookup
 	//vec2 P3 = gl_FragCoord.xy / textureSize(texNoise, 0);
-    vec3 randomVec = texture(texNoise, inUV * noiseScale, 0).rgb;
+	ivec2 texDim = textureSize(DiffuseNormalDepthPacked, 0); 
+	ivec2 noiseDim = textureSize(texNoise, 0);
+	const vec2 noiseUV = vec2(float(texDim.x)/float(noiseDim.x), float(texDim.y)/(noiseDim.y)) * inUV;  
+    vec3 randomVec = texture(texNoise, noiseUV, 0).rgb;
 
     // Create TBN change-of-basis matrix: from tangent-space to view-space
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));

@@ -7,7 +7,7 @@ layout (binding = 1) uniform   usampler2D  PosAndSpecularPacked;
 layout (binding = 2) uniform   usampler2D  DiffuseNormalAndDepthPacked;
 layout (binding = 3) uniform   sampler2D  ssaoImage; 
 
-layout (location = 0) in vec3 outUV;
+layout (location = 0) in vec3  intUV;
 layout (location = 0) out vec4 outFragColor;
 
 
@@ -41,12 +41,12 @@ float LinearizeDepth(float depth)
 vec3 VisFragment(int index)
 {
 	//Results
-	vec2 P = (gl_FragCoord.xy / textureSize(DiffuseNormalAndDepthPacked, 0)) *2.0;
 	vec3 result = vec3(1.0);
 
 	if(index == 0)
 	{
-		uvec2 uvec2_PosAndSpecularPacked = textureLod(PosAndSpecularPacked, P, 0).rg;
+		ivec2 size = textureSize(DiffuseNormalAndDepthPacked, 0);
+		uvec2 uvec2_PosAndSpecularPacked = texelFetch(PosAndSpecularPacked, ivec2(size * intUV.st), 0).rg;
 
 		vec2 tempPosition0 = unpackHalf2x16(uvec2_PosAndSpecularPacked.x);
 		vec2 tempPosAndSpec = unpackHalf2x16(uvec2_PosAndSpecularPacked.y);
@@ -55,7 +55,8 @@ vec3 VisFragment(int index)
 	}
 	else if(index == 1)
 	{
-		uvec2 uvec2_DiffuseNormal = textureLod(DiffuseNormalAndDepthPacked, P, 0).rg;
+		ivec2 size = textureSize(DiffuseNormalAndDepthPacked, 0);
+		uvec2 uvec2_DiffuseNormal = texelFetch(DiffuseNormalAndDepthPacked, ivec2(size * intUV.st), 0).rg;
 
 		vec2 tempDiffuse0 = unpackHalf2x16(uvec2_DiffuseNormal.x);
 		vec2 tempDiffAndNormal = unpackHalf2x16(uvec2_DiffuseNormal.y);
@@ -64,7 +65,8 @@ vec3 VisFragment(int index)
 	}
 	else if(index == 2)
 	{
-		uvec2 uvec2_DiffuseNormal = textureLod(DiffuseNormalAndDepthPacked, P, 0).gb;
+		ivec2 size = textureSize(DiffuseNormalAndDepthPacked, 0);
+		uvec2 uvec2_DiffuseNormal = texelFetch(DiffuseNormalAndDepthPacked,  ivec2(size * intUV.st), 0).gb;
 
 		vec2 tempDiffAndNormal = unpackHalf2x16(uvec2_DiffuseNormal.x);
 		vec2 tempNormal = unpackHalf2x16(uvec2_DiffuseNormal.y);
@@ -73,7 +75,8 @@ vec3 VisFragment(int index)
 	}
 	else if(index == 3)
 	{
-		uvec2 uvec2_PosAndSpecularPacked = textureLod(PosAndSpecularPacked, P, 0).gb;
+		ivec2 size = textureSize(DiffuseNormalAndDepthPacked, 0);
+		uvec2 uvec2_PosAndSpecularPacked = texelFetch(PosAndSpecularPacked, ivec2(size * intUV.st), 0).gb;
 
 		vec2 tempSpecularY = unpackHalf2x16(uvec2_PosAndSpecularPacked.x);
 		vec2 tempSpecularXY = unpackHalf2x16(uvec2_PosAndSpecularPacked.y);
@@ -82,12 +85,14 @@ vec3 VisFragment(int index)
 	}
 	else if(index == 4)
 	{
-		uint depth = textureLod(DiffuseNormalAndDepthPacked, P, 0).a;
+		ivec2 size = textureSize(DiffuseNormalAndDepthPacked, 0);
+		uint depth = texelFetch(DiffuseNormalAndDepthPacked, ivec2(size * intUV.st), 0).a;
+
 		result = vec3(uintBitsToFloat(depth));
 	}
 	else if(index == 5)
 	{
-		float ssaoTexture = texture(ssaoImage,    outUV.st).r;
+		float ssaoTexture = texture(ssaoImage, intUV.st).r;
 		result = vec3(ssaoTexture);
 	}
 
@@ -97,6 +102,6 @@ vec3 VisFragment(int index)
 
 void main() 
 {
-	int index = int(outUV.z);
+	int index = int(intUV.z);
 	outFragColor.rgb = VisFragment(index);
 }
