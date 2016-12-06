@@ -29,8 +29,8 @@
 
 //Fucntions declared
 bool InitFromScene(const aiScene* pScene, const std::string& Filename, std::vector<modelSurface_t>& entries, RenderModelAssimp::MaterialMap& materialMap);
-void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, std::vector<modelSurface_t>& entries, RenderModelAssimp::MaterialMap& materialMap, const std::string& Filename);
-
+void InitMesh(const aiMesh* paiMesh, const aiScene* pScene, modelSurface_t& entry, RenderModelAssimp::MaterialMap& materialMap, const std::string& Filename);
+void LoadMaterials(const aiScene* pScene, std::vector<modelSurface_t>& entries);
 
 RenderModelAssimp::RenderModelAssimp()
 {
@@ -138,8 +138,16 @@ void RenderModelAssimp::Clear(VkDevice device)
 		
 		if (mesh.material != nullptr)
 		{
-			mesh.material->Clear(device);
-			SAFE_DELETE_ARRAY(mesh.material);
+			if (mesh.numMaterials > 0)
+			{
+				mesh.material->Clear(device);
+				SAFE_DELETE_ARRAY(mesh.material);
+			}
+			else
+			{
+				//No textures were loaded but material was created so we have to destroy it.
+				SAFE_DELETE_ARRAY(mesh.material);
+			}
 		}
 		SAFE_DELETE(mesh.geometry);
 	}
@@ -157,31 +165,34 @@ bool InitFromScene(const aiScene* pScene, const std::string& Filename, std::vect
 	uint32_t numVertices = 0;
 	entries.resize(pScene->mNumMeshes);
 
-	// Counters
-	for (unsigned int i = 0; i < entries.size(); i++)
-	{
-		entries[i].geometry = TYW_NEW srfTriangles_t;
+	//Materilas
+	LoadMaterials(pScene, entries);
 
-		entries[i].geometry->numVerts = pScene->mMeshes[i]->mNumVertices;
-		entries[i].geometry->verts = TYW_NEW drawVert[pScene->mMeshes[i]->mNumVertices];
+	//Load geometry
+	uint32_t index = 0;
+	for (auto& modelSurface: entries)
+	{
+		const aiMesh* paiMesh = pScene->mMeshes[index];
+		modelSurface.geometry = TYW_NEW srfTriangles_t;
+
+		modelSurface.geometry->numVerts = paiMesh->mNumVertices;
+		modelSurface.geometry->verts = TYW_NEW drawVert[paiMesh->mNumVertices];
 
 		//Total vertices
-		numVertices += pScene->mMeshes[i]->mNumVertices;
-
+		numVertices += paiMesh->mNumVertices;
 
 		//Initialize the meshes
-		const aiMesh* paiMesh = pScene->mMeshes[i];
-		InitMesh(i, paiMesh, pScene, entries, materialMap, Filename);
+		InitMesh(paiMesh, pScene, modelSurface, materialMap, Filename);
+
+		//Increment
+		index++;
 	}
 	return true;
 }
 
 
-void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, std::vector<modelSurface_t>& entries, RenderModelAssimp::MaterialMap& materialMap, const std::string& Filename)
+void LoadMaterials(const aiScene* pScene, std::vector<modelSurface_t>& entries)
 {
-	aiColor3D pColor(0.f, 0.f, 0.f);
-	pScene->mMaterials[paiMesh->mMaterialIndex]->Get(AI_MATKEY_COLOR_DIFFUSE, pColor);
-
 	for (uint32_t i = 0; i < pScene->mNumMaterials; i++)
 	{
 		const aiMaterial* material = pScene->mMaterials[i];
@@ -212,13 +223,20 @@ void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, 
 		Material* mat = TYW_NEW Material[NumbTextures];
 		for (uint32_t j = 0; j < vkTextures.size(); j++)
 		{
+			mat[j].setTextureName(std::get<0>(vkTextures[j]));
 			mat[j].setTexture(std::get<1>(vkTextures[j]), false);
 		}
-		//materialMap.insert(std::pair<std::string, Material*>(std::get<0>(vkTextures[0]), mat));
-		entries[index].material = mat;
-		entries[index].numMaterials = NumbTextures;
-	}
 
+		//materialMap.insert(std::pair<std::string, Material*>(std::get<0>(vkTextures[0]), mat));
+		entries[i].material = mat;
+		entries[i].numMaterials = NumbTextures;
+	}
+}
+
+void InitMesh(const aiMesh* paiMesh, const aiScene* pScene, modelSurface_t& entry, RenderModelAssimp::MaterialMap& materialMap, const std::string& Filename)
+{
+	aiColor3D pColor(0.f, 0.f, 0.f);
+	pScene->mMaterials[paiMesh->mMaterialIndex]->Get(AI_MATKEY_COLOR_DIFFUSE, pColor);
 
 	aiVector3D Zero3D(0.0f, 0.0f, 0.0f);
 	for (uint32_t i = 0; i < paiMesh->mNumVertices; i++) 
@@ -254,26 +272,25 @@ void InitMesh(unsigned int index, const aiMesh* paiMesh, const aiScene* pScene, 
 		//dim.min.y = fmin(pPos->y, dim.min.y);
 		//dim.min.z = fmin(pPos->z, dim.min.z);
 
-		entries[index].geometry->verts[i] = v;
+		entry.geometry->verts[i] = v;
 	}
 	//dim.size = dim.max - dim.min;
 
-	entries[index].geometry->indexes = TYW_NEW uint32_t[paiMesh->mNumFaces*3];
-	entries[index].geometry->numIndexes = paiMesh->mNumFaces*3;
+	entry.geometry->indexes = TYW_NEW uint32_t[paiMesh->mNumFaces*3];
+	entry.geometry->numIndexes = paiMesh->mNumFaces*3;
 
 
 	std::vector<uint32_t> test;
 	test.resize(paiMesh->mNumFaces * 3);
-
 	for (uint32_t i = 0; i < paiMesh->mNumFaces; i++)
 	{
 		const aiFace& Face = paiMesh->mFaces[i];
 		if (Face.mNumIndices != 3)
 			continue;
 
-		entries[index].geometry->indexes[(i*3)]   = Face.mIndices[0];
-		entries[index].geometry->indexes[(i * 3 + 1)] = Face.mIndices[1];
-		entries[index].geometry->indexes[(i * 3 + 2)] = Face.mIndices[2];
+		entry.geometry->indexes[(i*3)]   = Face.mIndices[0];
+		entry.geometry->indexes[(i * 3 + 1)] = Face.mIndices[1];
+		entry.geometry->indexes[(i * 3 + 2)] = Face.mIndices[2];
 
 		test[(i * 3)] = Face.mIndices[0];
 		test[(i * 3 + 1)] = Face.mIndices[1];

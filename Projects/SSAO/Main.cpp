@@ -264,7 +264,8 @@ private:
 		VkTools::UniformData quad;
 		VkTools::UniformData fsLights;
 		VkTools::UniformData vsFullScreen;
-		VkTools::UniformData ssao;
+		VkTools::UniformData ssaokernel;
+		VkTools::UniformData ssaoprojection;
 	}  uniformData;
 
 	struct Light
@@ -283,10 +284,12 @@ private:
 	struct
 	{
 		std::array<glm::vec3, 64> ssaoKernel;
-		std::array<glm::vec3, 21>  pad0;			// 256 bytes needed to projection
-		float					   pad1;
+	}uboSSAOKernel;
+
+	struct
+	{
 		glm::mat4 projection;
-	}uboSSAO;
+	}uboSSAOProjection;
 
 
 	struct
@@ -420,7 +423,8 @@ Renderer::~Renderer()
 	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.quad);
 	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.fsLights);
 	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.vsFullScreen);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.ssao);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.ssaokernel);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.ssaoprojection);
 
 	//QUad
 	VkBufferObject::DeleteBufferMemory(m_pWRenderer->m_SwapChain.device, quadMesh.vertex, nullptr);
@@ -525,11 +529,8 @@ void Renderer::InitializeSSAOData()
 		scale = lerp(0.1f, 1.0f, scale*scale);
 
 		sample *= scale;
-		uboSSAO.ssaoKernel[i] = sample;
+		uboSSAOKernel.ssaoKernel[i] = sample;
 	}
-
-	uboSSAO.projection = m_Camera.matrices.perspective;
-
 
 	std::vector<glm::vec3> ssaoNoise;
 	ssaoNoise.reserve(16);
@@ -547,9 +548,9 @@ void Renderer::InitializeSSAOData()
 
 	//Send data
 	void * pData;
-	VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.ssao.memory, 0, sizeof(uboSSAO), 0, (void **)&pData));
-	memcpy(pData, &uboSSAO, sizeof(uboSSAO));
-	vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.ssao.memory);
+	VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.ssaokernel.memory, 0, sizeof(uboSSAOKernel), 0, (void **)&pData));
+	memcpy(pData, &uboSSAOKernel, sizeof(uboSSAOKernel));
+	vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.ssaokernel.memory);
 }
 
 void Renderer::GenerateTexture(std::vector<glm::vec3> &tex2D, uint32_t imageX, uint32_t imageY, uint32_t mipMapLevel, VkFormat format, VkTools::VulkanTexture *texture, VkImageUsageFlags imageUsageFlags, VkFilter filter)
@@ -1513,7 +1514,7 @@ void Renderer::BuildCommandBuffers()
 	PrepareFramebufferCommands();
 
 	//Prepare SSAO Commands
-//	PrepareSSAOCommands();
+	PrepareSSAOCommands();
 
 	//Main Rendere Commands
 	PrepareMainRendererCommands();
@@ -1555,6 +1556,15 @@ void Renderer::UpdateUniformBuffers()
 		memcpy(pData, &uboFullScreen, sizeof(uboFullScreen));
 		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.vsFullScreen.memory);
 	}
+
+	//SSAO
+	uboSSAOProjection.projection = m_Camera.matrices.perspective;
+	{
+		void * pData;
+		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.ssaoprojection.memory, 0, sizeof(uboSSAOProjection), 0, (void **)&pData));
+		memcpy(pData, &uboSSAOProjection, sizeof(uboSSAOProjection));
+		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.ssaoprojection.memory);
+	}
 }
 
 void Renderer::PrepareUniformBuffers()
@@ -1592,13 +1602,21 @@ void Renderer::PrepareUniformBuffers()
 		uniformData.vsFullScreen,
 		&uboFullScreen);
 
-	//ssao
+	//ssao kernel
 	CreateUniformBuffer(
 		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		sizeof(uboSSAO),
-		uniformData.ssao,
-		&uboSSAO);
+		sizeof(uboSSAOKernel),
+		uniformData.ssaokernel,
+		&uboSSAOKernel);
+
+	//ssao projection
+	CreateUniformBuffer(
+		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		sizeof(uboSSAOProjection),
+		uniformData.ssaoprojection,
+		&uboSSAOProjection);
 
 
 	// Init some values
@@ -1716,11 +1734,11 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &ssaoallocInfo, &ssaoDescriptorSet));
 	std::vector<VkWriteDescriptorSet> ssaoWriteModelDescriptorSet =
 	{
-		// Binding 0 : Vertex shader uniform buffer
-		//VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.quad.descriptor),
+		// Binding 4 : Fragment uniform buffer - Kernel
+		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4, &uniformData.ssaokernel.descriptor),
 
-		// Binding 0 : Fragment uniform buffer
-		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformData.ssao.descriptor),
+		// Binding 5 : Fragment uniform buffer - Projection
+		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5, &uniformData.ssaoprojection.descriptor),
 
 		// Binding 1: Image descriptor
 		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &GBufferPosition),
@@ -1758,7 +1776,8 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		//Get all materials
 		for (uint32_t j = 0; j < surface.numMaterials; j++)
 		{
-			VkTools::VulkanTexture* pTexture = surface.material[j].getTexture();
+			const Material& pMat = surface.material[j];
+			VkTools::VulkanTexture* pTexture = pMat.getTexture();
 			descriptors.push_back(VkTools::Initializer::DescriptorImageInfo(pTexture->sampler, pTexture->view, VK_IMAGE_LAYOUT_GENERAL));
 			writeDescriptorSets.push_back(VkTools::Initializer::WriteDescriptorSet(listDescriptros[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, j + 1, &descriptors[j]));
 		}
@@ -2036,11 +2055,11 @@ void Renderer::SetupDescriptorSetLayout()
 	{
 		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings =
 		{
-			// Binding 0 : Vertex shader uniform buffer
-			//VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,0),
+			// Binding 4 : Fragment Uniform Kernel
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT, 4),
 
-			// Binding 0 : Fragment Uniform
-			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT, 0),
+			// Binding 5 : Fragment Uniform Projection
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT, 5),
 
 			// Binding 1 : Fragment shader image sampler
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,1),
@@ -2050,15 +2069,12 @@ void Renderer::SetupDescriptorSetLayout()
 
 			//Binding 3 : Fragment shader uniform buffer
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,3),
-
-			// Binding 4 : Fragment shader uniform buffer
-//			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,4),
 		};
 
 		VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());
 		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, &descriptorLayout, nullptr, &ssaoDescriptorSetLayout));
 
-		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkTools::Initializer::PipelineLayoutCreateInfo(&descriptorSetLayout, 1);
+		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkTools::Initializer::PipelineLayoutCreateInfo(&ssaoDescriptorSetLayout, 1);
 		VK_CHECK_RESULT(vkCreatePipelineLayout(m_pWRenderer->m_SwapChain.device, &pPipelineLayoutCreateInfo, nullptr, &ssaoPipelineLayout));
 	}
 }
@@ -2123,14 +2139,14 @@ void Renderer::StartFrame()
 		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
 
 		//Start SSAO Pass
-//		submitInfo.pWaitSemaphores = &Semaphores.defferedSemaphore;
-//		submitInfo.pSignalSemaphores = &Semaphores.ssaoSemaphore;
-//		submitInfo.pCommandBuffers = &ssaoCmdBuffer;
-//		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+		submitInfo.pWaitSemaphores = &Semaphores.defferedSemaphore;
+		submitInfo.pSignalSemaphores = &Semaphores.ssaoSemaphore;
+		submitInfo.pCommandBuffers = &ssaoCmdBuffer;
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
 
 		//Start Main Pass (Combines all images and does calculation for all lights)
-//		submitInfo.pWaitSemaphores = &Semaphores.ssaoSemaphore;
-		submitInfo.pWaitSemaphores = &Semaphores.defferedSemaphore;
+		submitInfo.pWaitSemaphores = &Semaphores.ssaoSemaphore;
+//		submitInfo.pWaitSemaphores = &Semaphores.defferedSemaphore;
 		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
 		submitInfo.pCommandBuffers = &m_pWRenderer->m_DrawCmdBuffers[m_pWRenderer->m_currentBuffer];
 		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));

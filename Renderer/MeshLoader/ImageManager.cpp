@@ -13,10 +13,6 @@
 
 ImageManager* globalImage(nullptr);
 
-//TODO: Change
-//Path to textures
-std::string path = "../../../Assets/Textures/";
-
 
 ImageManager::ImageManager(VkPhysicalDevice physicalDevice, VkDevice device, VkQueue queue, VkCommandPool cmdPool)
 {

@@ -49,11 +49,10 @@ float LinearizeDepth(float depth)
 
 void main() 
 {	
-	
 	//Get correct coords
 	vec2 flipped_texcoord = vec2(fs_in.texcoord.x, 1.0 - fs_in.texcoord.y);
 	vec3 diffuseTexture = texture(samplerDiffuse, flipped_texcoord).rgb;
-	vec3 normalTexture  = normalize((texture(samplerNormal, flipped_texcoord).rgb));
+	vec3 normalTexture  = fs_in.TBN * normalize( (texture(samplerNormal, flipped_texcoord).xyz) * 2.0 - vec3(1.0));
 	vec3 specularTexture = texture(samplerSpecular, flipped_texcoord).rgb;
 	
 
