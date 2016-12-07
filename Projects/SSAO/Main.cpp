@@ -277,13 +277,13 @@ private:
 
 	struct
 	{
-		Light lights[17];
+		std::array<Light, 17>lights;
 		glm::vec4 viewPos;
 	} uboFragmentLights;
 
 	struct
 	{
-		std::array<glm::vec3, 64> ssaoKernel;
+		std::array<glm::vec4, 64> ssaoKernel;
 	}uboSSAOKernel;
 
 	struct
@@ -529,7 +529,7 @@ void Renderer::InitializeSSAOData()
 		scale = lerp(0.1f, 1.0f, scale*scale);
 
 		sample *= scale;
-		uboSSAOKernel.ssaoKernel[i] = sample;
+		uboSSAOKernel.ssaoKernel[i] = glm::vec4(sample, 0.0f);
 	}
 
 	std::vector<glm::vec3> ssaoNoise;
@@ -1683,10 +1683,6 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 			frameBuffersSSAO.ssao.attachement.view,
 			VK_IMAGE_LAYOUT_GENERAL);
 
-	//Noise generated texture 
-	VkDescriptorImageInfo noiseImage = VkTools::Initializer::DescriptorImageInfo
-	(m_NoiseGeneratedTexture.sampler, m_NoiseGeneratedTexture.view, VK_IMAGE_LAYOUT_GENERAL);
-
 
 	// Debug Descriptor
 	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfo, &quadDescriptorSet));
@@ -1728,6 +1724,8 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	};
 	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, defferedWriteModelDescriptorSet.size(), defferedWriteModelDescriptorSet.data(), 0, NULL);
 
+	//Noise generated texture 
+	VkDescriptorImageInfo noiseImage = VkTools::Initializer::DescriptorImageInfo(m_NoiseGeneratedTexture.sampler, m_NoiseGeneratedTexture.view, VK_IMAGE_LAYOUT_GENERAL);
 
 	//SSAO descriptors
 	VkDescriptorSetAllocateInfo ssaoallocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &ssaoDescriptorSetLayout, 1);

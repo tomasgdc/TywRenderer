@@ -18,9 +18,9 @@ layout (location = 0) out float FragColor;
 // parameters (you'd probably want to use them as uniforms to more easily tweak the effect)
 const int kernelSize = 64;
 const float radius = 1.0;
-layout (binding = 4) uniform UBOSSAOKernel 
+layout (std140 , binding = 4) uniform UBOSSAOKernel 
 {
-	vec3 samples[64];
+	vec4 samples[64];
 } ubossaokernel;
 
 layout (binding = 5) uniform UBO
@@ -87,7 +87,7 @@ float SSAOAlgo0()
     for(int i = 0; i < 64; ++i)
     {
         // get sample position
-        vec3 Sample = vec3(TBN * ubossaokernel.samples[i]); // From tangent to view-space
+        vec3 Sample = vec3(TBN * ubossaokernel.samples[i].xyz); // From tangent to view-space
         Sample = fragPos + Sample * radius; 
         
 		
