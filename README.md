@@ -87,6 +87,17 @@ Some usefull links on this thing:
 > http://aras-p.info/blog/2009/07/30/encoding-floats-to-rgba-the-final/
 > http://stackoverflow.com/questions/6893302/decode-rgb-value-to-single-float-without-bit-shift-in-glsl
 
+## [Physical Based Shading - Work in progress](Projects/DeferredShading)
+<img src="ScreenShots/PhysicalBasedShader.png" height="126px" align="right">
+[Physical Based Shader](Assets/Shaders/PhysicalBasedShading)
+Big part of the code is based on the Frostbite documentation on PBR.
+//http://www.frostbite.com/wp-content/uploads/2014/11/course_notes_moving_frostbite_to_pbr_v2.pdf
+
+## [SSAO - Work in progress](Projects/SSAO)
+<img src="ScreenShots/SSAO.png" height="126px" align="right">
+[Physical Based Shader](Assets/Shaders/SSAO)
+Based on John Champan tutorial for Normal oriented SSAO.
+http://john-chapman-graphics.blogspot.co.uk/2013/01/ssao-tutorial.html
 
 ## License
 Copyright (c) 2016 Tomas Mikalauskas
