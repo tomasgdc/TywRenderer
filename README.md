@@ -80,7 +80,7 @@ GPU skinning of MD5 file. MD5 file usually have less then 9 bones per vertex (us
 - http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-16-shadow-mapping/
 
 ## [Deferred Rendering](Projects/DeferredShading)
-<img src="ScreenShots/DeferredRendering.png" height="126px" align="right">
+<img src="ScreenShots/DeferredRendering.png" height="left" align="right">
 [Deferred Rendering Shader](Assets/Shaders/DeferredShading)
 It uses only two textures. Both textures are compressed and their format is VK_FORMAT_R32G32B32A32_UINT. First texture has compressed position and specular texture, both of them are vec3 type. We waste one A32 component. For some reason got it working only with 4 components (will need to try fixing it). Second texture has packed Normal, Diffuse and Depth textures. If you would look at better compression algorithms, you could definetily find a way to pack Position, Diffuse and Specular in single R32G32B32 but of course you would lose precision. The solution I'm using this time gave the best results without any loss in quality. The only problem is that the output looks litlle bit squashed.
 Some usefull links on this thing:
@@ -88,7 +88,7 @@ Some usefull links on this thing:
 > http://stackoverflow.com/questions/6893302/decode-rgb-value-to-single-float-without-bit-shift-in-glsl
 
 ## [Physical Based Shading - Work in progress](Projects/DeferredShading)
-<img src="ScreenShots/PhysicalBasedShader.png" height="126px" align="right">
+<img src="ScreenShots/PhysicalBasedShader.png" height="left" align="right">
 [Physical Based Shader](Assets/Shaders/PhysicalBasedShading)
 Big part of the code is based on the Frostbite documentation on PBR.
 //http://www.frostbite.com/wp-content/uploads/2014/11/course_notes_moving_frostbite_to_pbr_v2.pdf
