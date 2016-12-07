@@ -95,7 +95,7 @@ Big part of the code is based on the Frostbite documentation on PBR.
 
 ## [SSAO - Work in progress](Projects/SSAO)
 <img src="ScreenShots/SSAO.png" height="left" align="right">
-[SSAO](Assets/Shaders/SSAO)
+[SSAO shader](Assets/Shaders/SSAO)
 Based on John Champan tutorial for Normal oriented SSAO.
 http://john-chapman-graphics.blogspot.co.uk/2013/01/ssao-tutorial.html
 
