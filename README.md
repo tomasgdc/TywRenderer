@@ -116,4 +116,4 @@ Some of the assets have different license. Please comply to these when redistrib
 - [nanosuit](Assets/Geometry/nanosuit) - Modiffied version from  http://tf3dm.com/3d-model/crysis-2-nanosuit-2-97837.html
 - [photosculpt](Assets/Textures/photosculpt) - http://photosculpt.net/free-textures/
 - [doom freetype](Assets/Textures/freetype/AmazDooMLeft.ttf) http://www.dafont.com/amazdoom.font
-- [sponza](Assets/Geometry/Sponza) and (Assets/Textures/sponza)
+- [sponza geometry](Assets/Geometry/Sponza) and [sponza textures](Assets/Textures/sponza)
