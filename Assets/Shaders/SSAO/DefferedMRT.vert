@@ -20,12 +20,17 @@ layout (binding = 0) uniform UBO
 } ubo;
 
 
+
+
+
 layout(location = 5) out struct
 {
 	mat3 TBN;
 	vec3 ws_coords;
+	vec3 normal;
     vec2 texcoord;
 } vs_out;
+
 
 
 void main() 
@@ -48,6 +53,10 @@ void main()
 	// GL to Vulkan coord space
 	vs_out.ws_coords.y = -vs_out.ws_coords.y;
 	vs_out.texcoord = inUv;
+
+	//Face normal map
+	mat3 normalMatrix = transpose(inverse(mat3(mvMatrix)));
+	vs_out.normal = normalMatrix * inNormal;
 
 
 	gl_Position = ubo.projectionMatrix *  mvMatrix * tmpPos;

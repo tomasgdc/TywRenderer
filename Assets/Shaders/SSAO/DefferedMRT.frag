@@ -8,6 +8,7 @@ layout(location = 5) in struct
 {
 	mat3 TBN;
 	vec3 ws_coords;
+	vec3 normal;
     vec2 texcoord;
 } fs_in;
 

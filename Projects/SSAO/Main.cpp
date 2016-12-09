@@ -289,6 +289,7 @@ private:
 	struct
 	{
 		glm::mat4 projection;
+		glm::mat4 view;
 	}uboSSAOProjection;
 
 
@@ -349,7 +350,7 @@ public:
 	void StartFrame() override;
 	void LoadGUI() override;
 
-	void GenerateTexture(std::vector<glm::vec3> &ImageData, uint32_t imageX, uint32_t imageY, uint32_t mipMapLevel, VkFormat format, VkTools::VulkanTexture *texture, VkImageUsageFlags imageUsageFlags, VkFilter filter = VK_FILTER_LINEAR); //Add to TywRenderer DLL
+	void GenerateTexture(std::vector<glm::vec4> &ImageData, uint32_t imageX, uint32_t imageY, uint32_t mipMapLevel, VkFormat format, VkTools::VulkanTexture *texture, VkImageUsageFlags imageUsageFlags, VkFilter filter = VK_FILTER_LINEAR); //Add to TywRenderer DLL
 	void InitializeSSAOData();
 	void ChangeLodBias(float delta);
 	void BeginTextUpdate();
@@ -532,19 +533,19 @@ void Renderer::InitializeSSAOData()
 		uboSSAOKernel.ssaoKernel[i] = glm::vec4(sample, 0.0f);
 	}
 
-	std::vector<glm::vec3> ssaoNoise;
+	std::vector<glm::vec4> ssaoNoise;
 	ssaoNoise.reserve(16);
 	for (uint32_t i = 0; i < 16; i++)
 	{
-		glm::vec3 noise(
+		glm::vec4 noise(
 			randomFloats(generator) * 2.0 - 1.0,
 			randomFloats(generator) * 2.0 - 1.0,
-			0.0f);
+			0.0f, 0.0f);
 		ssaoNoise.push_back(noise);
 	}
 
 	//Generates texture. But cant see anything in debugger in it. Better generate on gpu... at the moment
-	GenerateTexture(ssaoNoise, 4, 4, 1, VK_FORMAT_R32G32B32_SFLOAT, &m_NoiseGeneratedTexture, VK_IMAGE_USAGE_SAMPLED_BIT, VK_FILTER_NEAREST);
+	GenerateTexture(ssaoNoise, 4, 4, 1, VK_FORMAT_R32G32B32A32_SFLOAT, &m_NoiseGeneratedTexture, VK_IMAGE_USAGE_SAMPLED_BIT, VK_FILTER_NEAREST);
 
 	//Send data
 	void * pData;
@@ -553,7 +554,7 @@ void Renderer::InitializeSSAOData()
 	vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.ssaokernel.memory);
 }
 
-void Renderer::GenerateTexture(std::vector<glm::vec3> &tex2D, uint32_t imageX, uint32_t imageY, uint32_t mipMapLevel, VkFormat format, VkTools::VulkanTexture *texture, VkImageUsageFlags imageUsageFlags, VkFilter filter)
+void Renderer::GenerateTexture(std::vector<glm::vec4> &tex2D, uint32_t imageX, uint32_t imageY, uint32_t mipMapLevel, VkFormat format, VkTools::VulkanTexture *texture, VkImageUsageFlags imageUsageFlags, VkFilter filter)
 {
 	texture->width = imageX;
 	texture->height = imageY;
@@ -586,7 +587,7 @@ void Renderer::GenerateTexture(std::vector<glm::vec3> &tex2D, uint32_t imageX, u
 	VkDeviceMemory stagingMemory;
 
 	VkBufferCreateInfo bufferCreateInfo = VkTools::Initializer::BufferCreateInfo();
-	bufferCreateInfo.size = tex2D.size() * sizeof(glm::vec3);
+	bufferCreateInfo.size = tex2D.size() * sizeof(glm::vec4);
 
 	// This buffer is used as a transfer source for the buffer copy
 	bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -607,7 +608,7 @@ void Renderer::GenerateTexture(std::vector<glm::vec3> &tex2D, uint32_t imageX, u
 	// Copy texture data into staging buffer
 	uint8_t *data;
 	VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, stagingMemory, 0, memReqs.size, 0, (void **)&data));
-	memcpy(data, tex2D.data(), tex2D.size() * sizeof(glm::vec3));
+	memcpy(data, tex2D.data(), tex2D.size() * sizeof(glm::vec4));
 	vkUnmapMemory(m_pWRenderer->m_SwapChain.device, stagingMemory);
 
 	// Setup buffer copy regions for each mip level
@@ -1559,6 +1560,7 @@ void Renderer::UpdateUniformBuffers()
 
 	//SSAO
 	uboSSAOProjection.projection = m_Camera.matrices.perspective;
+	uboSSAOProjection.view = m_Camera.matrices.view;
 	{
 		void * pData;
 		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.ssaoprojection.memory, 0, sizeof(uboSSAOProjection), 0, (void **)&pData));
@@ -1745,7 +1747,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &GBufferNM),
 
 		// Binding 3: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &noiseImage),
+		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &noiseImage),
 	};
 	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, ssaoWriteModelDescriptorSet.size(), ssaoWriteModelDescriptorSet.data(), 0, NULL);
 
@@ -1914,6 +1916,7 @@ void Renderer::PreparePipeline()
 			static_cast<uint32_t>(dynamicStateEnables.size()),
 			0);
 
+
 	// Load shaders
 	//Shaders are loaded from the SPIR-V format, which can be generated from glsl
 	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
@@ -1947,13 +1950,7 @@ void Renderer::PreparePipeline()
 	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/DebugQuad.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 	pipelineCreateInfo.pVertexInputState = &quadMesh.vertex.inputState;
 
-	//Turn off culling
-	rasterizationState =
-		VkTools::Initializer::PipelineRasterizationStateCreateInfo(
-			VK_POLYGON_MODE_FILL,
-			VK_CULL_MODE_NONE,
-			VK_FRONT_FACE_CLOCKWISE,
-			0);
+
 
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &quadPipeline));
 
@@ -1996,17 +1993,7 @@ void Renderer::PreparePipeline()
 	};
 	colorBlendState.attachmentCount = static_cast<uint32_t>(blendAttachmentStates.size());
 	colorBlendState.pAttachments = blendAttachmentStates.data();
-
 	pipelineCreateInfo.pVertexInputState = &listLocalBuffersVerts[0].inputState;
-
-	//Turn on culling again
-	rasterizationState =
-		VkTools::Initializer::PipelineRasterizationStateCreateInfo(
-			VK_POLYGON_MODE_FILL,
-			VK_CULL_MODE_BACK_BIT,
-			VK_FRONT_FACE_CLOCKWISE,
-			0);
-
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &frameBufferPipeline));
 }
 
