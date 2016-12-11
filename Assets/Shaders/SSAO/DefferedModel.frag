@@ -39,6 +39,8 @@ vec3 DefferedPass()
 	vec2 tempPosSpec = unpackHalf2x16(uvec3_PosSpecularPacked.y);
 
 	vec3 positionTexture = vec3(tempPosition0, tempPosSpec.x);
+	// GL to Vulkan coord space
+	positionTexture.y = -positionTexture.y;
 
 	//Get Diffuse And Normal
 	vec2 tempDiffuse0 = unpackHalf2x16(uvec4_DiffuseNormalAndDepthPacked.x);

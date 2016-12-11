@@ -6,6 +6,7 @@
 layout (binding = 1) uniform   usampler2D  PosAndSpecularPacked;
 layout (binding = 2) uniform   usampler2D  DiffuseNormalAndDepthPacked;
 layout (binding = 3) uniform   sampler2D  ssaoImage; 
+layout (binding = 4) uniform   sampler2D  normalDepth; 
 
 layout (location = 0) in vec3  intUV;
 layout (location = 0) out vec4 outFragColor;
@@ -85,15 +86,19 @@ vec3 VisFragment(int index)
 	}
 	else if(index == 4)
 	{
-		ivec2 size = textureSize(DiffuseNormalAndDepthPacked, 0);
-		uint depth = texelFetch(DiffuseNormalAndDepthPacked, ivec2(size * intUV.st), 0).a;
-
-		result = vec3(uintBitsToFloat(depth));
+		//float depth = texture(normalDepth, intUV.st, 0).a;
+		//result = vec3(depth);
 	}
 	else if(index == 5)
 	{
 		float ssaoTexture = texture(ssaoImage, intUV.st).r;
 		result = vec3(ssaoTexture);
+	}
+	else if(index == 6)
+	{
+		vec3 normal =  texture(normalDepth, intUV.st, 0).rgb;
+		normal = normalize(normal * 2.0 - 1.0);
+		result = normal;
 	}
 
 	return result;

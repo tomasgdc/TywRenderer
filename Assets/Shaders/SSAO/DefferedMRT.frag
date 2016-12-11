@@ -24,6 +24,9 @@ layout (location = 0) out uvec4 color0;
 //Normal, Diffuse, Depth
 layout (location = 1) out uvec4 color1;
 
+//Model normal
+layout (location = 2) out vec4 outNormal;
+
 
 // c_precision of 128 fits within 7 base-10 digits
 const float c_precision = 128.0;
@@ -39,8 +42,8 @@ float color2float(vec3 color)
         + floor(color.g * c_precision + 0.5) * c_precisionp1 * c_precisionp1;
 }
  
-float n = 1.0f; // camera z near
-float f = 128.0f; // camera z far
+float n = 0.1f; // camera z near
+float f = 256.0f; // camera z far
 float LinearizeDepth(float depth)
 {
   float z = depth * 2.0f - 1.0f; //Back to NDC
@@ -84,4 +87,5 @@ void main()
 
     color0 = outvec0;
     color1 = outvec1;
+	outNormal = vec4(normalize(fs_in.normal) * 0.5 + 0.5, LinearizeDepth(gl_FragCoord.z));
 }

@@ -35,7 +35,7 @@ layout(location = 5) out struct
 
 void main() 
 {
-	vec4 tmpPos = vec4(inPos,1.0) + ubo.instancePos[gl_InstanceIndex];
+	vec4 tmpPos = vec4(inPos,1.0);
 	mat4 mvMatrix  = ubo.viewMatrix * ubo.modelMatrix;
 	
 	
@@ -51,7 +51,7 @@ void main()
 
 
 	// GL to Vulkan coord space
-	vs_out.ws_coords.y = -vs_out.ws_coords.y;
+	//vs_out.ws_coords.y = -vs_out.ws_coords.y;
 	vs_out.texcoord = inUv;
 
 	//Face normal map

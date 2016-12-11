@@ -194,8 +194,8 @@ private:
 	} Semaphores;
 
 
-	float zNear = 1.0f;
-	float zFar = 128.0f;
+	float zNear = 0.1f;
+	float zFar = 256.0f;
 
 	struct {
 		glm::mat4 projectionMatrix;
@@ -231,6 +231,7 @@ private:
 		VkFramebuffer frameBuffer;
 		FrameBufferAttachment position;
 		FrameBufferAttachment nm; //normal and diffuse
+		FrameBufferAttachment modeNormal; //face normals
 		FrameBufferAttachment depth;
 		VkRenderPass renderPass;
 	} offScreenFrameBuf;
@@ -380,7 +381,7 @@ Renderer::Renderer() :m_bViewUpdated(false)
 	m_Camera.position = { 0.47f, -3.8f, -3.34f };
 	m_Camera.setRotation(glm::vec3(7.0f, -75.0f, 0.0f));
 	m_Camera.setTranslation(glm::vec3(-81.0f, 6.25f, -14.0f));
-	m_Camera.setPerspective(60.0f, 1280.0f / 720.0f, 0.1f, 256.0f);
+	m_Camera.setPerspective(60.0f, 1280.0f / 720.0f, zNear, zFar);
 	m_Camera.movementSpeed = 20.0f * 2.0f;
 }
 
@@ -441,6 +442,10 @@ Renderer::~Renderer()
 	vkDestroyImage(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.nm.image, nullptr);
 	vkFreeMemory(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.nm.mem, nullptr);
 
+	//Model normal
+	vkDestroyImageView(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.modeNormal.view, nullptr);
+	vkDestroyImage(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.modeNormal.image, nullptr);
+	vkFreeMemory(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.modeNormal.mem, nullptr);
 
 	//SSAO
 	vkDestroyImageView(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssao.attachement.view, nullptr);
@@ -516,6 +521,7 @@ void Renderer::InitializeSSAOData()
 {
 	std::uniform_real_distribution<float> randomFloats(0.0f, 1.0f); // random floats between 0.0 - 1.0
 	std::default_random_engine generator;
+
 	for (uint32_t i = 0; i < 64; ++i)
 	{
 		glm::vec3 sample(
@@ -1150,10 +1156,11 @@ void Renderer::PrepareFramebufferCommands()
 
 	VkCommandBufferBeginInfo cmdBufInfo = VkTools::Initializer::CommandBufferBeginInfo();
 
-	std::array<VkClearValue, 3> clearValues;
+	std::array<VkClearValue, 4> clearValues;
 	clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
 	clearValues[1].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
-	clearValues[2].depthStencil = { 1.0f, 0 };
+	clearValues[2].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+	clearValues[3].depthStencil = { 1.0f, 0 };
 
 	VkRenderPassBeginInfo renderPassBeginInfo = VkTools::Initializer::RenderPassBeginInfo();
 	renderPassBeginInfo.renderPass = offScreenFrameBuf.renderPass;
@@ -1299,8 +1306,14 @@ void Renderer::CreateFrameBuffer()
 		&offScreenFrameBuf.position,
 		layoutCmd);
 
+	//Normal face
+	CreateAttachement(VK_FORMAT_R8G8B8A8_UNORM,
+		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		&offScreenFrameBuf.modeNormal,
+		layoutCmd);
+
 	//SSAO
-	CreateAttachement(VK_FORMAT_R32_SFLOAT,
+	CreateAttachement(VK_FORMAT_R8_UNORM,
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		&frameBuffersSSAO.ssao.attachement,
 		layoutCmd);
@@ -1331,7 +1344,7 @@ void Renderer::CreateFrameBuffer()
 
 	//Deffered FrameBuffer
 	{
-		std::array<VkAttachmentDescription, 3> attachmentDescs = {};
+		std::array<VkAttachmentDescription, 4> attachmentDescs = {};
 
 		// Init attachment properties
 		for (uint32_t i = 0; i < attachmentDescs.size(); ++i)
@@ -1342,22 +1355,24 @@ void Renderer::CreateFrameBuffer()
 			attachmentDescs[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 			attachmentDescs[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
-			//depth buffer == 2
+			//depth buffer == 3
 			attachmentDescs[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			attachmentDescs[i].finalLayout = (i == 2) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			attachmentDescs[i].finalLayout = (i == 3) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		}
 
 		// Formats
 		attachmentDescs[0].format = offScreenFrameBuf.position.format;
 		attachmentDescs[1].format = offScreenFrameBuf.nm.format;
-		attachmentDescs[2].format = offScreenFrameBuf.depth.format;
+		attachmentDescs[2].format = offScreenFrameBuf.modeNormal.format;
+		attachmentDescs[3].format = offScreenFrameBuf.depth.format;
 
 		std::vector<VkAttachmentReference> colorReferences;
 		colorReferences.push_back({ 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
 		colorReferences.push_back({ 1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+		colorReferences.push_back({ 2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
 
 		VkAttachmentReference depthReference = {};
-		depthReference.attachment = 2;
+		depthReference.attachment = 3;
 		depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 		VkSubpassDescription subpass = {};
@@ -1397,10 +1412,11 @@ void Renderer::CreateFrameBuffer()
 
 		VK_CHECK_RESULT(vkCreateRenderPass(m_pWRenderer->m_SwapChain.device, &renderPassInfo, nullptr, &offScreenFrameBuf.renderPass));
 
-		std::array<VkImageView, 3> attachments;
+		std::array<VkImageView, 4> attachments;
 		attachments[0] = offScreenFrameBuf.position.view;
 		attachments[1] = offScreenFrameBuf.nm.view;
-		attachments[2] = offScreenFrameBuf.depth.view;
+		attachments[2] = offScreenFrameBuf.modeNormal.view;
+		attachments[3] = offScreenFrameBuf.depth.view;
 
 		VkFramebufferCreateInfo fbufCreateInfo = {};
 		fbufCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1678,6 +1694,14 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 			offScreenFrameBuf.nm.view,
 			VK_IMAGE_LAYOUT_GENERAL);
 
+
+	//Model normal
+	VkDescriptorImageInfo modelNormal =
+		VkTools::Initializer::DescriptorImageInfo(
+			colorSampler,
+			offScreenFrameBuf.modeNormal.view,
+			VK_IMAGE_LAYOUT_GENERAL);
+
 	//ssao
 	VkDescriptorImageInfo ssaoImage =
 		VkTools::Initializer::DescriptorImageInfo(
@@ -1700,7 +1724,10 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &GBufferNM),
 
 		//Binding 3: SSAO image
-		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &ssaoImage)
+		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &ssaoImage),
+
+		//Normal depth
+		//VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &modelNormal)
 
 	};
 	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, quadWriteDescriptorSets.size(), quadWriteDescriptorSets.data(), 0, NULL);
@@ -1744,7 +1771,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &GBufferPosition),
 
 		// Binding 2: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &GBufferNM),
+		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &modelNormal),
 
 		// Binding 3: Image descriptor
 		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &noiseImage),
@@ -1990,6 +2017,7 @@ void Renderer::PreparePipeline()
 	{
 		VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
 		VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
+		VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE)
 	};
 	colorBlendState.attachmentCount = static_cast<uint32_t>(blendAttachmentStates.size());
 	colorBlendState.pAttachments = blendAttachmentStates.data();
@@ -2034,6 +2062,33 @@ void Renderer::SetupDescriptorSetLayout()
 
 
 		VK_CHECK_RESULT(vkCreatePipelineLayout(m_pWRenderer->m_SwapChain.device, &pPipelineLayoutCreateInfo, nullptr, &frameBufferPipelineLayout));
+	}
+
+	//QUAD Debug
+	{
+		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings =
+		{
+			// Binding 0 : Vertex shader uniform buffer
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,0),
+
+			// Binding 1 : Fragment shader image sampler
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,1),
+
+			// Binding 2 : Fragment shader image sampler
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,2),
+
+			// Binding 3 : Fragment shader image sampler
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,3),
+
+			// Binding 4 : Fragment shader uniform buffer
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT,4),
+		};
+
+		VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());
+		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, &descriptorLayout, nullptr, &ssaoDescriptorSetLayout));
+
+		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkTools::Initializer::PipelineLayoutCreateInfo(&ssaoDescriptorSetLayout, 1);
+		VK_CHECK_RESULT(vkCreatePipelineLayout(m_pWRenderer->m_SwapChain.device, &pPipelineLayoutCreateInfo, nullptr, &ssaoPipelineLayout));
 	}
 
 	//SSAO

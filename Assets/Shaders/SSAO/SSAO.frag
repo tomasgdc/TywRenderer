@@ -8,7 +8,7 @@ layout (location = 0) in vec2 inUV;
 
 
 layout (binding = 1) uniform   usampler2D  PosSpecularPacked;
-layout (binding = 2) uniform   usampler2D  DiffuseNormalDepthPacked; 
+layout (binding = 2) uniform   sampler2D   NormalDepth; 
 layout (binding = 3) uniform   sampler2D   texNoise;
 
 //Output 
@@ -54,11 +54,10 @@ float rand(vec2 co){
 
 float SSAOAlgo0()
 {
-	ivec2 P0 = ivec2(inUV * textureSize(DiffuseNormalDepthPacked, 0));
 	ivec2 P1 = ivec2(inUV * textureSize(PosSpecularPacked, 0));
 
 	uvec4 uvec4_PosSpecularPacked = texelFetch(PosSpecularPacked, P1, 0);
-	uvec4 uvec4_DiffuseNormalDepthPacked = texelFetch(DiffuseNormalDepthPacked, P0, 0);
+	vec4 normalDepthTexture = texture(NormalDepth, inUV, 0);
 
     //Get position and depth texture
 	vec2 tempPosition0 = unpackHalf2x16(uvec4_PosSpecularPacked.x);
@@ -68,15 +67,13 @@ float SSAOAlgo0()
 
 	//Convert frag pos to view space
 	fragPos = vec3(ubo.view * vec4(fragPos, 1.0));
+	fragPos.y = -fragPos.y;
 
 	//Get normal
-	vec2 tempDiffAndNormal = unpackHalf2x16(uvec4_DiffuseNormalDepthPacked.y);
-	vec2 tempNormal = unpackHalf2x16(uvec4_DiffuseNormalDepthPacked.z);
-
-    vec3 normal = normalize(vec3(tempDiffAndNormal.y, tempNormal));
+	vec3 normal = normalize(normalDepthTexture.xyz * 2.0 - 1.0);
 
 	//Random vec using noise lookup
-	ivec2 texDim = textureSize(DiffuseNormalDepthPacked, 0); 
+	ivec2 texDim = textureSize(NormalDepth, 0); 
 	ivec2 noiseDim = textureSize(texNoise, 0);
 	const vec2 noiseUV = vec2(float(texDim.x)/float(noiseDim.x), float(texDim.y)/(noiseDim.y)) * inUV;  
 	vec3 randomVec = texture(texNoise, noiseUV).xyz * 2.0f - 1.0f;
@@ -102,9 +99,7 @@ float SSAOAlgo0()
         offset.xyz = offset.xyz * 0.5f + 0.5f; // transform to range 0.0 - 1.0
         
 		// get sample depth
-		ivec2 texOffset = ivec2(offset.xy * textureSize(DiffuseNormalDepthPacked, 0));
-        uint packed = texelFetch(DiffuseNormalDepthPacked, texOffset, 0).a; // Get depth value of kernel sample
-		float sampleDepth = -uintBitsToFloat(packed);
+        float sampleDepth = -texture(NormalDepth, offset.xy, 0).a; // Get depth value of kernel sample
 			
         // range check & accumulate
        float rangeCheck = smoothstep(0.0f, 1.0f, radius / abs(fragPos.z - sampleDepth ));
