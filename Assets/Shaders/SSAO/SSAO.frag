@@ -56,21 +56,22 @@ float SSAOAlgo0()
 {
 	ivec2 P1 = ivec2(inUV * textureSize(PosSpecularPacked, 0));
 
-	uvec4 uvec4_PosSpecularPacked = texelFetch(PosSpecularPacked, P1, 0);
+	uvec2 uvec2_PosSpecularPacked = texelFetch(PosSpecularPacked, P1, 0).rg;
 	vec4 normalDepthTexture = texture(NormalDepth, inUV, 0);
 
     //Get position and depth texture
-	vec2 tempPosition0 = unpackHalf2x16(uvec4_PosSpecularPacked.x);
-	vec2 tempPosAndSpec = unpackHalf2x16(uvec4_PosSpecularPacked.y);
+	vec2 tempPosition0 = unpackHalf2x16(uvec2_PosSpecularPacked.x);
+	vec2 tempPosAndSpec = unpackHalf2x16(uvec2_PosSpecularPacked.y);
 
     vec3 fragPos = vec3(tempPosition0, tempPosAndSpec.x);
 
 	//Convert frag pos to view space
-	fragPos = vec3(ubo.view * vec4(fragPos, 1.0));
-	fragPos.y = -fragPos.y;
+	fragPos = vec3(ubo.view * vec4(fragPos, 1.0f));
+	//fragPos.y = -fragPos.y;
 
 	//Get normal
-	vec3 normal = normalize(normalDepthTexture.xyz * 2.0 - 1.0);
+	vec3 normal = normalDepthTexture.xyz * 2.0 - 1.0;
+	normal = normalize(normal);
 
 	//Random vec using noise lookup
 	ivec2 texDim = textureSize(NormalDepth, 0); 
@@ -105,7 +106,7 @@ float SSAOAlgo0()
        float rangeCheck = smoothstep(0.0f, 1.0f, radius / abs(fragPos.z - sampleDepth ));
        f_occlusion += (sampleDepth >= Sample.z ? 1.0f : 0.0f) * rangeCheck;          
     }
-   //f_occlusion = 1.0f - (f_occlusion / kernelSize);
+    f_occlusion = 1.0f - (f_occlusion / kernelSize);
 	return f_occlusion;
 }
 

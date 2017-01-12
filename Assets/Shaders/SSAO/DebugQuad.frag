@@ -4,9 +4,9 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 layout (binding = 1) uniform   usampler2D  PosAndSpecularPacked;
-layout (binding = 2) uniform   usampler2D  DiffuseNormalAndDepthPacked;
-layout (binding = 3) uniform   sampler2D  ssaoImage; 
-layout (binding = 4) uniform   sampler2D  normalDepth; 
+layout (binding = 2) uniform   usampler2D  DiffuseNormalPacked;
+layout (binding = 3) uniform   sampler2D   ssaoImage; 
+layout (binding = 4) uniform   sampler2D   normalDepth; 
 
 layout (location = 0) in vec3  intUV;
 layout (location = 0) out vec4 outFragColor;
@@ -46,7 +46,7 @@ vec3 VisFragment(int index)
 
 	if(index == 0)
 	{
-		ivec2 size = textureSize(DiffuseNormalAndDepthPacked, 0);
+		ivec2 size = textureSize(PosAndSpecularPacked, 0);
 		uvec2 uvec2_PosAndSpecularPacked = texelFetch(PosAndSpecularPacked, ivec2(size * intUV.st), 0).rg;
 
 		vec2 tempPosition0 = unpackHalf2x16(uvec2_PosAndSpecularPacked.x);
@@ -56,8 +56,8 @@ vec3 VisFragment(int index)
 	}
 	else if(index == 1)
 	{
-		ivec2 size = textureSize(DiffuseNormalAndDepthPacked, 0);
-		uvec2 uvec2_DiffuseNormal = texelFetch(DiffuseNormalAndDepthPacked, ivec2(size * intUV.st), 0).rg;
+		ivec2 size = textureSize(DiffuseNormalPacked, 0);
+		uvec2 uvec2_DiffuseNormal = texelFetch(DiffuseNormalPacked, ivec2(size * intUV.st), 0).rg;
 
 		vec2 tempDiffuse0 = unpackHalf2x16(uvec2_DiffuseNormal.x);
 		vec2 tempDiffAndNormal = unpackHalf2x16(uvec2_DiffuseNormal.y);
@@ -66,8 +66,8 @@ vec3 VisFragment(int index)
 	}
 	else if(index == 2)
 	{
-		ivec2 size = textureSize(DiffuseNormalAndDepthPacked, 0);
-		uvec2 uvec2_DiffuseNormal = texelFetch(DiffuseNormalAndDepthPacked,  ivec2(size * intUV.st), 0).gb;
+		ivec2 size = textureSize(DiffuseNormalPacked, 0);
+		uvec2 uvec2_DiffuseNormal = texelFetch(DiffuseNormalPacked,  ivec2(size * intUV.st), 0).gb;
 
 		vec2 tempDiffAndNormal = unpackHalf2x16(uvec2_DiffuseNormal.x);
 		vec2 tempNormal = unpackHalf2x16(uvec2_DiffuseNormal.y);
@@ -76,7 +76,7 @@ vec3 VisFragment(int index)
 	}
 	else if(index == 3)
 	{
-		ivec2 size = textureSize(DiffuseNormalAndDepthPacked, 0);
+		ivec2 size = textureSize(PosAndSpecularPacked, 0);
 		uvec2 uvec2_PosAndSpecularPacked = texelFetch(PosAndSpecularPacked, ivec2(size * intUV.st), 0).gb;
 
 		vec2 tempSpecularY = unpackHalf2x16(uvec2_PosAndSpecularPacked.x);
@@ -86,8 +86,8 @@ vec3 VisFragment(int index)
 	}
 	else if(index == 4)
 	{
-		//float depth = texture(normalDepth, intUV.st, 0).a;
-		//result = vec3(depth);
+		float depth = texture(normalDepth, intUV.st, 0).a;
+		result = vec3(depth);
 	}
 	else if(index == 5)
 	{

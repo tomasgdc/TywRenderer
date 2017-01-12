@@ -146,6 +146,7 @@ void RenderModelAssimp::Clear(VkDevice device)
 			else
 			{
 				//No textures were loaded but material was created so we have to destroy it.
+//				mesh.material->Clear(device);
 				SAFE_DELETE_ARRAY(mesh.material);
 			}
 		}

@@ -313,10 +313,11 @@ private:
 	}quadMesh;
 
 	//plane and quad
-	VkPipeline quadPipeline;
-	VkPipelineLayout quadPipelineLayout;
-	VkDescriptorSet  quadDescriptorSet;
-	VkDescriptorSet  defferedModelDescriptorSet;
+	VkPipeline				 quadPipeline;
+	VkPipelineLayout		 quadPipelineLayout;
+	VkDescriptorSetLayout	 quadDescriptorSetLayout;
+	VkDescriptorSet			 quadDescriptorSet;
+	VkDescriptorSet			 defferedModelDescriptorSet;
 
 	//SSAO
 	VkPipeline ssaoPipeline;
@@ -474,6 +475,7 @@ Renderer::~Renderer()
 	vkDestroyPipelineLayout(m_pWRenderer->m_SwapChain.device, ssaoPipelineLayout, nullptr);
 
 	//Destroy layout
+	vkDestroyDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, quadDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, descriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, ssaoDescriptorSetLayout, nullptr);
 
@@ -485,8 +487,8 @@ Renderer::~Renderer()
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.defferedSemaphore, nullptr);
 
 	//ssao
-//	vkFreeCommandBuffers(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_CmdPool, 1, &ssaoCmdBuffer);
-//	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.ssaoSemaphore, nullptr);
+	vkFreeCommandBuffers(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_CmdPool, 1, &ssaoCmdBuffer);
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.ssaoSemaphore, nullptr);
 
 	//Release semaphores
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.presentComplete, nullptr);
@@ -864,7 +866,7 @@ void Renderer::LoadGUI()
 
 void Renderer::GenerateQuad()
 {
-#define NUM_QUADS 6
+#define NUM_QUADS 7
 	std::vector<drawVert> vertData;
 	vertData.reserve(NUM_QUADS * 4);
 
@@ -1711,7 +1713,8 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 
 
 	// Debug Descriptor
-	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfo, &quadDescriptorSet));
+	VkDescriptorSetAllocateInfo quadDebugallocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &quadDescriptorSetLayout, 1);
+	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &quadDebugallocInfo, &quadDescriptorSet));
 	std::vector<VkWriteDescriptorSet> quadWriteDescriptorSets =
 	{
 		// Binding 0 : Vertex shader uniform buffer
@@ -1727,7 +1730,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &ssaoImage),
 
 		//Normal depth
-		//VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &modelNormal)
+		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &modelNormal)
 
 	};
 	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, quadWriteDescriptorSets.size(), quadWriteDescriptorSets.data(), 0, NULL);
@@ -2081,14 +2084,14 @@ void Renderer::SetupDescriptorSetLayout()
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,3),
 
 			// Binding 4 : Fragment shader uniform buffer
-			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT,4),
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,4),
 		};
 
 		VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());
-		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, &descriptorLayout, nullptr, &ssaoDescriptorSetLayout));
+		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, &descriptorLayout, nullptr, &quadDescriptorSetLayout));
 
-		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkTools::Initializer::PipelineLayoutCreateInfo(&ssaoDescriptorSetLayout, 1);
-		VK_CHECK_RESULT(vkCreatePipelineLayout(m_pWRenderer->m_SwapChain.device, &pPipelineLayoutCreateInfo, nullptr, &ssaoPipelineLayout));
+		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkTools::Initializer::PipelineLayoutCreateInfo(&quadDescriptorSetLayout, 1);
+		VK_CHECK_RESULT(vkCreatePipelineLayout(m_pWRenderer->m_SwapChain.device, &pPipelineLayoutCreateInfo, nullptr, &quadPipelineLayout));
 	}
 
 	//SSAO
@@ -2178,6 +2181,7 @@ void Renderer::StartFrame()
 		submitInfo.pSignalSemaphores = &Semaphores.defferedSemaphore;
 		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
 
+		
 		//Start SSAO Pass
 		submitInfo.pWaitSemaphores = &Semaphores.defferedSemaphore;
 		submitInfo.pSignalSemaphores = &Semaphores.ssaoSemaphore;
@@ -2186,7 +2190,7 @@ void Renderer::StartFrame()
 
 		//Start Main Pass (Combines all images and does calculation for all lights)
 		submitInfo.pWaitSemaphores = &Semaphores.ssaoSemaphore;
-//		submitInfo.pWaitSemaphores = &Semaphores.defferedSemaphore;
+		//submitInfo.pWaitSemaphores = &Semaphores.defferedSemaphore;
 		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
 		submitInfo.pCommandBuffers = &m_pWRenderer->m_DrawCmdBuffers[m_pWRenderer->m_currentBuffer];
 		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
@@ -2201,6 +2205,7 @@ void Renderer::StartFrame()
 		submitInfo.pSignalSemaphores = &Semaphores.textOverlayComplete;
 		submitInfo.pCommandBuffers = &cmdGui;
 		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+		
 	}
 
 	{
