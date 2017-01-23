@@ -103,3 +103,11 @@ Build/CMakeFiles/3.7.0/CompilerIdC/CMakeCCompilerId.c
 Build/Projects/PhysicalBasedShading/imgui.ini
 *.pch
 *.suo
+*.pch
+*.ini
+Build/CMakeFiles/3.7.0/CompilerIdCXX/CMakeCXXCompilerId.cpp
+*.suo
+*.pch
+*.suo
+*.suo
+Build/.vs/TywRenderer/v14/.suo

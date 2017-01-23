@@ -86,7 +86,7 @@ float SSAOAlgo0()
 
     // Iterate over the sample kernel and calculate occlusion factor
     float f_occlusion = 0.0f;
-    for(int i = 0; i < 64; ++i)
+    for(int i = 0; i < kernelSize; ++i)
     {
         // get sample position
         vec3 Sample = TBN * ubossaokernel.samples[i].xyz; // From tangent to view-space
