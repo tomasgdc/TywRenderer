@@ -35,19 +35,16 @@ struct VkSemaphores
 };
 
 
-struct VkDepthStencil
-{
-	VkImage image;
-	VkDeviceMemory mem;
-	VkImageView view;
-};
+
 
 
 namespace VkTools
 {
-	//Objects
-	// Contains all vulkan objects
-	// required for a uniform data object
+	/*
+		Objects
+		Contains all vulkan object
+		required for a uniform data object
+	*/
 	struct UniformData
 	{
 		VkBuffer buffer;
@@ -57,53 +54,202 @@ namespace VkTools
 		void* mapped = nullptr;
 	};
 
-	TYWRENDERER_API std::string VkResultToString(VkResult errorCode);
+	struct VkDepthStencil
+	{
+		VkImage image;
+		VkDeviceMemory mem;
+		VkImageView view;
+	};
 
+	struct FrameBufferAttachment 
+	{
+		VkImage image;
+		VkDeviceMemory mem;
+		VkImageView view;
+		VkFormat format;
+	};
+
+	struct FrameBuffer
+	{
+		int32_t width, height;
+		VkFramebuffer frameBuffer;
+		VkRenderPass renderPass;
+	};
+
+	/*
+		Creates ImageView that will be used in render pass
+		Check 
+		https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#_framebuffers
+		https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#resources-image-views
+
+		@param: uint32_t iWidth
+		@param: uint32_t iHeight
+		@param: VkFormat format
+		@param: VkImageUsageFlagBits usage
+		@param: FrameBufferAttachment *attachment - new data will be stored in this one
+		@param: VkCommandBuffer layoutCmd
+		@param: VkDevice device
+		@param: VkPhysicalDeviceMemoryProperties& deviceMemoryProperties
+	*/
+	TYWRENDERER_API void CreateFrameBufferAttachement(uint32_t iWidth, uint32_t iHeight, VkFormat format, VkImageUsageFlagBits usage,FrameBufferAttachment *attachment,VkCommandBuffer layoutCmd,VkDevice device,VkPhysicalDeviceMemoryProperties& deviceMemoryProperties);
+
+	/*
+		@param: VkResult errorCode
+		@return: std::string
+	*/
+	TYWRENDERER_API std::string VkResultToString(const VkResult& errorCode);
+
+	/*
+		@param: VkCommandBuffer cmdbuffer
+		@param: VkImage image
+		@param: VkImageAspectFlags aspectMask
+		@param: VkImageLayout oldImageLayout
+		@param: VkImageLayout newImageLayout
+	*/
 	TYWRENDERER_API void SetImageLayout(VkCommandBuffer cmdbuffer, VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout);
 
+
+	/*
+		@param: uint32_t typeBit
+		@param: VkFlags properties
+		@parma: VkPhysicalDeviceMemoryProperties& deviceMemoryProperties
+
+		@return: uint32_t
+	*/
 	TYWRENDERER_API uint32_t GetMemoryType(uint32_t typeBits, VkFlags properties, VkPhysicalDeviceMemoryProperties& deviceMemoryProperties);
 
-	// Create an image memory barrier for changing the layout of
-	// an image and put it into an active command buffer
-	// See chapter 11.4 "Image Layout" for details
+	/*	
+		Create an image memory barrier for changing the layout of
+		an image and put it into an active command buffer
+		See chapter 11.4 "Image Layout" for details
+
+		@param: VkCommandBuffer cmdbuffer
+		@param: VkImage image
+		@param: VkImageAspectFlags aspectMask
+		@param: VkImageLayout oldImageLayout
+		@param: VkImageLayout newImageLayout
+		@param: VkImageSubresourceRange subresourceRange
+	*/
 	TYWRENDERER_API void SetImageLayout(VkCommandBuffer cmdbuffer, VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkImageSubresourceRange subresourceRange);
 
+	/*
+		@param: const std::string& message
+		@param: const std::string& caption
+	*/
+	TYWRENDERER_API void ExitFatal(const std::string& message, const std::string& caption);
 
-	TYWRENDERER_API void ExitFatal(std::string message, std::string caption);
+	/*
+		Check if extension is present on the given device
 
-	// Check if extension is present on the given device
+		@param: VkPhysicalDevice physicalDevice
+		@param: const char* extensionName
+
+		@return VkBool32
+	*/
 	TYWRENDERER_API VkBool32 CheckDeviceExtensionPresent(VkPhysicalDevice physicalDevice, const char* extensionName);
 
-	// Selected a suitable supported depth format starting with 32 bit down to 16 bit
-	// Returns false if none of the depth formats in the list is supported by the device
-	TYWRENDERER_API VkBool32 GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat *depthFormat);
+	/*
+		Selected a suitable supported depth format starting with 32 bit down to 16 bit
+		Returns false if none of the depth formats in the list is supported by the device
 
-	//Destroys uniform data that was allocated
-	TYWRENDERER_API void DestroyUniformData(VkDevice device, UniformData *uniformData);
+		@param: VkPhysicalDevice physicalDevice
+		@param: VkFormat& depthFormat
+		
+		@return VkBool32
+	*/
+	TYWRENDERER_API VkBool32 GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat& depthFormat);
+
+	/*
+		Destroys uniform data that was allocated
+
+		@param: VkDevice device
+		@param: UniformData& uniformData
+	*/
+	TYWRENDERER_API void DestroyUniformData(VkDevice device, UniformData& uniformData);
 
 
 #if defined(__ANDROID__)
-	// Android shaders are stored as assets in the apk
-	// So they need to be loaded via the asset manager
+
+	/*
+		Android shaders are stored as assets in the apk 
+		So they need to be loaded via the asset manager
+		@param: AAssetManager* assetManager
+		@param: const char *fileName
+		@param: VkDevice device
+		@param: VkShaderStageFlagBits stage
+
+		@return VkShaderModule
+	*/
 	VkShaderModule LoadShader(AAssetManager* assetManager, const char *fileName, VkDevice device, VkShaderStageFlagBits stage);
 #else
+	/*
+		@param: const std::string& fileName
+		@param: VkDevice device
+		@param: VkShaderStageFlagBits stage
+
+		@return VkShaderModule
+	*/
 	TYWRENDERER_API VkShaderModule LoadShader(const std::string& fileName, VkDevice device, VkShaderStageFlagBits stage);
 #endif
 
 	namespace Initializer
 	{
+		/*
+			@return VkSemaphoreCreateInfo
+		*/
 		TYWRENDERER_API VkSemaphoreCreateInfo SemaphoreCreateInfo();
+
+		/*
+			@param: VkFenceCreateFlags flags
+			@return VkFenceCreateInfo;
+		*/
 		TYWRENDERER_API VkFenceCreateInfo FenceCreateInfo(VkFenceCreateFlags flags = VK_FLAGS_NONE);
+
+		/*
+			@return: VkEventCreateInfo;
+		*/
 		TYWRENDERER_API VkEventCreateInfo EventCreateInfo();
 
+		/*
+			@return: VkSubmitInfo
+		*/
 		TYWRENDERER_API VkSubmitInfo SubmitInfo();
+
+		/*
+			@param: VkCommandPool commandPool
+			@param: VkCommandBufferLevel level
+			@param: uint32_t bufferCount
+
+			@return: VkCommandBufferAllocateInfo
+		*/
 		TYWRENDERER_API VkCommandBufferAllocateInfo CommandBufferAllocateInfo(VkCommandPool commandPool, VkCommandBufferLevel level, uint32_t bufferCount);
+
+		/*
+			@return: VkCommandBufferBeginInfo
+		*/
 		TYWRENDERER_API VkCommandBufferBeginInfo CommandBufferBeginInfo();
 
+		/*
+			@return: VkImageMemoryBarrier
+		*/
 		TYWRENDERER_API VkImageMemoryBarrier ImageMemoryBarrier();
+
+		/*
+			@return: VkMemoryAllocateInfo
+		*/
 		TYWRENDERER_API VkMemoryAllocateInfo MemoryAllocateInfo();
 
+		/*
+			@return: VkBufferCreateInfo
+		*/
 		TYWRENDERER_API VkBufferCreateInfo BufferCreateInfo();
+
+		/*
+			@param: VkBufferUsageFlags usage
+			@param: VkDeviceSize size
+
+			@return: VkBufferCreateInfo
+		*/
 		TYWRENDERER_API VkBufferCreateInfo BufferCreateInfo(VkBufferUsageFlags usage,VkDeviceSize size);
 
 		TYWRENDERER_API VkImageCreateInfo ImageCreateInfo();

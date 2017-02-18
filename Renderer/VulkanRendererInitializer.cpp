@@ -160,7 +160,7 @@ bool VulkanRendererInitializer::CreateRendererScreen(uint32_t height, uint32_t w
 	vkGetPhysicalDeviceFeatures(m_SwapChain.physicalDevice, &m_DeviceFeatures);
 
 	// Find a suitable depth format
-	VkBool32 validDepthFormat = VkTools::GetSupportedDepthFormat(m_SwapChain.physicalDevice, &m_SwapChain.depthFormat);
+	VkBool32 validDepthFormat = VkTools::GetSupportedDepthFormat(m_SwapChain.physicalDevice, m_SwapChain.depthFormat);
 	assert(validDepthFormat);
 
 

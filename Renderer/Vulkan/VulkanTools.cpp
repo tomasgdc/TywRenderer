@@ -4,7 +4,7 @@
 
 
 
-std::string VkTools::VkResultToString(VkResult errorCode)
+std::string VkTools::VkResultToString(const VkResult& errorCode)
 {
 	switch (errorCode)
 	{
@@ -51,6 +51,69 @@ void VkTools::SetImageLayout(
 	subresourceRange.levelCount = 1;
 	subresourceRange.layerCount = 1;
 	SetImageLayout(cmdbuffer, image, aspectMask, oldImageLayout, newImageLayout, subresourceRange);
+}
+
+void VkTools::CreateFrameBufferAttachement(
+	uint32_t iWidth, uint32_t iHeight, 
+	VkFormat format, 
+	VkImageUsageFlagBits usage, 
+	FrameBufferAttachment *attachment, 
+	VkCommandBuffer layoutCmd,
+	VkDevice device,
+	VkPhysicalDeviceMemoryProperties& deviceMemoryProperties)
+{
+	VkImageAspectFlags aspectMask = 0;
+	VkImageLayout imageLayout;
+	attachment->format = format;
+
+	if (usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+	{
+		aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	}
+	if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+	{
+		aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+		imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	}
+
+
+	assert(aspectMask > 0);
+
+	VkImageCreateInfo image = VkTools::Initializer::ImageCreateInfo();
+	image.imageType = VK_IMAGE_TYPE_2D;
+	image.format = format;
+	image.extent.width = iWidth;
+	image.extent.height = iHeight;
+	image.extent.depth = 1;
+	image.mipLevels = 1;
+	image.arrayLayers = 1;
+	image.samples = VK_SAMPLE_COUNT_1_BIT;
+	image.tiling = VK_IMAGE_TILING_OPTIMAL;
+	image.usage = usage | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+	VkMemoryAllocateInfo memAlloc = VkTools::Initializer::MemoryAllocateInfo();
+	VkMemoryRequirements memReqs;
+
+	VK_CHECK_RESULT(vkCreateImage(device, &image, nullptr, &attachment->image));
+	vkGetImageMemoryRequirements(device, attachment->image, &memReqs);
+	memAlloc.allocationSize = memReqs.size;
+	memAlloc.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, deviceMemoryProperties);
+
+	VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &attachment->mem));
+	VK_CHECK_RESULT(vkBindImageMemory(device, attachment->image, attachment->mem, 0));
+
+	VkImageViewCreateInfo imageView = VkTools::Initializer::ImageViewCreateInfo();
+	imageView.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	imageView.format = format;
+	imageView.subresourceRange = {};
+	imageView.subresourceRange.aspectMask = aspectMask;
+	imageView.subresourceRange.baseMipLevel = 0;
+	imageView.subresourceRange.levelCount = 1;
+	imageView.subresourceRange.baseArrayLayer = 0;
+	imageView.subresourceRange.layerCount = 1;
+	imageView.image = attachment->image;
+	VK_CHECK_RESULT(vkCreateImageView(device, &imageView, nullptr, &attachment->view));
 }
 
 void VkTools::SetImageLayout(VkCommandBuffer cmdbuffer, VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkImageSubresourceRange subresourceRange)
@@ -309,7 +372,7 @@ VkSamplerCreateInfo VkTools::Initializer::SamplerCreateInfo()
 	return imageViewCreateInfo;
 }
 
-void VkTools::ExitFatal(std::string message, std::string caption)
+void VkTools::ExitFatal(const std::string& message, const std::string& caption)
 {
 	fprintf(stdout, "%s \n", message.c_str());
 	exit(1);
@@ -620,11 +683,12 @@ VkBool32 VkTools::CheckDeviceExtensionPresent(VkPhysicalDevice physicalDevice, c
 
 
 
-VkBool32 VkTools::GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat *depthFormat)
+VkBool32 VkTools::GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat& depthFormat)
 {
 	// Since all depth formats may be optional, we need to find a suitable depth format to use
 	// Start with the highest precision packed format
-	std::vector<VkFormat> depthFormats = {
+	std::vector<VkFormat> depthFormats = 
+	{
 		VK_FORMAT_D32_SFLOAT_S8_UINT,
 		VK_FORMAT_D32_SFLOAT,
 		VK_FORMAT_D24_UNORM_S8_UINT,
@@ -639,7 +703,7 @@ VkBool32 VkTools::GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFor
 		// Format must support depth stencil attachment for optimal tiling
 		if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
 		{
-			*depthFormat = format;
+			depthFormat = format;
 			return true;
 		}
 	}
@@ -647,14 +711,14 @@ VkBool32 VkTools::GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFor
 	return false;
 }
 
-TYWRENDERER_API void VkTools::DestroyUniformData(VkDevice device, VkTools::UniformData *uniformData)
+TYWRENDERER_API void VkTools::DestroyUniformData(VkDevice device, VkTools::UniformData& uniformData)
 {
-	if (uniformData->mapped != nullptr)
+	if (uniformData.mapped != nullptr)
 	{
-		vkUnmapMemory(device, uniformData->memory);
+		vkUnmapMemory(device, uniformData.memory);
 	}
-	vkDestroyBuffer(device, uniformData->buffer, nullptr);
-	vkFreeMemory(device, uniformData->memory, nullptr);
+	vkDestroyBuffer(device, uniformData.buffer, nullptr);
+	vkFreeMemory(device, uniformData.memory, nullptr);
 }
 
 

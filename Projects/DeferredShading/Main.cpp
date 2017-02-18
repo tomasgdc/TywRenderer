@@ -370,9 +370,9 @@ Renderer::~Renderer()
 	//Uniform Data
 	vkDestroyBuffer(m_pWRenderer->m_SwapChain.device, uniformData.mesh.buffer, nullptr);
 	vkFreeMemory(m_pWRenderer->m_SwapChain.device, uniformData.mesh.memory, nullptr);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.quad);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.fsLights);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.vsFullScreen);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.quad);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.fsLights);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.vsFullScreen);
 
 	//QUad
 	VkBufferObject::DeleteBufferMemory(m_pWRenderer->m_SwapChain.device, quadMesh.vertex, nullptr);
@@ -933,7 +933,7 @@ void Renderer::CreateFrameBuffer()
 
 	// Find a suitable depth format
 	VkFormat attDepthFormat;
-	VkBool32 validDepthFormat = VkTools::GetSupportedDepthFormat(m_pWRenderer->m_SwapChain.physicalDevice, &attDepthFormat);
+	VkBool32 validDepthFormat = VkTools::GetSupportedDepthFormat(m_pWRenderer->m_SwapChain.physicalDevice, attDepthFormat);
 	assert(validDepthFormat);
 
 	//Depth

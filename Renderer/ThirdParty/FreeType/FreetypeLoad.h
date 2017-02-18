@@ -12,8 +12,10 @@
 
 	typedef struct TYWRENDERER_API Data_
 	{
-		unsigned char *bitmap_buffer;   // texture data
+		//FT_VECTOR - 2 Longs
 		FT_Vector advance;  // this variable contains the information of how much we need to move to the right from the last character
+
+		unsigned char *bitmap_buffer;   // texture data
 		int bitmap_left;    // width of the glyph in pixels
 		int bitmap_top;     // height of the glyph in pixels
 		unsigned int bitmap_width;   // texture width

@@ -304,6 +304,7 @@ private:
 	VkCommandBuffer		GBufferScreenCmdBuffer = VK_NULL_HANDLE;
 	VkPipelineLayout	frameBufferPipelineLayout;
 	VkDescriptorSet		frameBufferDescriptorSet;
+	VkDescriptorSetLayout frameBufferDescriptorSetLayout;
 
 	struct mesh
 	{
@@ -423,11 +424,11 @@ Renderer::~Renderer()
 	//Uniform Data
 	vkDestroyBuffer(m_pWRenderer->m_SwapChain.device, uniformData.mesh.buffer, nullptr);
 	vkFreeMemory(m_pWRenderer->m_SwapChain.device, uniformData.mesh.memory, nullptr);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.quad);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.fsLights);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.vsFullScreen);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.ssaokernel);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.ssaoprojection);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.quad);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.fsLights);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.vsFullScreen);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.ssaokernel);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.ssaoprojection);
 
 	//QUad
 	VkBufferObject::DeleteBufferMemory(m_pWRenderer->m_SwapChain.device, quadMesh.vertex, nullptr);
@@ -1101,7 +1102,7 @@ void Renderer::PrepareMainRendererCommands()
 		//quad debug
 		{
 			vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, quadPipeline);
-			vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &quadDescriptorSet, 0, NULL);
+			vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, quadPipelineLayout, 0, 1, &quadDescriptorSet, 0, NULL);
 			vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &quadMesh.vertex.buffer, offsets);
 			vkCmdBindIndexBuffer(m_pWRenderer->m_DrawCmdBuffers[i], quadMesh.index.buffer, 0, VK_INDEX_TYPE_UINT32);
 			vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], quadMesh.numIndexes, 1, 0, 0, 1);
@@ -1324,7 +1325,7 @@ void Renderer::CreateFrameBuffer()
 
 	// Find a suitable depth format
 	VkFormat attDepthFormat;
-	VkBool32 validDepthFormat = VkTools::GetSupportedDepthFormat(m_pWRenderer->m_SwapChain.physicalDevice, &attDepthFormat);
+	VkBool32 validDepthFormat = VkTools::GetSupportedDepthFormat(m_pWRenderer->m_SwapChain.physicalDevice, attDepthFormat);
 	assert(validDepthFormat);
 
 	//Depth
@@ -1680,8 +1681,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 
 	m_pWRenderer->m_DescriptorPool = VK_NULL_HANDLE;
 	SetupDescriptorPool();
-	VkDescriptorSetAllocateInfo allocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &descriptorSetLayout, 1);
-
+	
 	// Image descriptor for the color attachement
 	VkDescriptorImageInfo GBufferPosition =
 		VkTools::Initializer::DescriptorImageInfo(
@@ -1736,7 +1736,8 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, quadWriteDescriptorSets.size(), quadWriteDescriptorSets.data(), 0, NULL);
 
 	// FullScreen Descriptor
-	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfo, &defferedModelDescriptorSet));
+	VkDescriptorSetAllocateInfo allocInfoFullScreen = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &descriptorSetLayout, 1);
+	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfoFullScreen, &defferedModelDescriptorSet));
 	std::vector<VkWriteDescriptorSet> defferedWriteModelDescriptorSet =
 	{
 		// Binding 0 : Vertex shader uniform buffer
@@ -1764,12 +1765,6 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &ssaoallocInfo, &ssaoDescriptorSet));
 	std::vector<VkWriteDescriptorSet> ssaoWriteModelDescriptorSet =
 	{
-		// Binding 4 : Fragment uniform buffer - Kernel
-		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4, &uniformData.ssaokernel.descriptor),
-
-		// Binding 5 : Fragment uniform buffer - Projection
-		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5, &uniformData.ssaoprojection.descriptor),
-
 		// Binding 1: Image descriptor
 		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &GBufferPosition),
 
@@ -1778,10 +1773,17 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 
 		// Binding 3: Image descriptor
 		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &noiseImage),
+
+		// Binding 4 : Fragment uniform buffer - Kernel
+		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4, &uniformData.ssaokernel.descriptor),
+
+		// Binding 5 : Fragment uniform buffer - Projection
+		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5, &uniformData.ssaoprojection.descriptor),
 	};
 	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, ssaoWriteModelDescriptorSet.size(), ssaoWriteModelDescriptorSet.data(), 0, NULL);
 
 
+	VkDescriptorSetAllocateInfo allocInfoMRT = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &frameBufferDescriptorSetLayout, 1);
 	for (uint32_t i = 0; i < staticModel.m_Entries.size(); i++)
 	{
 		modelSurface_t& surface = staticModel.m_Entries[i];
@@ -1790,7 +1792,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		srfTriangles_t* tr = surface.geometry;
 
 
-		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfo, &listDescriptros[i]));
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfoMRT, &listDescriptros[i]));
 		std::vector<VkWriteDescriptorSet> writeDescriptorSets =
 		{
 			//uniform descriptor
@@ -1809,6 +1811,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 			const Material& pMat = surface.material[j];
 			VkTools::VulkanTexture* pTexture = pMat.getTexture();
 			descriptors.push_back(VkTools::Initializer::DescriptorImageInfo(pTexture->sampler, pTexture->view, VK_IMAGE_LAYOUT_GENERAL));
+
 			writeDescriptorSets.push_back(VkTools::Initializer::WriteDescriptorSet(listDescriptros[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, j + 1, &descriptors[j]));
 		}
 		//Update descriptor set
@@ -1947,8 +1950,7 @@ void Renderer::PreparePipeline()
 			0);
 
 
-	// Load shaders
-	//Shaders are loaded from the SPIR-V format, which can be generated from glsl
+
 	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
 	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/DefferedModel.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/DefferedModel.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -1978,16 +1980,13 @@ void Renderer::PreparePipeline()
 	//Debug Quad Pipeline
 	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/DebugQuad.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/DebugQuad.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	pipelineCreateInfo.layout = quadPipelineLayout;
 	pipelineCreateInfo.pVertexInputState = &quadMesh.vertex.inputState;
-
-
-
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &quadPipeline));
 
 
 	//SSAO Pipeline
 	//Seperate render pass for ssao
-
 	VkPipelineVertexInputStateCreateInfo emptyInputState{};
 	emptyInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	emptyInputState.vertexAttributeDescriptionCount = 0;
@@ -2006,11 +2005,7 @@ void Renderer::PreparePipeline()
 	//G-Buffer
 	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/DefferedMRT.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/DefferedMRT.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-
-	// Separate render pass
 	pipelineCreateInfo.renderPass = offScreenFrameBuf.renderPass;
-
-	// Separate layout
 	pipelineCreateInfo.layout = frameBufferPipelineLayout;
 
 	// Blend attachment states required for all color attachments
@@ -2062,8 +2057,30 @@ void Renderer::SetupDescriptorSetLayout()
 
 		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkTools::Initializer::PipelineLayoutCreateInfo(&descriptorSetLayout, 1);
 		VK_CHECK_RESULT(vkCreatePipelineLayout(m_pWRenderer->m_SwapChain.device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
+	}
 
 
+	//framebuffer pipelinelayout
+	{
+		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings =
+		{
+			// Binding 0 : Vertex shader uniform buffer
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,0),
+
+			// Binding 1 : Fragment shader image sampler
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,1),
+
+			// Binding 2 : Fragment shader image sampler
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,2),
+
+			// Binding 3 : Fragment shader image sampler
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,3),
+		};
+
+		VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());
+		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, &descriptorLayout, nullptr, &frameBufferDescriptorSetLayout));
+
+		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkTools::Initializer::PipelineLayoutCreateInfo(&frameBufferDescriptorSetLayout, 1);
 		VK_CHECK_RESULT(vkCreatePipelineLayout(m_pWRenderer->m_SwapChain.device, &pPipelineLayoutCreateInfo, nullptr, &frameBufferPipelineLayout));
 	}
 
@@ -2098,12 +2115,6 @@ void Renderer::SetupDescriptorSetLayout()
 	{
 		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings =
 		{
-			// Binding 4 : Fragment Uniform Kernel
-			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT, 4),
-
-			// Binding 5 : Fragment Uniform Projection
-			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT, 5),
-
 			// Binding 1 : Fragment shader image sampler
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,1),
 
@@ -2112,6 +2123,12 @@ void Renderer::SetupDescriptorSetLayout()
 
 			//Binding 3 : Fragment shader uniform buffer
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,3),
+
+			// Binding 4 : Fragment Uniform Kernel
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT, 4),
+
+			// Binding 5 : Fragment Uniform Projection
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT, 5),
 		};
 
 		VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());

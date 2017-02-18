@@ -57,7 +57,7 @@ bool GlyphData::InitiliazeChars(const char* source)
 	//Could be used std::string iterator
 	for (int i = 0; i < size; i++)
 	{
-		Data gd = { nullptr,{ 0,0 }, 0, 0, 0, 0, 0,0 };
+		Data gd = { { 0,0 }, nullptr, 0, 0, 0, 0, 0,0 };
 		char c = source[i];
 		glyph_index = FT_Get_Char_Index(face, c);/* retrieve glyph index from character code */
 
@@ -169,7 +169,7 @@ bool GlyphData::IntiliazeFont(const char * strTypeface, int point_size, int dpi)
 }
 
 Data GlyphData::getChar(char c) {
-	Data gd = { nullptr,{ 0,0 }, 0, 0, 0, 0, 0 };
+	Data gd = { { 0,0 }, nullptr, 0, 0, 0, 0, 0 };
 	std::unordered_map<char, Data>::const_iterator got = glyphs.find(c);
 	if (got == glyphs.end()) {
 		log = "Could not find specified character \r\n";

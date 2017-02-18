@@ -2,7 +2,7 @@
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
-
+#define RANGE_CHECK
 
 layout (location = 0) in vec2 inUV;
 
@@ -16,8 +16,8 @@ layout (location = 0) out float FragColor;
 
 
 // parameters (you'd probably want to use them as uniforms to more easily tweak the effect)
-const int kernelSize = 64;
-const float radius = 1.0;
+const int SSAO_KERNEL_SIZE = 64;
+const float SSAO_RADIUS = 1.0;
 layout (std140 , binding = 4) uniform UBOSSAOKernel 
 {
 	vec4 samples[64];
@@ -70,14 +70,13 @@ float SSAOAlgo0()
 	//fragPos.y = -fragPos.y;
 
 	//Get normal
-	vec3 normal = normalDepthTexture.xyz * 2.0 - 1.0;
-	normal = normalize(normal);
+	vec3 normal = normalize(normalDepthTexture.xyz * 2.0 - 1.0);
 
 	//Random vec using noise lookup
 	ivec2 texDim = textureSize(NormalDepth, 0); 
 	ivec2 noiseDim = textureSize(texNoise, 0);
 	const vec2 noiseUV = vec2(float(texDim.x)/float(noiseDim.x), float(texDim.y)/(noiseDim.y)) * inUV;  
-	vec3 randomVec = texture(texNoise, noiseUV).xyz * 2.0f - 1.0f;
+	vec3 randomVec = texture(texNoise, noiseUV).xyz * 2.0 - 1.0;
 
     // Create TBN change-of-basis matrix: from tangent-space to view-space
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
@@ -86,11 +85,11 @@ float SSAOAlgo0()
 
     // Iterate over the sample kernel and calculate occlusion factor
     float f_occlusion = 0.0f;
-    for(int i = 0; i < kernelSize; ++i)
+    for(int i = 0; i < SSAO_KERNEL_SIZE; ++i)
     {
         // get sample position
         vec3 Sample = TBN * ubossaokernel.samples[i].xyz; // From tangent to view-space
-        Sample = fragPos + Sample * radius; 
+        Sample = fragPos + Sample * SSAO_RADIUS; 
         
 		
         // project sample position (to sample texture) (to get position on screen/texture)
@@ -100,13 +99,17 @@ float SSAOAlgo0()
         offset.xyz = offset.xyz * 0.5f + 0.5f; // transform to range 0.0 - 1.0
         
 		// get sample depth
-        float sampleDepth = -texture(NormalDepth, offset.xy, 0).a; // Get depth value of kernel sample
+        float sampleDepth = -texture(NormalDepth, offset.xy, 0).w; // Get depth value of kernel sample
 			
         // range check & accumulate
-       float rangeCheck = smoothstep(0.0f, 1.0f, radius / abs(fragPos.z - sampleDepth ));
-       f_occlusion += (sampleDepth >= Sample.z ? 1.0f : 0.0f) * rangeCheck;          
+#ifdef  RANGE_CHECK
+			float rangeCheck = smoothstep(0.0f, 1.0f, SSAO_RADIUS / abs(fragPos.z - sampleDepth ));
+			f_occlusion += (sampleDepth >= Sample.z ? 1.0f : 0.0f) * rangeCheck;
+#else
+			f_occlusion += (sampleDepth >= Sample.z ? 1.0f : 0.0f);  
+#endif
     }
-    f_occlusion = 1.0f - (f_occlusion / kernelSize);
+    f_occlusion = 1.0f - (f_occlusion / float(SSAO_KERNEL_SIZE));
 	return f_occlusion;
 }
 

@@ -112,7 +112,7 @@ public:
 
 	VulkanSwapChain							m_SwapChain;
 	VkSemaphores							m_Semaphores;
-	VkDepthStencil							m_DepthStencil;
+	VkTools::VkDepthStencil					m_DepthStencil;
 
 	// Contains command buffers and semaphores to be presented to the queue
 	VkSubmitInfo							m_SubmitInfo;

@@ -384,11 +384,11 @@ Renderer::~Renderer()
 	}
 
 	// Uniform buffers
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.offscreenModel);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.offscreenPlane);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.quad);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.plane);
-	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, &uniformData.model);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.offscreenModel);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.offscreenPlane);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.quad);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.plane);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.model);
 
 	//Delete model
 	staticModel.Clear(m_pWRenderer->m_SwapChain.device);
@@ -660,7 +660,7 @@ void Renderer::PrepareOffscreenFrameBuffer()
 
 	// Find a suitable depth format
 	VkFormat fbColorFormat;
-	VkBool32 validDepthFormat = VkTools::GetSupportedDepthFormat(m_pWRenderer->m_SwapChain.physicalDevice, &fbColorFormat);
+	VkBool32 validDepthFormat = VkTools::GetSupportedDepthFormat(m_pWRenderer->m_SwapChain.physicalDevice, fbColorFormat);
 	assert(validDepthFormat);
 
 	// Color attachment
