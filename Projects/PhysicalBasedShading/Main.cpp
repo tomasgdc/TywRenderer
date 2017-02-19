@@ -272,8 +272,8 @@ void Renderer::BuildCommandBuffers()
 	renderPassBeginInfo.renderPass = m_pWRenderer->m_RenderPass;
 	renderPassBeginInfo.renderArea.offset.x = 0;
 	renderPassBeginInfo.renderArea.offset.y = 0;
-	renderPassBeginInfo.renderArea.extent.width = m_WindowWidth;
-	renderPassBeginInfo.renderArea.extent.height = m_WindowHeight;
+	renderPassBeginInfo.renderArea.extent.width = g_iDesktopWidth;
+	renderPassBeginInfo.renderArea.extent.height = g_iDesktopHeight;
 	renderPassBeginInfo.clearValueCount = 2;
 	renderPassBeginInfo.pClearValues = clearValues;
 
@@ -291,16 +291,16 @@ void Renderer::BuildCommandBuffers()
 
 		// Update dynamic viewport state
 		VkViewport viewport = {};
-		viewport.height = (float)m_WindowHeight;
-		viewport.width = (float)m_WindowWidth;
+		viewport.height = (float)g_iDesktopHeight;
+		viewport.width = (float)g_iDesktopWidth;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 		vkCmdSetViewport(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &viewport);
 
 		// Update dynamic scissor state
 		VkRect2D scissor = {};
-		scissor.extent.width = m_WindowWidth;
-		scissor.extent.height = m_WindowHeight;
+		scissor.extent.width = g_iDesktopWidth;
+		scissor.extent.height = g_iDesktopHeight;
 		scissor.offset.x = 0;
 		scissor.offset.y = 0;
 		vkCmdSetScissor(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &scissor);
@@ -786,9 +786,7 @@ Renderer g_Renderer;
 int main()
 {
 	g_bPrepared = g_Renderer.VInitRenderer(720, 1280, false, HandleWindowMessages);
-	ImGui_ImplGlfwVulkan_MouseOnWinodws(true); //for now will work. Should test against windows rect
-	
-
+	ImGui_ImplGlfwVulkan_MouseOnWinodws(true); //for now will work. Should test against windows rec
 #if defined(_WIN32)
 	MSG msg;
 #endif

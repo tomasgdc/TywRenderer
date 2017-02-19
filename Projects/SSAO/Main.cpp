@@ -1074,22 +1074,13 @@ void Renderer::PrepareMainRendererCommands()
 		vkCmdBeginRenderPass(m_pWRenderer->m_DrawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		// Update dynamic viewport state
-		VkViewport viewport = {};
-		viewport.height = (float)g_iDesktopHeight;
-		viewport.width = (float)g_iDesktopWidth;
-		viewport.minDepth = (float) 0.0f;
-		viewport.maxDepth = (float) 1.0f;
+		VkViewport viewport = VkTools::Initializer::Viewport((float)g_iDesktopWidth, (float)g_iDesktopHeight, 0.0f, 1.0f);
 		vkCmdSetViewport(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &viewport);
 
-		// Update dynamic scissor state
-		VkRect2D scissor = {};
-		scissor.extent.width = g_iDesktopWidth;
-		scissor.extent.height = g_iDesktopHeight;
-		scissor.offset.x = 0;
-		scissor.offset.y = 0;
+		VkRect2D scissor = VkTools::Initializer::Rect2D(g_iDesktopWidth, g_iDesktopHeight, 0, 0);
 		vkCmdSetScissor(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &scissor);
-		VkDeviceSize offsets[1] = { 0 };
 
+		VkDeviceSize offsets[1] = { 0 };
 		// Final composition as full screen quad
 		{
 			vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -1113,32 +1104,6 @@ void Renderer::PrepareMainRendererCommands()
 		}
 
 		vkCmdEndRenderPass(m_pWRenderer->m_DrawCmdBuffers[i]);
-
-		// Add a present memory barrier to the end of the command buffer
-		// This will transform the frame buffer color attachment to a
-		// new layout for presenting it to the windowing system integration 
-		VkImageMemoryBarrier prePresentBarrier = {};
-		prePresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		prePresentBarrier.pNext = NULL;
-		prePresentBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		prePresentBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-		prePresentBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		prePresentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		prePresentBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		prePresentBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		prePresentBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-		prePresentBarrier.image = m_pWRenderer->m_SwapChain.buffers[i].image;
-
-		VkImageMemoryBarrier *pMemoryBarrier = &prePresentBarrier;
-		vkCmdPipelineBarrier(
-			m_pWRenderer->m_DrawCmdBuffers[i],
-			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-			VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-			VK_FLAGS_NONE,
-			0, nullptr,
-			0, nullptr,
-			1, &prePresentBarrier);
-
 		VK_CHECK_RESULT(vkEndCommandBuffer(m_pWRenderer->m_DrawCmdBuffers[i]));
 
 	}
@@ -2214,7 +2179,7 @@ void Renderer::StartFrame()
 
 
 		//Wait for color output before rendering text
-		submitInfo.pWaitDstStageMask = &stageFlags;
+		//submitInfo.pWaitDstStageMask = &stageFlags;
 
 		//ImGUI Render
 		ImGui_ImplGlfwVulkan_Render(cmdGui, m_pWRenderer->m_currentBuffer);

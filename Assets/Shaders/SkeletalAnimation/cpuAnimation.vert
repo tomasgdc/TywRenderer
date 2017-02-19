@@ -31,7 +31,6 @@ layout(location = 9) out struct
     vec3 eyeDir;
     vec3 lightDir;
     vec3 normal;
-	float loadBias;
 } vs_out;
 
 void main() 

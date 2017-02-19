@@ -19,7 +19,6 @@ layout (binding = 4) uniform UBO
 
 layout (binding = 1) uniform   usampler2D  PosSpecularPacked;
 layout (binding = 2) uniform   usampler2D  DiffuseNormalAndDepthPacked;
-layout (binding = 3) uniform   sampler2D   ssaoImage; 
 
 
 layout (location = 0) out vec4 outFragColor;

@@ -115,6 +115,12 @@ public:
 	*/
 	void CreateUniformBuffer(VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkTools::UniformData& uniformData, void *data);
 
+	/*
+		@param: BYTE bgA
+		@param: BYTE bgR
+		@param: BYTE bgG
+		@param: BYTE bgB
+	*/
 	inline void VSetBackgroundColor(BYTE bgA, BYTE bgR, BYTE bgG, BYTE bgB)
 	{
 		m_backgroundColor[0] = static_cast<float>(bgA) / 255.0f;
@@ -170,7 +176,13 @@ public:
 	//ovverridable
 	virtual void PreparePipeline();
 
-	//Loads Vulkan Shaders
+	/*
+		Loads Vulkan Shaders
+		@param: std::string fileName
+		@param: VkShaderStageFlagBits stage
+
+		@return VkPipelineShaderStageCreateInfo
+	*/
 	VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage);
 
 	//overridable
@@ -194,12 +206,20 @@ public:
 	//ovveridable
 	virtual void PrepareVertices(bool useStagingBuffers);
 
-	//Ovveridable texutre loader
+	/*
+		Ovveridable texutre loader
+
+		@param: std::string fileName
+		@param: VkFormat format
+		@param: bool forceLinearTiling
+		@param: bool bUseCubeMap = false
+	*/
 	virtual void VLoadTexture(std::string fileName, VkFormat format, bool forceLinearTiling, bool bUseCubeMap = false);
 
-
+	//
 	VkCommandBuffer GetCommandBuffer(bool begin);
 
+	//
 	void FlushCommandBuffer(VkCommandBuffer commandBuffer);
 
 	//overridable
@@ -207,7 +227,6 @@ public:
 
 	//overridable
 	virtual void LoadGUI();
-
 protected:
 	//Log Renderer
 	FILE*                     m_LogFile;

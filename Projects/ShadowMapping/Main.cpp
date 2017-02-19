@@ -299,6 +299,8 @@ public:
 	void ChangeLodBias(float delta);
 	void BeginTextUpdate();
 
+	void BuildMainCommandBuffer();
+
 	//Offscreen renderpass for depth pass
 	void PrepareOffscreenRenderPass();
 	void PrepareOffscreenFrameBuffer();
@@ -964,9 +966,12 @@ void Renderer::BuildCommandBuffers()
 {
 	//Build Offscreen Command Buffers
 	BuildOffscreenCommandBuffer();
+	BuildMainCommandBuffer();
+}
 
 
-
+void Renderer::BuildMainCommandBuffer()
+{
 	VkCommandBufferBeginInfo cmdBufInfo = {};
 	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdBufInfo.pNext = NULL;
@@ -1005,8 +1010,8 @@ void Renderer::BuildCommandBuffers()
 		VkViewport viewport = {};
 		viewport.height = (float)g_iDesktopHeight;
 		viewport.width = (float)g_iDesktopWidth;
-		viewport.minDepth = (float) 0.0f;
-		viewport.maxDepth = (float) 1.0f;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
 		vkCmdSetViewport(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &viewport);
 
 		// Update dynamic scissor state
@@ -1053,32 +1058,6 @@ void Renderer::BuildCommandBuffers()
 
 
 		vkCmdEndRenderPass(m_pWRenderer->m_DrawCmdBuffers[i]);
-
-		// Add a present memory barrier to the end of the command buffer
-		// This will transform the frame buffer color attachment to a
-		// new layout for presenting it to the windowing system integration 
-		VkImageMemoryBarrier prePresentBarrier = {};
-		prePresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		prePresentBarrier.pNext = NULL;
-		prePresentBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		prePresentBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-		prePresentBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		prePresentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		prePresentBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		prePresentBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		prePresentBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-		prePresentBarrier.image = m_pWRenderer->m_SwapChain.buffers[i].image;
-
-		VkImageMemoryBarrier *pMemoryBarrier = &prePresentBarrier;
-		vkCmdPipelineBarrier(
-			m_pWRenderer->m_DrawCmdBuffers[i],
-			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-			VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-			VK_FLAGS_NONE,
-			0, nullptr,
-			0, nullptr,
-			1, &prePresentBarrier);
-
 		VK_CHECK_RESULT(vkEndCommandBuffer(m_pWRenderer->m_DrawCmdBuffers[i]));
 
 	}
@@ -1851,7 +1830,7 @@ void Renderer::StartFrame()
 
 void Renderer::LoadAssets()
 {
-	m_VkFont = TYW_NEW VkFont(m_pWRenderer->m_SwapChain.physicalDevice, m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_Queue, m_pWRenderer->m_FrameBuffers, m_pWRenderer->m_SwapChain.colorFormat, m_pWRenderer->m_SwapChain.depthFormat, &m_WindowWidth, &m_WindowHeight);
+	m_VkFont = TYW_NEW VkFont(m_pWRenderer->m_SwapChain.physicalDevice, m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_Queue, m_pWRenderer->m_FrameBuffers, m_pWRenderer->m_SwapChain.colorFormat, m_pWRenderer->m_SwapChain.depthFormat, &g_iDesktopWidth, &g_iDesktopHeight);
 }
 
 
