@@ -558,6 +558,8 @@ bool ImGui_ImplGlfwVulkan_CreateFontsTexture(VkCommandBuffer command_buffer)
 		region.imageSubresource.layerCount = 1;
 		region.imageExtent.width = width;
 		region.imageExtent.height = height;
+		region.imageOffset = VkOffset3D{ 0,0,0 };
+		region.imageExtent = VkExtent3D{ static_cast<uint32_t>(width),static_cast<uint32_t>(height),1 };
 		vkCmdCopyBufferToImage(command_buffer, g_UploadBuffer, g_FontImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
 		VkImageMemoryBarrier use_barrier[1] = {};

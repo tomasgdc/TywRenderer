@@ -15,12 +15,12 @@ SOURCE_GROUP("Source Files" FILES ${SOURCES})
 
 
 SET(RESOURCES
-	"${CMAKE_SOURCE_DIR}/Assets/Shaders/Bloom/Object.frag"
-	"${CMAKE_SOURCE_DIR}/Assets/Shaders/Bloom/Object.vert"
-	"${CMAKE_SOURCE_DIR}/Assets/Shaders/Bloom/PostProcess.frag"
-	"${CMAKE_SOURCE_DIR}/Assets/Shaders/Bloom/PostProcess.vert"
-	"${CMAKE_SOURCE_DIR}/Assets/Shaders/Bloom/GausianBlur.frag"
-	"${CMAKE_SOURCE_DIR}/Assets/Shaders/Bloom/GausianBlur.vert"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/Bloom/DefferedModel.frag"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/Bloom/DefferedModel.vert"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/Bloom/DefferedMRT.frag"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/Bloom/DefferedMRT.vert"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/Bloom/DebugQuad.frag"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/Bloom/DebugQuad.vert"
 )
 SOURCE_GROUP("Shader Files" FILES ${RESOURCES})
 
