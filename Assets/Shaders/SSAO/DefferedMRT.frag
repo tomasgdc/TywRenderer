@@ -24,7 +24,7 @@ layout (location = 0) out uvec4 outPosSpecular;
 //Normal, Diffuse
 layout (location = 1) out uvec4 outNormalDiffuse;
 
-//Model normal
+//Model normal, Depth
 layout (location = 2) out vec4 outNormal;
 
 
@@ -42,12 +42,12 @@ float color2float(vec3 color)
         + floor(color.g * c_precision + 0.5) * c_precisionp1 * c_precisionp1;
 }
  
-float n = 0.1f; // camera z near
-float f = 256.0f; // camera z far
+const float NEAR_PLANE = 0.1f; //todo: specialization const
+const float FAR_PLANE = 256.0f; //todo: specialization const 
 float LinearizeDepth(float depth)
 {
-  float z = depth * 2.0f - 1.0f; //Back to NDC
-  return (2.0f * n) / (f + n - z * (f - n));	
+	float z = depth * 2.0f - 1.0f; 
+	return (2.0f * NEAR_PLANE * FAR_PLANE) / (FAR_PLANE + NEAR_PLANE - z * (FAR_PLANE - NEAR_PLANE));	
 }
 
 

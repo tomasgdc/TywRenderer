@@ -149,7 +149,7 @@ VkClearColorValue g_DefaultClearColor = { { 0.5f, 0.5f, 0.5f, 1.0f } };
 #if defined(__ANDROID__)
 #define GBUFF_DIM 1024
 #else
-#define GBUFF_DIM 2048
+#define GBUFF_DIM 1024
 #endif
 #define GBUFF_FILTER VK_FILTER_LINEAR
 
@@ -1262,20 +1262,20 @@ void Renderer::CreateFrameBuffer()
 	frameBuffersSSAO.ssao.height = GBUFF_DIM;
 
 
-	//Normal, Diffuse, Depth - Packed
-	CreateAttachement(VK_FORMAT_R32G32B32A32_UINT,
-		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-		&offScreenFrameBuf.nm,
-		layoutCmd);
-
 	//Position, Specular - Packed
 	CreateAttachement(VK_FORMAT_R32G32B32A32_UINT,
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		&offScreenFrameBuf.position,
 		layoutCmd);
 
-	//Normal face
-	CreateAttachement(VK_FORMAT_R8G8B8A8_UNORM,
+	//Normal, Diffuse - Packed
+	CreateAttachement(VK_FORMAT_R32G32B32A32_UINT,
+		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		&offScreenFrameBuf.nm,
+		layoutCmd);
+
+	//Normal, Depth
+	CreateAttachement(VK_FORMAT_R16G16B16A16_SFLOAT,
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		&offScreenFrameBuf.modeNormal,
 		layoutCmd);
