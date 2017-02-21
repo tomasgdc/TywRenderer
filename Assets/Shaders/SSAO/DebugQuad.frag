@@ -86,7 +86,7 @@ vec3 VisFragment(int index)
 	}
 	else if(index == 4)
 	{
-		float depth = texture(normalDepth, intUV.st, 0).a;
+		float depth = texture(normalDepth, intUV.st, 0).r;
 		result = vec3(depth);
 	}
 	else if(index == 5)
