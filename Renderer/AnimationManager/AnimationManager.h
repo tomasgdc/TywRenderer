@@ -9,7 +9,7 @@
 class MD5Anim;
 
 
-class TYWRENDERER_API AnimationManager
+class  AnimationManager
 {
 public:
 	AnimationManager();

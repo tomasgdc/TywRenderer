@@ -14,7 +14,7 @@ class SceneManager;
 //    frustum definition
 //
 ////////////////////////////////////////////////////
-class TYWRENDERER_API CameraNode: public SceneNode
+class  CameraNode: public SceneNode
 {
 public:
 	CameraNode(glm::mat4x4 const *t)

@@ -15,7 +15,7 @@
 namespace VkTools
 {
 
-	struct TYWRENDERER_API VulkanTexture
+	struct  VulkanTexture
 	{
 		VkSampler sampler;
 		VkImage image;
@@ -28,7 +28,7 @@ namespace VkTools
 		VkDescriptorImageInfo descriptor;
 	};
 
-	class TYWRENDERER_API VulkanTextureLoader
+	class  VulkanTextureLoader
 	{
 	private:
 		VkPhysicalDevice physicalDevice;
@@ -58,7 +58,7 @@ namespace VkTools
 
 
 		// Clean up vulkan resources used by a texture object
-		void DestroyTexture(VulkanTexture& texture);
+		void DestroyTexture(VulkanTexture* texture);
 
 		VulkanTextureLoader(VkPhysicalDevice physicalDevice, VkDevice device, VkQueue queue, VkCommandPool cmdPool);
 

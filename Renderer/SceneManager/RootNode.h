@@ -6,7 +6,7 @@
 //    This is the root node of the scene graph.
 //
 ////////////////////////////////////////////////////
-class TYWRENDERER_API RootNode: public SceneNode
+class  RootNode: public SceneNode
 {
 public:
 	RootNode();

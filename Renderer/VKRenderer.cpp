@@ -52,16 +52,6 @@ void VKRenderer::VShutdown()
 	m_pWRenderer->DestroyRendererScreen();
 }
 
-bool VKRenderer::VPreRender()
-{
-	return true;
-}
-
-
-bool VKRenderer::VPostRender()
-{
-	return true;
-}
 
 bool VKRenderer::VInitRenderer(uint32_t height, uint32_t width, bool isFullscreen, LRESULT(CALLBACK MainWindowProc)(HWND, UINT, WPARAM, LPARAM))
 {
@@ -152,27 +142,6 @@ void VKRenderer::LoadAssets()
 	//overrideen
 }
 
-HRESULT VKRenderer::VOnRestore()
-{
-	return IDH_OK;
-}
-
-
-
-
-
-std::shared_ptr<IRenderState> VKRenderer::VPrepareAlphaPass()
-{
-	return nullptr;
-}
-
-
-std::shared_ptr<IRenderState> VKRenderer::VPrepareSkyBoxPass()
-{
-	return nullptr;
-}
-
-
 void VKRenderer::StartFrame()
 {
 	//overriden
@@ -187,30 +156,7 @@ void VKRenderer::EndFrame(uint64_t* gpuMicroSec)
 
 void VKRenderer::SwapCommandBuffers_FinnishRendering(uint64_t* gpuMicroSec)
 {
-	if (gpuMicroSec != nullptr) {
-		*gpuMicroSec = 0;
-	}
 
-	if (!m_bIsOpenglRunning) {
-		return;
-	}
-
-	//if there is rendering command -> swapBuffer
-	m_pWRenderer->RendererSwapBuffers();
-
-	//TODO: -> m_glConfigs.timerQueryAvailable
-	if (true) 
-	{
-		uint64_t drawingTimeNanoseconds = 0;
-		if (m_iTimerQueryId != 0) 
-		{
-			//glGetQueryObjectui64v(m_iTimerQueryId, GL_QUERY_RESULT, &drawingTimeNanoseconds);
-		}
-		if (gpuMicroSec != nullptr) 
-		{
-			*gpuMicroSec = drawingTimeNanoseconds / 1000;
-		}
-	}
 }
 
 
@@ -218,6 +164,7 @@ void VKRenderer::SwapCommandBuffers_FinnishRendering(uint64_t* gpuMicroSec)
 //TODO: Create File management system
 void VKRenderer::VSetLogPath()
 {
+	/*
 	m_LogFile = fopen("../LogInfo/GLRendererLog.txt", "w");
 	if (!m_LogFile)
 	{
@@ -235,6 +182,7 @@ void VKRenderer::VSetLogPath()
 	{
 		perror("Could not open GLShaderLog.txt");
 	}
+	*/
 }
 
 void  VKRenderer::Logv(const char* format, ...)

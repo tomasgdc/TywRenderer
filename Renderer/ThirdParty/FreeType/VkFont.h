@@ -15,7 +15,7 @@ namespace VkTools
 	class  VulkanTextureLoader;
 }
 
-class TYWRENDERER_API VkFont
+class  VkFont
 {
 public:
 	VkFont(VkPhysicalDevice physicalDevice,

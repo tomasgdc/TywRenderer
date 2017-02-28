@@ -38,7 +38,7 @@ typedef std::map<uint32_t, std::shared_ptr<ISceneNode> > SceneActorMap;
 //
 //////////////////////////////////////////////////////////////
 
-class TYWRENDERER_API SceneNode : public ISceneNode
+class  SceneNode : public ISceneNode
 {
 	friend class Scene;
 

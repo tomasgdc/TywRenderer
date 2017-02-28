@@ -711,7 +711,7 @@ VkBool32 VkTools::GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFor
 	return false;
 }
 
-TYWRENDERER_API void VkTools::DestroyUniformData(VkDevice device, VkTools::UniformData& uniformData)
+void VkTools::DestroyUniformData(VkDevice device, VkTools::UniformData& uniformData)
 {
 	if (uniformData.mapped != nullptr)
 	{

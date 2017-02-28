@@ -10,7 +10,7 @@
 
 
 
-	typedef struct TYWRENDERER_API Data_
+	typedef struct  Data_
 	{
 		//FT_VECTOR - 2 Longs
 		FT_Vector advance;  // this variable contains the information of how much we need to move to the right from the last character
@@ -24,7 +24,7 @@
 		char c;     // the character of this glyph
 	}Data;
 
-class TYWRENDERER_API GlyphData 
+class  GlyphData 
 {
 public:
 	GlyphData();

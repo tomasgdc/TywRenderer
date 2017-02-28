@@ -10,11 +10,7 @@
 //#define IM_ASSERT(_EXPR)  MyAssert(_EXPR)
 
 //---- Define attributes of all API symbols declarations, e.g. for DLL under Windows.
-#ifdef TywRenderer_EXPORTS
-	#define IMGUI_API DLL_EXPORT
-#else
-	#define IMGUI_API DLL_IMPORT
-#endif
+
 
 //---- Include imgui_user.h at the end of imgui.h
 //#define IMGUI_INCLUDE_IMGUI_USER_H

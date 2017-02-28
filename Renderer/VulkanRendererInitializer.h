@@ -52,15 +52,12 @@ public:
 
 	bool CreateSurface();
 
-	// This lovely piece of code is from SaschaWillems, check out his Vulkan repositories on
-	// GitHub if you're feeling adventurous.
-	void SetImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout);
 
 	//Create window screen depended on os
 	bool CreateWindows(uint32_t width, uint32_t height, LRESULT(CALLBACK MainWindowProc)(HWND, UINT, WPARAM, LPARAM));
 
 
-	bool PrepareVulkan(uint32_t width, uint32_t height);
+	bool PrepareVulkan(uint32_t width, uint32_t height, bool benableValidation = false, bool enableDebugMarkers = false);
 
 public:
 

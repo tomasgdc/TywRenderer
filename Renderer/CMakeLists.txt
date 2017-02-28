@@ -8,6 +8,7 @@ SET(HEADERS_SCENE_MANAGER
 	"SceneManager/CameraNode.h"
 	"SceneManager/RootNode.h"
 	"SceneManager/SceneNodeProperties.h"
+	"SceneManager/SceneManager.h"
 	"SceneManager/RenderPass.hpp"
 )
 SET(SOURCES_SCENE_MANAGER
@@ -122,12 +123,15 @@ SOURCE_GROUP("Vulkan\\Source Files" FILES ${SOURCES_VULKAN})
 SET(HEADERS
 	"Camera.h"
 	"VulkanRendererInitializer.h"
+	"TywRendererHelpers.h"
+	"TywRenderer.h"
 	"VKRenderer.h"
 	"IRendererInitializer.h"
 	"IRenderer.h"
 	"VertexCache.h"
 )
 SET(SOURCES
+	"TywRenderer.cpp"
 	"VulkanRendererInitializer.cpp"
 	"VKRendererGUI.cpp"
 	"VKRenderer.cpp"
@@ -140,7 +144,7 @@ SOURCE_GROUP("Header Files" FILES ${HEADERS})
 SOURCE_GROUP("Source Files" FILES ${SOURCES})
 
 	
-ADD_LIBRARY(${PROJECT_NAME} SHARED
+ADD_LIBRARY(${PROJECT_NAME} STATIC
 	${HEADERS_SCENE_MANAGER}
 	${SOURCES_SCENE_MANAGER}
 	${HEADERS_THIRDPARTY_IMGUI}	
@@ -162,8 +166,8 @@ ADD_LIBRARY(${PROJECT_NAME} SHARED
 	
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} PUBLIC
 	 ${VULKAN_LIB}
-	"${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/ThirdParty/assimp-vc140-mt.lib"
-	"${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/ThirdParty/freetype265MT.lib"
+	#"${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/ThirdParty/assimp-vc140-mt.lib"
+	#"${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/ThirdParty/freetype265MT.lib"
 	)
 
 

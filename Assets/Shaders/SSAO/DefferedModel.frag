@@ -12,11 +12,13 @@ struct Light {
 };
 
 
-layout (binding = 1) uniform   usampler2D  PosSpecularPacked;
-layout (binding = 2) uniform   usampler2D  DiffuseNormalAndDepthPacked;
-layout (binding = 3) uniform   sampler2D   ssaoImage; 
 
-layout (binding = 4) uniform UBO 
+layout (binding = 1) uniform   sampler2D  PositionTexture;
+layout (binding = 2) uniform   sampler2D  SpecularTexture;
+layout (binding = 3) uniform   usampler2D  DiffuseNormalAndDepthPacked;
+layout (binding = 4) uniform   sampler2D   ssaoImage; 
+
+layout (binding = 5) uniform UBO 
 {
 	Light lights[17];
 	vec4 viewPos;
@@ -29,18 +31,7 @@ layout (location = 0) out vec4 outFragColor;
 vec3 DefferedPass()
 {
 	ivec2 P0 = ivec2(inUV * textureSize(DiffuseNormalAndDepthPacked, 0));
-	ivec2 P1 = ivec2(inUV * textureSize(PosSpecularPacked, 0));
-
-	uvec3 uvec3_PosSpecularPacked = texelFetch(PosSpecularPacked, P1, 0).rgb;
 	uvec4 uvec4_DiffuseNormalAndDepthPacked = texelFetch(DiffuseNormalAndDepthPacked, P0, 0);
-
-	//Get position texture
-	vec2 tempPosition0 = unpackHalf2x16(uvec3_PosSpecularPacked.x);
-	vec2 tempPosSpec = unpackHalf2x16(uvec3_PosSpecularPacked.y);
-
-	vec3 positionTexture = vec3(tempPosition0, tempPosSpec.x);
-	// GL to Vulkan coord space
-	positionTexture.y = -positionTexture.y;
 
 	//Get Diffuse And Normal
 	vec2 tempDiffuse0 = unpackHalf2x16(uvec4_DiffuseNormalAndDepthPacked.x);
@@ -50,10 +41,13 @@ vec3 DefferedPass()
 	vec3 diffuseTexture = vec3(tempDiffuse0, tempDiffAndNormal.x);
 	vec3 normalTexture =  normalize(vec3(tempDiffAndNormal.y, tempNormal));
 
-	//Get Specular
-	vec2 tempSpecularYZ = unpackHalf2x16(uvec3_PosSpecularPacked.z);
+	//Get Position
+	vec3 positionTexture = texture(PositionTexture, inUV).rgb;
+	// GL to Vulkan coord space
+	positionTexture.y = -positionTexture.y;
 
-	vec3 specularTexture = vec3(tempPosSpec.y, tempSpecularYZ);
+	//Get Specular
+	vec3 specularTexture = texture(SpecularTexture, inUV).rgb;
 
 
 	// Ambient part
@@ -106,7 +100,7 @@ vec3 DefferedPass()
 void main() 
  {
 	float ssaoTexture = texture(ssaoImage, inUV).r;
-	//outFragColor = vec4(ssaoTexture);
+	outFragColor = vec4(ssaoTexture);
 
-	outFragColor = vec4(DefferedPass(), 1.0);
+	//outFragColor = vec4(DefferedPass(), 1.0);
 }

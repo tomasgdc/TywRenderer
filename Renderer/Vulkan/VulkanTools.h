@@ -91,13 +91,13 @@ namespace VkTools
 		@param: VkDevice device
 		@param: VkPhysicalDeviceMemoryProperties& deviceMemoryProperties
 	*/
-	TYWRENDERER_API void CreateFrameBufferAttachement(uint32_t iWidth, uint32_t iHeight, VkFormat format, VkImageUsageFlagBits usage,FrameBufferAttachment *attachment,VkCommandBuffer layoutCmd,VkDevice device,VkPhysicalDeviceMemoryProperties& deviceMemoryProperties);
+	 void CreateFrameBufferAttachement(uint32_t iWidth, uint32_t iHeight, VkFormat format, VkImageUsageFlagBits usage,FrameBufferAttachment *attachment,VkCommandBuffer layoutCmd,VkDevice device,VkPhysicalDeviceMemoryProperties& deviceMemoryProperties);
 
 	/*
 		@param: VkResult errorCode
 		@return: std::string
 	*/
-	TYWRENDERER_API std::string VkResultToString(const VkResult& errorCode);
+	 std::string VkResultToString(const VkResult& errorCode);
 
 	/*
 		@param: VkCommandBuffer cmdbuffer
@@ -106,7 +106,7 @@ namespace VkTools
 		@param: VkImageLayout oldImageLayout
 		@param: VkImageLayout newImageLayout
 	*/
-	TYWRENDERER_API void SetImageLayout(VkCommandBuffer cmdbuffer, VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout);
+	 void SetImageLayout(VkCommandBuffer cmdbuffer, VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout);
 
 
 	/*
@@ -116,7 +116,7 @@ namespace VkTools
 
 		@return: uint32_t
 	*/
-	TYWRENDERER_API uint32_t GetMemoryType(uint32_t typeBits, VkFlags properties, VkPhysicalDeviceMemoryProperties& deviceMemoryProperties);
+	 uint32_t GetMemoryType(uint32_t typeBits, VkFlags properties, VkPhysicalDeviceMemoryProperties& deviceMemoryProperties);
 
 	/*	
 		Create an image memory barrier for changing the layout of
@@ -130,13 +130,13 @@ namespace VkTools
 		@param: VkImageLayout newImageLayout
 		@param: VkImageSubresourceRange subresourceRange
 	*/
-	TYWRENDERER_API void SetImageLayout(VkCommandBuffer cmdbuffer, VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkImageSubresourceRange subresourceRange);
+	 void SetImageLayout(VkCommandBuffer cmdbuffer, VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkImageSubresourceRange subresourceRange);
 
 	/*
 		@param: const std::string& message
 		@param: const std::string& caption
 	*/
-	TYWRENDERER_API void ExitFatal(const std::string& message, const std::string& caption);
+	 void ExitFatal(const std::string& message, const std::string& caption);
 
 	/*
 		Check if extension is present on the given device
@@ -146,7 +146,7 @@ namespace VkTools
 
 		@return VkBool32
 	*/
-	TYWRENDERER_API VkBool32 CheckDeviceExtensionPresent(VkPhysicalDevice physicalDevice, const char* extensionName);
+	 VkBool32 CheckDeviceExtensionPresent(VkPhysicalDevice physicalDevice, const char* extensionName);
 
 	/*
 		Selected a suitable supported depth format starting with 32 bit down to 16 bit
@@ -157,7 +157,7 @@ namespace VkTools
 		
 		@return VkBool32
 	*/
-	TYWRENDERER_API VkBool32 GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat& depthFormat);
+	 VkBool32 GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat& depthFormat);
 
 	/*
 		Destroys uniform data that was allocated
@@ -165,7 +165,7 @@ namespace VkTools
 		@param: VkDevice device
 		@param: UniformData& uniformData
 	*/
-	TYWRENDERER_API void DestroyUniformData(VkDevice device, UniformData& uniformData);
+	 void DestroyUniformData(VkDevice device, UniformData& uniformData);
 
 
 #if defined(__ANDROID__)
@@ -189,7 +189,7 @@ namespace VkTools
 
 		@return VkShaderModule
 	*/
-	TYWRENDERER_API VkShaderModule LoadShader(const std::string& fileName, VkDevice device, VkShaderStageFlagBits stage);
+	 VkShaderModule LoadShader(const std::string& fileName, VkDevice device, VkShaderStageFlagBits stage);
 #endif
 
 	namespace Initializer
@@ -197,23 +197,23 @@ namespace VkTools
 		/*
 			@return VkSemaphoreCreateInfo
 		*/
-		TYWRENDERER_API VkSemaphoreCreateInfo SemaphoreCreateInfo();
+		 VkSemaphoreCreateInfo SemaphoreCreateInfo();
 
 		/*
 			@param: VkFenceCreateFlags flags
 			@return VkFenceCreateInfo;
 		*/
-		TYWRENDERER_API VkFenceCreateInfo FenceCreateInfo(VkFenceCreateFlags flags = VK_FLAGS_NONE);
+		 VkFenceCreateInfo FenceCreateInfo(VkFenceCreateFlags flags = VK_FLAGS_NONE);
 
 		/*
 			@return: VkEventCreateInfo;
 		*/
-		TYWRENDERER_API VkEventCreateInfo EventCreateInfo();
+		 VkEventCreateInfo EventCreateInfo();
 
 		/*
 			@return: VkSubmitInfo
 		*/
-		TYWRENDERER_API VkSubmitInfo SubmitInfo();
+		 VkSubmitInfo SubmitInfo();
 
 		/*
 			@param: VkCommandPool commandPool
@@ -222,27 +222,27 @@ namespace VkTools
 
 			@return: VkCommandBufferAllocateInfo
 		*/
-		TYWRENDERER_API VkCommandBufferAllocateInfo CommandBufferAllocateInfo(VkCommandPool commandPool, VkCommandBufferLevel level, uint32_t bufferCount);
+		 VkCommandBufferAllocateInfo CommandBufferAllocateInfo(VkCommandPool commandPool, VkCommandBufferLevel level, uint32_t bufferCount);
 
 		/*
 			@return: VkCommandBufferBeginInfo
 		*/
-		TYWRENDERER_API VkCommandBufferBeginInfo CommandBufferBeginInfo();
+		 VkCommandBufferBeginInfo CommandBufferBeginInfo();
 
 		/*
 			@return: VkImageMemoryBarrier
 		*/
-		TYWRENDERER_API VkImageMemoryBarrier ImageMemoryBarrier();
+		 VkImageMemoryBarrier ImageMemoryBarrier();
 
 		/*
 			@return: VkMemoryAllocateInfo
 		*/
-		TYWRENDERER_API VkMemoryAllocateInfo MemoryAllocateInfo();
+		 VkMemoryAllocateInfo MemoryAllocateInfo();
 
 		/*
 			@return: VkBufferCreateInfo
 		*/
-		TYWRENDERER_API VkBufferCreateInfo BufferCreateInfo();
+		 VkBufferCreateInfo BufferCreateInfo();
 
 		/*
 			@param: VkBufferUsageFlags usage
@@ -250,43 +250,43 @@ namespace VkTools
 
 			@return: VkBufferCreateInfo
 		*/
-		TYWRENDERER_API VkBufferCreateInfo BufferCreateInfo(VkBufferUsageFlags usage,VkDeviceSize size);
+		 VkBufferCreateInfo BufferCreateInfo(VkBufferUsageFlags usage,VkDeviceSize size);
 
-		TYWRENDERER_API VkImageCreateInfo ImageCreateInfo();
-		TYWRENDERER_API VkSamplerCreateInfo SamplerCreateInfo();
-		TYWRENDERER_API VkImageViewCreateInfo ImageViewCreateInfo();
+		 VkImageCreateInfo ImageCreateInfo();
+		 VkSamplerCreateInfo SamplerCreateInfo();
+		 VkImageViewCreateInfo ImageViewCreateInfo();
 
-		TYWRENDERER_API VkRenderPassCreateInfo RenderPassCreateInfo();
-		TYWRENDERER_API VkFramebufferCreateInfo FramebufferCreateInfo();
-		TYWRENDERER_API VkRenderPassBeginInfo RenderPassBeginInfo();
-
-
-		TYWRENDERER_API VkViewport Viewport(float width, float height, float minDepth, float maxDepth);
-		TYWRENDERER_API VkRect2D Rect2D(int32_t width, int32_t height, int32_t offsetX, int32_t offsetY);
-
-		TYWRENDERER_API VkPipelineDynamicStateCreateInfo PipelineDynamicStateCreateInfo(const VkDynamicState * pDynamicStates, uint32_t dynamicStateCount, VkPipelineDynamicStateCreateFlags flags);
-
-		TYWRENDERER_API VkDescriptorSetLayoutBinding DescriptorSetLayoutBinding(VkDescriptorType type,VkShaderStageFlags stageFlags,uint32_t binding);
-		TYWRENDERER_API VkDescriptorSetLayoutCreateInfo DescriptorSetLayoutCreateInfo(const VkDescriptorSetLayoutBinding* pBindings,uint32_t bindingCount);
-		TYWRENDERER_API VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo(const VkDescriptorSetLayout* pSetLayouts,uint32_t setLayoutCount);
-		TYWRENDERER_API VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo(VkDescriptorPool descriptorPool,const VkDescriptorSetLayout* pSetLayouts,uint32_t descriptorSetCount);
-		TYWRENDERER_API VkDescriptorPoolCreateInfo DescriptorPoolCreateInfo(uint32_t poolSizeCount, VkDescriptorPoolSize* pPoolSizes, uint32_t maxSets);
-		TYWRENDERER_API VkDescriptorPoolSize DescriptorPoolSize(VkDescriptorType type, uint32_t descriptorCount);
-
-		TYWRENDERER_API VkWriteDescriptorSet  WriteDescriptorSet(VkDescriptorSet dstSet, VkDescriptorType type, uint32_t binding, VkDescriptorBufferInfo* bufferInfo);
-		TYWRENDERER_API VkWriteDescriptorSet  WriteDescriptorSet(VkDescriptorSet dstSet, VkDescriptorType type, uint32_t binding, VkDescriptorImageInfo * imageInfo);
-		TYWRENDERER_API VkVertexInputBindingDescription  VertexInputBindingDescription(uint32_t binding, uint32_t stride, VkVertexInputRate inputRate);
-		TYWRENDERER_API VkVertexInputAttributeDescription  VertexInputAttributeDescription(uint32_t binding, uint32_t location, VkFormat format, uint32_t offset);
-		TYWRENDERER_API VkDescriptorImageInfo DescriptorImageInfo(VkSampler sampler, VkImageView imageView, VkImageLayout imageLayout);
+		 VkRenderPassCreateInfo RenderPassCreateInfo();
+		 VkFramebufferCreateInfo FramebufferCreateInfo();
+		 VkRenderPassBeginInfo RenderPassBeginInfo();
 
 
-		TYWRENDERER_API VkPipelineColorBlendAttachmentState PipelineColorBlendAttachmentState(VkColorComponentFlags colorWriteMask, VkBool32 blendEnable);
-		TYWRENDERER_API VkPipelineColorBlendStateCreateInfo PipelineColorBlendStateCreateInfo(uint32_t attachmentCount, const VkPipelineColorBlendAttachmentState * pAttachments);
-		TYWRENDERER_API VkPipelineInputAssemblyStateCreateInfo PipelineInputAssemblyStateCreateInfo(VkPrimitiveTopology topology, VkPipelineInputAssemblyStateCreateFlags flags, VkBool32 primitiveRestartEnable);
-		TYWRENDERER_API VkPipelineRasterizationStateCreateInfo PipelineRasterizationStateCreateInfo(VkPolygonMode polygonMode, VkCullModeFlags cullMode, VkFrontFace frontFace, VkPipelineRasterizationStateCreateFlags flags);
-		TYWRENDERER_API VkPipelineDepthStencilStateCreateInfo PipelineDepthStencilStateCreateInfo(VkBool32 depthTestEnable, VkBool32 depthWriteEnable, VkCompareOp depthCompareOp);
-		TYWRENDERER_API VkPipelineViewportStateCreateInfo PipelineViewportStateCreateInfo(uint32_t viewportCount, uint32_t scissorCount, VkPipelineViewportStateCreateFlags flags);
-		TYWRENDERER_API VkPipelineMultisampleStateCreateInfo PipelineMultisampleStateCreateInfo(VkSampleCountFlagBits rasterizationSamples, VkPipelineMultisampleStateCreateFlags flags);
-		TYWRENDERER_API VkGraphicsPipelineCreateInfo PipelineCreateInfo(VkPipelineLayout layout, VkRenderPass renderPass, VkPipelineCreateFlags flags);
+		 VkViewport Viewport(float width, float height, float minDepth, float maxDepth);
+		 VkRect2D Rect2D(int32_t width, int32_t height, int32_t offsetX, int32_t offsetY);
+
+		 VkPipelineDynamicStateCreateInfo PipelineDynamicStateCreateInfo(const VkDynamicState * pDynamicStates, uint32_t dynamicStateCount, VkPipelineDynamicStateCreateFlags flags);
+
+		 VkDescriptorSetLayoutBinding DescriptorSetLayoutBinding(VkDescriptorType type,VkShaderStageFlags stageFlags,uint32_t binding);
+		 VkDescriptorSetLayoutCreateInfo DescriptorSetLayoutCreateInfo(const VkDescriptorSetLayoutBinding* pBindings,uint32_t bindingCount);
+		 VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo(const VkDescriptorSetLayout* pSetLayouts,uint32_t setLayoutCount);
+		 VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo(VkDescriptorPool descriptorPool,const VkDescriptorSetLayout* pSetLayouts,uint32_t descriptorSetCount);
+		 VkDescriptorPoolCreateInfo DescriptorPoolCreateInfo(uint32_t poolSizeCount, VkDescriptorPoolSize* pPoolSizes, uint32_t maxSets);
+		 VkDescriptorPoolSize DescriptorPoolSize(VkDescriptorType type, uint32_t descriptorCount);
+
+		 VkWriteDescriptorSet  WriteDescriptorSet(VkDescriptorSet dstSet, VkDescriptorType type, uint32_t binding, VkDescriptorBufferInfo* bufferInfo);
+		 VkWriteDescriptorSet  WriteDescriptorSet(VkDescriptorSet dstSet, VkDescriptorType type, uint32_t binding, VkDescriptorImageInfo * imageInfo);
+		 VkVertexInputBindingDescription  VertexInputBindingDescription(uint32_t binding, uint32_t stride, VkVertexInputRate inputRate);
+		 VkVertexInputAttributeDescription  VertexInputAttributeDescription(uint32_t binding, uint32_t location, VkFormat format, uint32_t offset);
+		 VkDescriptorImageInfo DescriptorImageInfo(VkSampler sampler, VkImageView imageView, VkImageLayout imageLayout);
+
+
+		 VkPipelineColorBlendAttachmentState PipelineColorBlendAttachmentState(VkColorComponentFlags colorWriteMask, VkBool32 blendEnable);
+		 VkPipelineColorBlendStateCreateInfo PipelineColorBlendStateCreateInfo(uint32_t attachmentCount, const VkPipelineColorBlendAttachmentState * pAttachments);
+		 VkPipelineInputAssemblyStateCreateInfo PipelineInputAssemblyStateCreateInfo(VkPrimitiveTopology topology, VkPipelineInputAssemblyStateCreateFlags flags, VkBool32 primitiveRestartEnable);
+		 VkPipelineRasterizationStateCreateInfo PipelineRasterizationStateCreateInfo(VkPolygonMode polygonMode, VkCullModeFlags cullMode, VkFrontFace frontFace, VkPipelineRasterizationStateCreateFlags flags);
+		 VkPipelineDepthStencilStateCreateInfo PipelineDepthStencilStateCreateInfo(VkBool32 depthTestEnable, VkBool32 depthWriteEnable, VkCompareOp depthCompareOp);
+		 VkPipelineViewportStateCreateInfo PipelineViewportStateCreateInfo(uint32_t viewportCount, uint32_t scissorCount, VkPipelineViewportStateCreateFlags flags);
+		 VkPipelineMultisampleStateCreateInfo PipelineMultisampleStateCreateInfo(VkSampleCountFlagBits rasterizationSamples, VkPipelineMultisampleStateCreateFlags flags);
+		 VkGraphicsPipelineCreateInfo PipelineCreateInfo(VkPipelineLayout layout, VkRenderPass renderPass, VkPipelineCreateFlags flags);
 	}
 }

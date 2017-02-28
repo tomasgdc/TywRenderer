@@ -203,21 +203,21 @@ bool VulkanRendererInitializer::CreateRendererScreen(uint32_t height, uint32_t w
 	m_SubmitInfo.waitSemaphoreCount = 1;
 	m_SubmitInfo.pWaitSemaphores = &m_Semaphores.presentComplete;
 	m_SubmitInfo.signalSemaphoreCount = 1;
-	m_SubmitInfo.pSignalSemaphores = &m_Semaphores.renderComplete;
 
 	//Prepare all needed things for Vulkan
+#ifdef _DEBUG
+	PrepareVulkan(widht, height, true, true);
+#else
 	PrepareVulkan(widht, height);
+#endif
 
 	m_bPrepared = true;
 	return m_bPrepared;
 }
 
-bool VulkanRendererInitializer::PrepareVulkan(uint32_t width, uint32_t height)
+bool VulkanRendererInitializer::PrepareVulkan(uint32_t width, uint32_t height, bool benableValidation /* = false */, bool enableDebugMarkers /* = false*/)
 {
-	bool enableValidation = false;
-	bool enableDebugMarkers = false;
-
-	if (enableValidation)
+	if (benableValidation)
 	{
 		// The report flags determine what type of messages for the layers will be displayed
 		// For validating (debugging) an appplication the error and warning bits should suffice
@@ -542,7 +542,7 @@ VkResult VulkanRendererInitializer::CreateDevice()
 
 	if (enabledExtensions.size() > 0)
 	{
-		deviceCreateInfo.enabledExtensionCount = (uint32_t)enabledExtensions.size();
+		deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.size());
 		deviceCreateInfo.ppEnabledExtensionNames = enabledExtensions.data();
 	}
 

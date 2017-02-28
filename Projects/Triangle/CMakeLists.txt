@@ -31,6 +31,8 @@ ADD_EXECUTABLE(${PROJECT_NAME}
 	
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} 
 	${VULKAN_LIB}
+	"${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/ThirdParty/assimp-vc140-mt.lib"
+	"${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/ThirdParty/freetype265MT.lib"
 	debug 		"${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/Debug/TywRenderer_d.lib"
 	optimized 	"${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/Release/TywRenderer.lib"
 	)

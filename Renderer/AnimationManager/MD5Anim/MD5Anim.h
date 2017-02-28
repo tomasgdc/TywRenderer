@@ -9,14 +9,14 @@
 //forward declaration
 class JointQuat;
 
-typedef TYWRENDERER_API struct
+typedef  struct
 {
+	float	fLerp;
 	int		iFrame1;
 	int		iFrame2;
-	float	fLerp;
 } frameBlend_t;
 
-typedef TYWRENDERER_API struct
+typedef  struct
 {
 	char					strNameIndex[128];
 	int						iParentNum;
@@ -27,10 +27,11 @@ typedef TYWRENDERER_API struct
 
 
 
-class TYWRENDERER_API MD5Anim
+class  MD5Anim
 {
 public:
 	float						m_fAnimTime;
+
 public:
 	// A frame skeleton stores the joints of the skeleton for a single frame.
 	struct FrameSkeleton
@@ -68,6 +69,15 @@ private:
 
 
 private:
+	FrameSkeletonList				m_skeletons;
+	FrameSkeleton					m_animatedSkeleton;
+
+	std::vector<jointAnimInfo_t>	m_jointInfo;
+	std::vector<JointQuat>			m_baseFrame;
+
+	glm::vec3						m_totalDelta;
+	std::string						m_name;
+
 	float							m_fFrameDuration;
 	float							m_fAnimDuration;
 	int								m_numFrames;
@@ -75,12 +85,4 @@ private:
 	int								m_animLength;
 	int								m_numJoints;
 	int								m_numAnimatedComponents;
-
-	FrameSkeletonList				m_skeletons;
-	FrameSkeleton					m_animatedSkeleton;
-
-	std::vector<jointAnimInfo_t>	m_jointInfo;
-	std::vector<JointQuat>			m_baseFrame;
-	glm::vec3						m_totalDelta;
-	std::string						m_name;
 };

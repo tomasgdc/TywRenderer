@@ -26,7 +26,7 @@ enum class cacheType_t {
 };
 
 
-struct TYWRENDERER_API geoBufferSet_t
+struct  geoBufferSet_t
 {
 
 //	IndexBuffer	 indexBuffer;
@@ -37,7 +37,7 @@ struct TYWRENDERER_API geoBufferSet_t
 };
 
 
-class TYWRENDERER_API VertexCache
+class  VertexCache
 {
 public:
 	void			Init();
@@ -57,5 +57,5 @@ public:
 	void			ActuallyAlloc(geoBufferSet_t & vcs, const void * data, size_t bytes, cacheType_t type);
 };
 
-extern	TYWRENDERER_API VertexCache	vertexCache;
+extern	 VertexCache	vertexCache;
 #endif

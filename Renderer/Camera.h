@@ -9,7 +9,7 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
-class TYWRENDERER_API Camera
+class  Camera
 {
 private:
 	float fov;

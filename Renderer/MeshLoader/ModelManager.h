@@ -9,7 +9,7 @@
 //forward declared
 class RenderModel;
 
-class TYWRENDERER_API RenderModelManager 
+class  RenderModelManager 
 {
 public:
 	virtual					~RenderModelManager() {}
@@ -29,7 +29,7 @@ public:
 };
 
 
-class TYWRENDERER_API RenderModelManagerLocal: public RenderModelManager 
+class  RenderModelManagerLocal: public RenderModelManager 
 {
 public:
 							RenderModelManagerLocal() {}
@@ -46,6 +46,6 @@ private:
 
 
 
-extern TYWRENDERER_API RenderModelManagerLocal localModelManager;
-extern TYWRENDERER_API RenderModelManager* modelManager;
+extern  RenderModelManagerLocal localModelManager;
+extern  RenderModelManager* modelManager;
 #endif

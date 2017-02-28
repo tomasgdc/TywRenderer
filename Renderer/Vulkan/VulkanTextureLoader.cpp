@@ -609,12 +609,15 @@ bool VkTools::VulkanTextureLoader::LoadTexture(const std::string& filename, VkFo
 }
 
 // Clean up vulkan resources used by a texture object
-void VkTools::VulkanTextureLoader::DestroyTexture(VulkanTexture& pTexture)
+void VkTools::VulkanTextureLoader::DestroyTexture(VulkanTexture* pTexture)
 {
-	vkDestroyImageView(device, pTexture.view, nullptr);
-	vkDestroyImage(device, pTexture.image, nullptr);
-	vkDestroySampler(device, pTexture.sampler, nullptr);
-	vkFreeMemory(device, pTexture.deviceMemory, nullptr);
+	//Check for null
+	if (pTexture == nullptr)return;
+
+	vkDestroyImageView(device, pTexture->view, nullptr);
+	vkDestroyImage(device, pTexture->image, nullptr);
+	vkDestroySampler(device, pTexture->sampler, nullptr);
+	vkFreeMemory(device, pTexture->deviceMemory, nullptr);
 }
 
 

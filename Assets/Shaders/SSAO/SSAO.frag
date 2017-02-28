@@ -7,7 +7,7 @@
 layout (location = 0) in vec2 inUV;
 
 
-layout (binding = 1) uniform   usampler2D  PosSpecularPacked;
+layout (binding = 1) uniform   sampler2D   Position;
 layout (binding = 2) uniform   sampler2D   NormalDepth; 
 layout (binding = 3) uniform   sampler2D   texNoise;
 
@@ -52,25 +52,21 @@ float rand(vec2 co){
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
+
+
 float SSAOAlgo0()
 {
-	ivec2 P1 = ivec2(inUV * textureSize(PosSpecularPacked, 0));
-
-	uvec2 uvec2_PosSpecularPacked = texelFetch(PosSpecularPacked, P1, 0).rg;
 	vec4 normalDepthTexture = texture(NormalDepth, inUV, 0);
-
-    //Get position and depth texture
-	vec2 tempPosition0 = unpackHalf2x16(uvec2_PosSpecularPacked.x);
-	vec2 tempPosAndSpec = unpackHalf2x16(uvec2_PosSpecularPacked.y);
-
-    vec3 fragPos = vec3(tempPosition0, tempPosAndSpec.x);
+	vec3 fragPos = texture(Position, inUV, 0).xyz;
 
 	//Convert frag pos to view space
 	fragPos = vec3(ubo.view * vec4(fragPos, 1.0f));
 	//fragPos.y = -fragPos.y;
 
+
 	//Get normal
 	vec3 normal = normalize(normalDepthTexture.xyz * 2.0 - 1.0);
+	normal.y = -normal.y; //wrong normals y for sponza??
 
 	//Random vec using noise lookup
 	ivec2 texDim = textureSize(NormalDepth, 0); 

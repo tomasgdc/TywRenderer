@@ -22,6 +22,12 @@ ImageManager::ImageManager(VkPhysicalDevice physicalDevice, VkDevice device, VkQ
 
 ImageManager::~ImageManager()
 {
+	//If there are images that were not deleted
+	if (m_images.size() > 0)
+	{
+		PurgeAllImages();
+	}
+
 	delete m_VkTextureLoader;
 	m_VkTextureLoader = nullptr;
 }
@@ -67,7 +73,12 @@ void ImageManager::PurgeAllImages()
 {
 	for (m_it = m_images.begin(); m_it != m_images.end(); ++m_it) 
 	{
-		//
-		SAFE_DELETE(m_it->second);
+		VkTools::VulkanTexture* image = m_it->second;
+		if (image != nullptr)
+		{
+			m_VkTextureLoader->DestroyTexture(image);
+			SAFE_DELETE(image);
+		}
 	}
+	m_images.clear();
 }

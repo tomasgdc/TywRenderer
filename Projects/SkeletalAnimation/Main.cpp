@@ -200,7 +200,7 @@ public:
 
 Renderer::Renderer()
 {
-	frame = { 0, 0, 0.0f };
+	frame = {0.0f, 0, 0};
 }
 
 Renderer::~Renderer()

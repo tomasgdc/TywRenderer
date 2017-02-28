@@ -10,7 +10,7 @@ enum class RenderPass: uint32_t;
 	easy access to common scene node properties such as its ActorId
 	or render pass, with a single ISceneNode::VGet() method.
 */
-class TYWRENDERER_API SceneNodeProperties
+class  SceneNodeProperties
 {
 	friend class SceneNode;
 

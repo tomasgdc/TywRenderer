@@ -28,6 +28,7 @@ layout(location = 5) out struct
 	mat3 TBN;
 	vec3 ws_coords;
 	vec3 normal;
+	vec2 depth;
     vec2 texcoord;
 } vs_out;
 
@@ -58,6 +59,9 @@ void main()
 	mat3 normalMatrix = transpose(inverse(mat3(mvMatrix)));
 	vs_out.normal = normalMatrix * inNormal;
 
+	//Depth reconstruction
+	vec4 worldViewPosition = mvMatrix * tmpPos;
+	vs_out.depth = worldViewPosition.zw;
 
 	gl_Position = ubo.projectionMatrix *  mvMatrix * tmpPos;
 }

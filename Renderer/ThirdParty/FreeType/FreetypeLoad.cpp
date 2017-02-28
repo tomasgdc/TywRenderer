@@ -12,7 +12,7 @@
 
 
 
-inline int GlyphData::NextP2(int a)
+int GlyphData::NextP2(int a)
 {
 	int rval = 2;
 	// rval<<=1 Is A Prettier Way Of Writing rval*=2;

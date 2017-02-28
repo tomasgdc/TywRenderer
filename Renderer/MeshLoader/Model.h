@@ -15,7 +15,7 @@ class Material;
 
 
 // our only drawing geometry type
-struct TYWRENDERER_API srfTriangles_t 
+struct  srfTriangles_t 
 {
 	int					numVerts;		//number of vertices
 	drawVert*			verts;			//vert, normal, tex
@@ -24,7 +24,7 @@ struct TYWRENDERER_API srfTriangles_t
 	uint32_t*			indexes;		//vertex indices
 };
 
-struct TYWRENDERER_API modelSurface_t 
+struct  modelSurface_t 
 {
 	int					id;
 	uint32_t			numMaterials;
@@ -32,14 +32,14 @@ struct TYWRENDERER_API modelSurface_t
 	srfTriangles_t*		geometry;
 };
 
-struct TYWRENDERER_API MD5Joint {
+struct  MD5Joint {
 	char								name[256];
 	int									parentID;
 };
 
 // deformable meshes precalculate as much as possible from a base frame, then generate
 // complete srfTriangles_t from just a new set of vertexes
-struct TYWRENDERER_API deformInfo_t 
+struct  deformInfo_t 
 {
 	int					numSourceVerts;
 
@@ -61,7 +61,7 @@ struct TYWRENDERER_API deformInfo_t
 	int *				dupVerts;				// pairs of the number of the first vertex and the number of the duplicate vertex
 };
 
-class TYWRENDERER_API RenderModel 
+class  RenderModel 
 {
 public:
 	virtual ~RenderModel() {};

@@ -15,7 +15,7 @@ namespace VkTools
 typedef enum VkFormat;
 
 
-class TYWRENDERER_API ImageManager 
+class  ImageManager 
 {
 public:
 	ImageManager(VkPhysicalDevice physicalDevice, VkDevice device, VkQueue queue, VkCommandPool cmdPoo);
@@ -38,4 +38,4 @@ private:
 	VkTools::VulkanTextureLoader*								m_VkTextureLoader;
 };
 
-extern TYWRENDERER_API ImageManager* globalImage;
+extern  ImageManager* globalImage;

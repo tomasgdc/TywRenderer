@@ -547,7 +547,7 @@ void VkFont::PrepareResources(uint32_t width, uint32_t height)
 
 
 
-inline void VkFont::BeginTextUpdate()
+void VkFont::BeginTextUpdate()
 {
 	// Map persistent
 	VK_CHECK_RESULT(vkMapMemory(device, m_BufferData.memory, 0, VK_WHOLE_SIZE, 0, (void **)&pData));

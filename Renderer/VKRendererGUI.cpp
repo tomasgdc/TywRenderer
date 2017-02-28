@@ -826,18 +826,18 @@ void ImGui_ImplGlfwVulkan_Shutdown()
 	ImGui::Shutdown();
 }
 
-inline void ImGui_ImplGlfwVulkan_SetMousePos(const uint32_t& mouseposx, const uint32_t& mouseposy)
+void ImGui_ImplGlfwVulkan_SetMousePos(const uint32_t& mouseposx, const uint32_t& mouseposy)
 {
 	g_MousePosX = mouseposx;
 	g_MousePosY = mouseposy;
 }
 
-inline void ImGui_ImplGlfwVulkan_MousePressed(bool bPressed)
+void ImGui_ImplGlfwVulkan_MousePressed(bool bPressed)
 {
 	g_bMousePressed = bPressed;
 }
 
-inline void ImGui_ImplGlfwVulkan_MouseOnWinodws(bool bOnWindows)
+void ImGui_ImplGlfwVulkan_MouseOnWinodws(bool bOnWindows)
 {
 	g_bMouseOnWindows = bOnWindows;
 }

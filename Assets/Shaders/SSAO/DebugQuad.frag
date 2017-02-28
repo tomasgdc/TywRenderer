@@ -3,10 +3,11 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout (binding = 1) uniform   usampler2D  PosAndSpecularPacked;
-layout (binding = 2) uniform   usampler2D  DiffuseNormalPacked;
-layout (binding = 3) uniform   sampler2D   ssaoImage; 
-layout (binding = 4) uniform   sampler2D   normalDepth; 
+layout (binding = 1) uniform   sampler2D   PositionTexture;
+layout (binding = 2) uniform   sampler2D   SpecularTexture;
+layout (binding = 3) uniform   usampler2D  DiffuseNormalPacked;
+layout (binding = 4) uniform   sampler2D   ssaoImage; 
+layout (binding = 5) uniform   sampler2D   normalDepth; 
 
 layout (location = 0) in vec3  intUV;
 layout (location = 0) out vec4 outFragColor;
@@ -28,16 +29,6 @@ vec3 float2color(float value)
     return color;
 }
 
-/*
-float LinearizeDepth(float depth)
-{
-  float n = 1.0; // camera z near
-  float f = 128.0; // camera z far
-  float z = depth;
-  return (2.0 * n) / (f + n - z * (f - n));	
-}
-*/
-
 
 vec3 VisFragment(int index)
 {
@@ -46,13 +37,7 @@ vec3 VisFragment(int index)
 
 	if(index == 0)
 	{
-		ivec2 size = textureSize(PosAndSpecularPacked, 0);
-		uvec2 uvec2_PosAndSpecularPacked = texelFetch(PosAndSpecularPacked, ivec2(size * intUV.st), 0).rg;
-
-		vec2 tempPosition0 = unpackHalf2x16(uvec2_PosAndSpecularPacked.x);
-		vec2 tempPosAndSpec = unpackHalf2x16(uvec2_PosAndSpecularPacked.y);
-
-		result = vec3(tempPosition0, tempPosAndSpec.x);
+		result = texture(PositionTexture, intUV.st).rgb;
 	}
 	else if(index == 1)
 	{
@@ -76,13 +61,7 @@ vec3 VisFragment(int index)
 	}
 	else if(index == 3)
 	{
-		ivec2 size = textureSize(PosAndSpecularPacked, 0);
-		uvec2 uvec2_PosAndSpecularPacked = texelFetch(PosAndSpecularPacked, ivec2(size * intUV.st), 0).gb;
-
-		vec2 tempSpecularY = unpackHalf2x16(uvec2_PosAndSpecularPacked.x);
-		vec2 tempSpecularXY = unpackHalf2x16(uvec2_PosAndSpecularPacked.y);
-
-		result = vec3(tempSpecularY.y, tempSpecularXY);
+		result = texture(SpecularTexture, intUV.st).rgb;
 	}
 	else if(index == 4)
 	{

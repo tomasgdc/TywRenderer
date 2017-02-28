@@ -15,7 +15,7 @@ RenderModelStatic
 
 ================================================================================
 */
-class TYWRENDERER_API RenderModelStatic: public RenderModel
+class  RenderModelStatic: public RenderModel
 {
 public:
 								RenderModelStatic();
@@ -81,7 +81,7 @@ struct vertIndex_t
 };
 
 
-class TYWRENDERER_API MD5Mesh 
+class  MD5Mesh 
 {
 	friend class				RenderModelMD5;
 public:
@@ -129,7 +129,7 @@ public:
 	Material *					shader;				// material applied to mesh
 };
 
-class TYWRENDERER_API RenderModelMD5 final: public RenderModelStatic 
+class  RenderModelMD5 final: public RenderModelStatic 
 {
 public:
 	void				InitFromFile(std::string fileName, std::string filePath);
@@ -173,7 +173,7 @@ RenderModelSprite
 
 ================================================================================
 */
-class TYWRENDERER_API RenderModelSprite: public RenderModel 
+class  RenderModelSprite: public RenderModel 
 {
 public:
 	virtual RenderModel *		InstantiateDynamicModel();
@@ -188,7 +188,7 @@ RenderModelSprite
 
 ================================================================================
 */
-class TYWRENDERER_API RenderModelAssimp : public RenderModel
+class  RenderModelAssimp : public RenderModel
 {
 public:
 	RenderModelAssimp();

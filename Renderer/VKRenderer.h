@@ -81,7 +81,7 @@ struct gl_params
 
 #include "VulkanRendererInitializer.h"
 
-class TYWRENDERER_API VKRenderer: public IRenderer
+class  VKRenderer: public IRenderer
 {
 public:
 	VKRenderer();
@@ -137,14 +137,6 @@ public:
 		@parma: uint32_t iWidth
 	*/
 	void VWindowResize(uint32_t iHeight, uint32_t iWidth) override;
-
-	bool VPreRender() override;
-	bool VPostRender() override;
-	HRESULT VOnRestore() override;
-
-
-	std::shared_ptr<IRenderState> VPrepareAlphaPass() override;
-	std::shared_ptr<IRenderState> VPrepareSkyBoxPass() override;
 
 	//Creates files for logging
 	void VSetLogPath();
@@ -302,23 +294,23 @@ IMGUI - ON TEST PHASE AT THE MOMENT
 */ 
 
 
-TYWRENDERER_API bool		ImGui_ImplGlfwVulkan_Init(VulkanRendererInitializer *m_pWRenderer, uint32_t *framebufferwidth, uint32_t *framebufferheight, const std::string& strVertexShaderPath, const std::string& strFragmentShaderPath, bool install_callbacks);
-TYWRENDERER_API void        ImGui_ImplGlfwVulkan_Shutdown();
-TYWRENDERER_API void        ImGui_ImplGlfwVulkan_NewFrame(double current_time);
-TYWRENDERER_API void        ImGui_ImplGlfwVulkan_Render(VkCommandBuffer command_buffer, uint32_t& bufferIndex);
-TYWRENDERER_API void		ImGui_Render();
+ bool		ImGui_ImplGlfwVulkan_Init(VulkanRendererInitializer *m_pWRenderer, uint32_t *framebufferwidth, uint32_t *framebufferheight, const std::string& strVertexShaderPath, const std::string& strFragmentShaderPath, bool install_callbacks);
+ void       ImGui_ImplGlfwVulkan_Shutdown();
+ void       ImGui_ImplGlfwVulkan_NewFrame(double current_time);
+ void       ImGui_ImplGlfwVulkan_Render(VkCommandBuffer command_buffer, uint32_t& bufferIndex);
+ void		ImGui_Render();
 
 
 // Use if you want to reset your rendering device without losing ImGui state.
-TYWRENDERER_API void        ImGui_ImplGlfwVulkan_InvalidateFontUploadObjects();
-TYWRENDERER_API void        ImGui_ImplGlfwVulkan_InvalidateDeviceObjects();
-TYWRENDERER_API bool        ImGui_ImplGlfwVulkan_CreateFontsTexture(VkCommandBuffer command_buffer);
-TYWRENDERER_API bool        ImGui_ImplGlfwVulkan_CreateDeviceObjects(const std::string& strVertexShaderPath, const std::string& strFragmentShaderPath);
+ void        ImGui_ImplGlfwVulkan_InvalidateFontUploadObjects();
+ void        ImGui_ImplGlfwVulkan_InvalidateDeviceObjects();
+ bool        ImGui_ImplGlfwVulkan_CreateFontsTexture(VkCommandBuffer command_buffer);
+ bool        ImGui_ImplGlfwVulkan_CreateDeviceObjects(const std::string& strVertexShaderPath, const std::string& strFragmentShaderPath);
 
 //Events. Yes horrible for now. But will work....
-TYWRENDERER_API	void		ImGui_ImplGlfwVulkan_SetMousePos(const uint32_t& mouseposx, const uint32_t& mouseposy);
-TYWRENDERER_API void		ImGui_ImplGlfwVulkan_MousePressed(bool bPressed);
-TYWRENDERER_API void		ImGui_ImplGlfwVulkan_MouseOnWinodws(bool bOnWindows);
+void		ImGui_ImplGlfwVulkan_SetMousePos(const uint32_t& mouseposx, const uint32_t& mouseposy);
+void		ImGui_ImplGlfwVulkan_MousePressed(bool bPressed);
+void		ImGui_ImplGlfwVulkan_MouseOnWinodws(bool bOnWindows);
 //
 
 

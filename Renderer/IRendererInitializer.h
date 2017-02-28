@@ -11,7 +11,7 @@
 struct gl_params;
 
 
-struct TYWRENDERER_API vidMode
+struct  vidMode
 {
 	uint32_t iWidth;
 	uint32_t iHeight;
@@ -45,9 +45,9 @@ public:
 
 #if defined (WIN32) || defined(_WIN32) //Start of Windows
 
-TYWRENDERER_API extern bool GetModeListForDisplay(std::vector<vidMode> & modeList);
-TYWRENDERER_API extern const wchar_t* GetDeviceName(const int deviceNum);
-TYWRENDERER_API extern bool GetWindowDimensions(const gl_params parms, int &x, int &y, int &w, int &h);
-TYWRENDERER_API extern bool GetDisplayCoordinates(const int deviceNum, int & x, int & y, int & width, int & height, int & displayHz);
+ extern bool GetModeListForDisplay(std::vector<vidMode> & modeList);
+ extern const wchar_t* GetDeviceName(const int deviceNum);
+ extern bool GetWindowDimensions(const gl_params parms, int &x, int &y, int &w, int &h);
+ extern bool GetDisplayCoordinates(const int deviceNum, int & x, int & y, int & width, int & height, int & displayHz);
 
 #endif //End of Windows

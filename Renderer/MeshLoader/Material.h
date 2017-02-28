@@ -11,7 +11,7 @@ namespace VkTools
 	class VulkanTexture;
 }
 
-typedef struct TYWRENDERER_API _GLXMATERIAL
+typedef struct  _GLXMATERIAL
 {
 	glm::vec4 color;
 	glm::vec4 diffuse;
@@ -22,7 +22,7 @@ typedef struct TYWRENDERER_API _GLXMATERIAL
 }GLXMATERIAL;
 
 
-class TYWRENDERER_API Material
+class  Material
 {
 public:
 	Material();

@@ -9,6 +9,7 @@ layout(location = 5) in struct
 	mat3 TBN;
 	vec3 ws_coords;
 	vec3 normal;
+	vec2 depth;
     vec2 texcoord;
 } fs_in;
 
@@ -16,16 +17,17 @@ layout (binding = 1) uniform sampler2D samplerDiffuse;
 layout (binding = 2) uniform sampler2D samplerNormal;
 layout (binding = 3) uniform sampler2D samplerSpecular;
 
-
+//Position
+layout (location = 0) out vec4 outPosition;
 
 //Position, Specular
-layout (location = 0) out uvec4 outPosSpecular;
+layout (location = 1) out vec4 outSpecular;
 
 //Normal, Diffuse
-layout (location = 1) out uvec4 outNormalDiffuse;
+layout (location = 2) out uvec4 outNormalDiffuse;
 
 //Model normal, Depth
-layout (location = 2) out vec4 outNormal;
+layout (location = 3) out vec4 outNormal;
 
 
 // c_precision of 128 fits within 7 base-10 digits
@@ -60,17 +62,7 @@ void main()
 	vec3 specularTexture = texture(samplerSpecular, flipped_texcoord).rgb;
 	
 
-	uvec4 outvec0 = uvec4(0);
     uvec4 outvec1 = uvec4(0);
-
-	//Position
-	outvec0.x = packHalf2x16(fs_in.ws_coords.xy);
-
-	//Pos And Specular
-	outvec0.y = packHalf2x16(vec2(fs_in.ws_coords.z, specularTexture.x));
-
-	//Specular texture
-	outvec0.z = packHalf2x16(specularTexture.yz);
 
 	//Diffuse texture
 	outvec1.x = packHalf2x16(diffuseTexture.xy);
@@ -81,8 +73,9 @@ void main()
 	//Normal
 	outvec1.z = packHalf2x16(normalTexture.yz);
 
-
-    outPosSpecular = outvec0;
+	outPosition = vec4(fs_in.ws_coords, LinearizeDepth(gl_FragCoord.z));
+    outSpecular = vec4(specularTexture, 1.0);
     outNormalDiffuse = outvec1;
+
 	outNormal = vec4(normalize(fs_in.normal) * 0.5 + 0.5, LinearizeDepth(gl_FragCoord.z));
 }

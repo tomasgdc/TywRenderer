@@ -230,6 +230,7 @@ private:
 		int32_t width, height;
 		VkFramebuffer frameBuffer;
 		FrameBufferAttachment position;
+		FrameBufferAttachment specular;
 		FrameBufferAttachment nm; //normal and diffuse
 		FrameBufferAttachment modeNormal; //face normals
 		FrameBufferAttachment depth;
@@ -380,11 +381,11 @@ Renderer::Renderer() :m_bViewUpdated(false)
 #ifndef __ANDROID__
 	m_Camera.rotationSpeed = 0.25f;
 #endif
-	m_Camera.position = { 0.47f, -3.8f, -3.34f };
+	m_Camera.position = { 0.47f * 0.2f, -3.8f * 0.2f, -3.34f * 0.2f };
 	m_Camera.setRotation(glm::vec3(7.0f, -75.0f, 0.0f));
-	m_Camera.setTranslation(glm::vec3(-81.0f, 6.25f, -14.0f));
+	m_Camera.setTranslation(glm::vec3(-81.0f * 0.2f, 6.25f * 0.2f, -14.0f * 0.2f));
 	m_Camera.setPerspective(60.0f, 1280.0f / 720.0f, zNear, zFar);
-	m_Camera.movementSpeed = 20.0f * 2.0f;
+	m_Camera.movementSpeed = 20.0f * 2.0f * 0.2f;
 }
 
 Renderer::~Renderer()
@@ -439,6 +440,13 @@ Renderer::~Renderer()
 	vkDestroyImage(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.position.image, nullptr);
 	vkFreeMemory(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.position.mem, nullptr);
 
+
+	//Specular
+	vkDestroyImageView(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.specular.view, nullptr);
+	vkDestroyImage(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.specular.image, nullptr);
+	vkFreeMemory(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.specular.mem, nullptr);
+
+
 	//Normal and Diffuse
 	vkDestroyImageView(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.nm.view, nullptr);
 	vkDestroyImage(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.nm.image, nullptr);
@@ -453,6 +461,11 @@ Renderer::~Renderer()
 	vkDestroyImageView(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssao.attachement.view, nullptr);
 	vkDestroyImage(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssao.attachement.image, nullptr);
 	vkFreeMemory(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssao.attachement.mem, nullptr);
+
+	//SSAO blur
+	//vkDestroyImageView(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssaoBlur.attachement.view, nullptr);
+	//vkDestroyImage(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssaoBlur.attachement.image, nullptr);
+	//vkFreeMemory(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssaoBlur.attachement.mem, nullptr);
 
 	//Depth
 	vkDestroyImageView(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.depth.view, nullptr);
@@ -483,18 +496,16 @@ Renderer::~Renderer()
 	//Destroy RenderPass
 	vkDestroyRenderPass(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.renderPass, nullptr);
 
-	//Destroy Command Buffer and Semaphore
+	//Destroy Command Buffer
 	vkFreeCommandBuffers(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_CmdPool, 1, &GBufferScreenCmdBuffer);
-	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.defferedSemaphore, nullptr);
-
-	//ssao
 	vkFreeCommandBuffers(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_CmdPool, 1, &ssaoCmdBuffer);
-	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.ssaoSemaphore, nullptr);
 
 	//Release semaphores
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.presentComplete, nullptr);
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.renderComplete, nullptr);
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.textOverlayComplete, nullptr);
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.ssaoSemaphore, nullptr);
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.defferedSemaphore, nullptr);
 }
 
 void Renderer::PrepareSemaphore()
@@ -771,32 +782,32 @@ void Renderer::SetupLights()
 
 	for (int32_t i = 0; i < lightColors.size(); i++)
 	{
-		SetupLight(&uboFragmentLights.lights[i], glm::vec3((float)(i - 2.5f) * 50.0f, 10.0f, 0.0f), lightColors[i], 120.0f);
+		SetupLight(&uboFragmentLights.lights[i], glm::vec3((float)(i - 2.5f) * 50.0f * 0.2f, 10.0f * 0.2f, 0.0f), lightColors[i], 120.0f* 0.2f);
 	}
 
 	// Dynamic light moving over the floor
-	SetupLight(&uboFragmentLights.lights[0], { -sin(glm::radians(360.0f * timer)) * 120.0f , 2.5f, cos(glm::radians(360.0f * timer * 8.0f)) * 10.0f }, glm::vec3(1.0f), 100.0f);
+	SetupLight(&uboFragmentLights.lights[0], { -sin(glm::radians(360.0f * timer)) * 120.0f *0.2f, 2.5f*0.2f, cos(glm::radians(360.0f * timer * 8.0f)) * 10.0f * 0.2f }, glm::vec3(1.0f), 100.0f*0.2f);
 
 	// Fire bowls
-	SetupLight(&uboFragmentLights.lights[5], { -48.75f, 16.0f, -17.8f }, { 1.0f, 0.6f, 0.0f }, 45.0f);
-	SetupLight(&uboFragmentLights.lights[6], { -48.75f, 16.0f,  18.4f }, { 1.0f, 0.6f, 0.0f }, 45.0f);
+	SetupLight(&uboFragmentLights.lights[5], { -48.75f * 0.2f, 16.0f * 0.2f, -17.8f * 0.2f }, { 1.0f, 0.6f, 0.0f }, 45.0f * 0.2f);
+	SetupLight(&uboFragmentLights.lights[6], { -48.75f * 0.2f, 16.0f * 0.2f,  18.4f * 0.2f }, { 1.0f, 0.6f, 0.0f }, 45.0f * 0.2f);
 	// -62.5, 15, -18.5
-	SetupLight(&uboFragmentLights.lights[7], { 62.0f, 16.0f, -17.8f }, { 1.0f, 0.6f, 0.0f }, 45.0f);
-	SetupLight(&uboFragmentLights.lights[8], { 62.0f, 16.0f,  18.4f }, { 1.0f, 0.6f, 0.0f }, 45.0f);
+	SetupLight(&uboFragmentLights.lights[7], { 62.0f * 0.2f, 16.0f * 0.2f, -17.8f * 0.2f }, { 1.0f, 0.6f, 0.0f }, 45.0f * 0.2f);
+	SetupLight(&uboFragmentLights.lights[8], { 62.0f * 0.2f, 16.0f * 0.2f,  18.4f * 0.2f }, { 1.0f, 0.6f, 0.0f }, 45.0f * 0.2f);
 
 	// 112.5 13.6 -42.8
-	SetupLight(&uboFragmentLights.lights[9], { 120.0f, 20.0f, -43.75f }, { 1.0f, 0.8f, 0.3f }, 75.0f);
-	SetupLight(&uboFragmentLights.lights[10], { 120.0f, 20.0f, 41.75f }, { 1.0f, 0.8f, 0.3f }, 75.0f);
+	SetupLight(&uboFragmentLights.lights[9], { 120.0f * 0.2f, 20.0f * 0.2f, -43.75f * 0.2f }, { 1.0f, 0.8f, 0.3f }, 75.0f * 0.2f);
+	SetupLight(&uboFragmentLights.lights[10], { 120.0f * 0.2f, 20.0f * 0.2f, 41.75f * 0.2f }, { 1.0f, 0.8f, 0.3f }, 75.0f * 0.2f);
 
-	SetupLight(&uboFragmentLights.lights[11], { -110.0f, 20.0f, -43.75f }, { 1.0f, 0.8f, 0.3f }, 75.0f);
-	SetupLight(&uboFragmentLights.lights[12], { -110.0f, 20.0f, 41.75f }, { 1.0f, 0.8f, 0.3f }, 75.0f);
+	SetupLight(&uboFragmentLights.lights[11], { -110.0f * 0.2f, 20.0f * 0.2f, -43.75f * 0.2f }, { 1.0f, 0.8f, 0.3f }, 75.0f * 0.2f);
+	SetupLight(&uboFragmentLights.lights[12], { -110.0f * 0.2f, 20.0f * 0.2f, 41.75f * 0.2f }, { 1.0f, 0.8f, 0.3f }, 75.0f * 0.2f);
 
 	// Lion eyes
-	SetupLight(&uboFragmentLights.lights[13], { -122.0f, 18.0f, -3.2f }, { 1.0f, 0.3f, 0.3f }, 25.0f);
-	SetupLight(&uboFragmentLights.lights[14], { -122.0f, 18.0f,  3.2f }, { 0.3f, 1.0f, 0.3f }, 25.0f);
+	SetupLight(&uboFragmentLights.lights[13], { -122.0f * 0.2f, 18.0f * 0.2f, -3.2f * 0.2f }, { 1.0f, 0.3f, 0.3f }, 25.0f * 0.2f);
+	SetupLight(&uboFragmentLights.lights[14], { -122.0f * 0.2f, 18.0f * 0.2f,  3.2f * 0.2f }, { 0.3f, 1.0f, 0.3f }, 25.0f * 0.2f);
 
-	SetupLight(&uboFragmentLights.lights[15], { 135.0f, 18.0f, -3.2f }, { 0.3f, 0.3f, 1.0f }, 25.0f);
-	SetupLight(&uboFragmentLights.lights[16], { 135.0f, 18.0f,  3.2f }, { 1.0f, 1.0f, 0.3f }, 25.0f);
+	SetupLight(&uboFragmentLights.lights[15], { 135.0f * 0.2f, 18.0f * 0.2f, -3.2f * 0.2f }, { 0.3f, 0.3f, 1.0f }, 25.0f * 0.2f);
+	SetupLight(&uboFragmentLights.lights[16], { 135.0f * 0.2f, 18.0f * 0.2f,  3.2f * 0.2f }, { 1.0f, 1.0f, 0.3f }, 25.0f * 0.2f);
 }
 
 
@@ -819,7 +830,7 @@ void Renderer::UpdateUniformBuffersLights()
 
 	// White
 	//SetupLight(&uboFragmentLights.lights[0], m_Camera.position, glm::vec3(1.5f), 20.0f);
-	SetupLight(&uboFragmentLights.lights[0], { -sin(glm::radians(360.0f * timer)) * 120.0f , 2.5f, cos(glm::radians(360.0f * timer * 8.0f)) * 10.0f }, glm::vec3(1.0f), 100.0f);
+	SetupLight(&uboFragmentLights.lights[0], { -sin(glm::radians(360.0f * timer)) * 120.0f * 0.2f , 2.5f * 0.2f, cos(glm::radians(360.0f * timer * 8.0f)) * 10.0f * 0.2f }, glm::vec3(1.0f), 100.0f * 0.2f);
 
 
 	// Current view position
@@ -1124,11 +1135,12 @@ void Renderer::PrepareFramebufferCommands()
 
 	VkCommandBufferBeginInfo cmdBufInfo = VkTools::Initializer::CommandBufferBeginInfo();
 
-	std::array<VkClearValue, 4> clearValues;
+	std::array<VkClearValue, 5> clearValues;
 	clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
 	clearValues[1].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
 	clearValues[2].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
-	clearValues[3].depthStencil = { 1.0f, 0 };
+	clearValues[3].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+	clearValues[4].depthStencil = { 1.0f, 0 };
 
 	VkRenderPassBeginInfo renderPassBeginInfo = VkTools::Initializer::RenderPassBeginInfo();
 	renderPassBeginInfo.renderPass = offScreenFrameBuf.renderPass;
@@ -1261,11 +1273,17 @@ void Renderer::CreateFrameBuffer()
 	frameBuffersSSAO.ssao.width = GBUFF_DIM;
 	frameBuffersSSAO.ssao.height = GBUFF_DIM;
 
-
-	//Position, Specular - Packed
-	CreateAttachement(VK_FORMAT_R32G32B32A32_UINT,
+	//Position
+	CreateAttachement(VK_FORMAT_R32G32B32A32_SFLOAT,
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		&offScreenFrameBuf.position,
+		layoutCmd);
+
+
+	//Specular - Packed
+	CreateAttachement(VK_FORMAT_R32G32B32A32_SFLOAT,
+		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		&offScreenFrameBuf.specular,
 		layoutCmd);
 
 	//Normal, Diffuse - Packed
@@ -1275,7 +1293,7 @@ void Renderer::CreateFrameBuffer()
 		layoutCmd);
 
 	//Normal, Depth
-	CreateAttachement(VK_FORMAT_R16G16B16A16_SFLOAT,
+	CreateAttachement(VK_FORMAT_R32G32B32A32_SFLOAT,
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		&offScreenFrameBuf.modeNormal,
 		layoutCmd);
@@ -1312,7 +1330,7 @@ void Renderer::CreateFrameBuffer()
 
 	//Deffered FrameBuffer
 	{
-		std::array<VkAttachmentDescription, 4> attachmentDescs = {};
+		std::array<VkAttachmentDescription, 5> attachmentDescs = {};
 
 		// Init attachment properties
 		for (uint32_t i = 0; i < attachmentDescs.size(); ++i)
@@ -1323,24 +1341,26 @@ void Renderer::CreateFrameBuffer()
 			attachmentDescs[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 			attachmentDescs[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
-			//depth buffer == 3
+			//depth buffer == 4
 			attachmentDescs[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			attachmentDescs[i].finalLayout = (i == 3) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			attachmentDescs[i].finalLayout = (i == 4) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		}
 
 		// Formats
 		attachmentDescs[0].format = offScreenFrameBuf.position.format;
-		attachmentDescs[1].format = offScreenFrameBuf.nm.format;
-		attachmentDescs[2].format = offScreenFrameBuf.modeNormal.format;
-		attachmentDescs[3].format = offScreenFrameBuf.depth.format;
+		attachmentDescs[1].format = offScreenFrameBuf.specular.format;
+		attachmentDescs[2].format = offScreenFrameBuf.nm.format;
+		attachmentDescs[3].format = offScreenFrameBuf.modeNormal.format;
+		attachmentDescs[4].format = offScreenFrameBuf.depth.format;
 
 		std::vector<VkAttachmentReference> colorReferences;
 		colorReferences.push_back({ 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
 		colorReferences.push_back({ 1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
 		colorReferences.push_back({ 2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+		colorReferences.push_back({ 3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
 
 		VkAttachmentReference depthReference = {};
-		depthReference.attachment = 3;
+		depthReference.attachment = 4;
 		depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 		VkSubpassDescription subpass = {};
@@ -1380,11 +1400,12 @@ void Renderer::CreateFrameBuffer()
 
 		VK_CHECK_RESULT(vkCreateRenderPass(m_pWRenderer->m_SwapChain.device, &renderPassInfo, nullptr, &offScreenFrameBuf.renderPass));
 
-		std::array<VkImageView, 4> attachments;
+		std::array<VkImageView, 5> attachments;
 		attachments[0] = offScreenFrameBuf.position.view;
-		attachments[1] = offScreenFrameBuf.nm.view;
-		attachments[2] = offScreenFrameBuf.modeNormal.view;
-		attachments[3] = offScreenFrameBuf.depth.view;
+		attachments[1] = offScreenFrameBuf.specular.view;
+		attachments[2] = offScreenFrameBuf.nm.view;
+		attachments[3] = offScreenFrameBuf.modeNormal.view;
+		attachments[4] = offScreenFrameBuf.depth.view;
 
 		VkFramebufferCreateInfo fbufCreateInfo = {};
 		fbufCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1522,7 +1543,8 @@ void Renderer::UpdateUniformBuffers()
 
 	m_uboVS.projectionMatrix = m_Camera.matrices.perspective;
 	m_uboVS.viewMatrix = m_Camera.matrices.view;
-	m_uboVS.modelMatrix = glm::mat4();
+	//m_uboVS.modelMatrix = glm::mat4();
+	m_uboVS.modelMatrix = glm::scale(glm::mat4(), glm::vec3(0.2, 0.2, 0.2));
 	//m_uboVS.modelMatrix = glm::scale(m_uboVS.modelMatrix, glm::vec3(0.2, 0.2, 0.2));
 	{
 		// Map uniform buffer and update it
@@ -1647,11 +1669,19 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	m_pWRenderer->m_DescriptorPool = VK_NULL_HANDLE;
 	SetupDescriptorPool();
 	
-	// Image descriptor for the color attachement
-	VkDescriptorImageInfo GBufferPosition =
+
+	VkDescriptorImageInfo PositionImage =
 		VkTools::Initializer::DescriptorImageInfo(
 			colorSampler,
 			offScreenFrameBuf.position.view,
+			VK_IMAGE_LAYOUT_GENERAL);
+
+
+	// Image descriptor for the color attachement
+	VkDescriptorImageInfo SpecularImage =
+		VkTools::Initializer::DescriptorImageInfo(
+			colorSampler,
+			offScreenFrameBuf.specular.view,
 			VK_IMAGE_LAYOUT_GENERAL);
 
 	//Normal, Diffuse and Specular packed texture
@@ -1686,16 +1716,19 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.quad.descriptor),
 
 		// Binding 1: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &GBufferPosition),
+		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &PositionImage),
 
 		// Binding 2: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &GBufferNM),
+		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &SpecularImage),
 
-		//Binding 3: SSAO image
-		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &ssaoImage),
+		// Binding 3: Image descriptor
+		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &GBufferNM),
+
+		//Binding 4: SSAO image
+		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,4, &ssaoImage),
 
 		//Normal depth
-		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &modelNormal)
+		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 5, &modelNormal)
 
 	};
 	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, quadWriteDescriptorSets.size(), quadWriteDescriptorSets.data(), 0, NULL);
@@ -1709,16 +1742,19 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.vsFullScreen.descriptor),
 
 		// Binding 1: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &GBufferPosition),
+		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &PositionImage),
 
 		// Binding 2: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &GBufferNM),
+		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &SpecularImage),
 
-		//Binding 3:
-		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &ssaoImage),
+		// Binding 3: Image descriptor
+		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &GBufferNM),
+
+		//Binding 4: Image descriptor
+		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,4, &ssaoImage),
 
 		//Binding 4
-		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4, &uniformData.fsLights.descriptor),
+		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5, &uniformData.fsLights.descriptor),
 	};
 	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, defferedWriteModelDescriptorSet.size(), defferedWriteModelDescriptorSet.data(), 0, NULL);
 
@@ -1731,7 +1767,7 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	std::vector<VkWriteDescriptorSet> ssaoWriteModelDescriptorSet =
 	{
 		// Binding 1: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &GBufferPosition),
+		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &PositionImage),
 
 		// Binding 2: Image descriptor
 		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &modelNormal),
@@ -1976,8 +2012,9 @@ void Renderer::PreparePipeline()
 	// Blend attachment states required for all color attachments
 	// This is important, as color write mask will otherwise be 0x0 and you
 	// won't see anything rendered to the attachment
-	std::array<VkPipelineColorBlendAttachmentState, 3> blendAttachmentStates =
+	std::array<VkPipelineColorBlendAttachmentState, 4> blendAttachmentStates =
 	{
+		VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
 		VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
 		VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
 		VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE)
@@ -2007,14 +2044,17 @@ void Renderer::SetupDescriptorSetLayout()
 			// Binding 1 : Fragment shader image sampler
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,1),
 
-			// Binding 2 : Fragment shader image sampler
+			// Binding 1 : Fragment shader image sampler
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,2),
 
-			// Binding 3 : Fragment shader image sampler
+			// Binding 2 : Fragment shader image sampler
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,3),
 
+			// Binding 3 : Fragment shader image sampler
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,4),
+
 			// Binding 4 : Fragment shader uniform buffer
-			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT,4),
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT,5),
 		};
 
 		VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());
@@ -2065,8 +2105,11 @@ void Renderer::SetupDescriptorSetLayout()
 			// Binding 3 : Fragment shader image sampler
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,3),
 
-			// Binding 4 : Fragment shader uniform buffer
+			// Binding 4 : Fragment shader image sampler
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,4),
+
+			// Binding 5 : Fragment shader uniform buffer
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,5),
 		};
 
 		VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());

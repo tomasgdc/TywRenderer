@@ -11,7 +11,7 @@ class IRenderer;
 SceneManager manages SceneNodes. It creates new nodes, detaches existing ones,
 traverses scenegraph and renders it.
 */
-class TYWRENDERER_API SceneManager
+class  SceneManager
 {
 protected:
 	std::shared_ptr<SceneNode>  	m_Root;

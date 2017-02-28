@@ -5,6 +5,9 @@
 */
 
 #include <RendererPch\stdafx.h>
+#include <Renderer\TywRenderer.h>
+#include <Renderer\TywRendererHelpers.h>
+
 
 //Triangle Includes
 #include "Main.h"
