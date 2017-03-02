@@ -66,7 +66,7 @@ float SSAOAlgo0()
 
 	//Get normal
 	vec3 normal = normalize(normalDepthTexture.xyz * 2.0 - 1.0);
-	normal.y = -normal.y; //wrong normals y for sponza??
+	//normal.y = -normal.y; //wrong normals y for sponza??
 
 	//Random vec using noise lookup
 	ivec2 texDim = textureSize(NormalDepth, 0); 
@@ -84,7 +84,10 @@ float SSAOAlgo0()
     for(int i = 0; i < SSAO_KERNEL_SIZE; ++i)
     {
         // get sample position
-        vec3 Sample = TBN * ubossaokernel.samples[i].xyz; // From tangent to view-space
+		//Problem orienting sample to normal
+	    //vec3 Sample =  TBN * ubossaokernel.samples[i].xyz;
+
+        vec3 Sample =  ubossaokernel.samples[i].xyz; // From tangent to view-space
         Sample = fragPos + Sample * SSAO_RADIUS; 
         
 		

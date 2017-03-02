@@ -206,6 +206,7 @@ private:
 		glm::vec4 instancePos[3];
 	}m_uboVS;
 
+
 	uint32_t numVerts = 0;
 	uint32_t numUvs = 0;
 	uint32_t numNormals = 0;
@@ -328,6 +329,12 @@ private:
 	VkDescriptorSet  ssaoDescriptorSet;
 	VkCommandBuffer	 ssaoCmdBuffer = VK_NULL_HANDLE;
 	VkTools::VulkanTexture m_NoiseGeneratedTexture;
+
+	//Debug Normals
+	VkPipeline				 debugNormalsPipeline;
+	VkPipelineLayout		 debugNormalsPipelineLayout;
+	VkDescriptorSetLayout	 debugNormalsDescriptorSetLayout;
+	VkDescriptorSet			 debugNormalDescriptor;
 
 	struct {
 		glm::mat4 mvp;
@@ -1092,6 +1099,8 @@ void Renderer::PrepareMainRendererCommands()
 		vkCmdSetScissor(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &scissor);
 
 		VkDeviceSize offsets[1] = { 0 };
+
+		
 		// Final composition as full screen quad
 		{
 			vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -1100,6 +1109,7 @@ void Renderer::PrepareMainRendererCommands()
 			vkCmdBindIndexBuffer(m_pWRenderer->m_DrawCmdBuffers[i], quadMesh.index.buffer, 0, VK_INDEX_TYPE_UINT32);
 			vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], 6, 1, 0, 0, 1);
 		}
+		
 
 		//quad debug
 		{
@@ -1114,9 +1124,35 @@ void Renderer::PrepareMainRendererCommands()
 			//			vkCmdSetViewport(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &viewport);
 		}
 
+
+		//Normal debug -> Uncomment and comment out first one in order to see normals. Still working to get working properly
+		/*
+		{
+			//viewport.x = viewport.width * 0.5f;
+			//viewport.y = viewport.height * 0.5f;
+			//vkCmdSetViewport(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &viewport);
+
+			vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, debugNormalsPipeline);
+
+			// Bind descriptor sets describing shader binding points
+			vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, debugNormalsPipelineLayout, 0, 1, &debugNormalDescriptor, 0, NULL);
+
+			// Bind triangle vertex buffer (contains position and colors)
+			VkDeviceSize offsets[1] = { 0 };
+			for (int j = 0; j < listLocalBuffersVerts.size(); j++)
+			{
+				//Bind Buffer
+				vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &listLocalBuffersVerts[j].buffer, offsets);
+				vkCmdBindIndexBuffer(m_pWRenderer->m_DrawCmdBuffers[i], listLocalBuffersIndexes[j].buffer, 0, VK_INDEX_TYPE_UINT32);
+
+				//Draw
+				vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], meshSize[j], 1, 0, 0, 1);
+			}
+		}
+		*/
+
 		vkCmdEndRenderPass(m_pWRenderer->m_DrawCmdBuffers[i]);
 		VK_CHECK_RESULT(vkEndCommandBuffer(m_pWRenderer->m_DrawCmdBuffers[i]));
-
 	}
 }
 
@@ -1181,6 +1217,9 @@ void Renderer::PrepareFramebufferCommands()
 		//vkCmdDrawIndirect(GBufferScreenCmdBuffer, nullptr , 0, 3, 0);
 		//vkCmdDraw(GBufferScreenCmdBuffer, meshSize[j], 3, 0, 0);
 	}
+
+
+
 	vkCmdEndRenderPass(GBufferScreenCmdBuffer);
 	VK_CHECK_RESULT(vkEndCommandBuffer(GBufferScreenCmdBuffer));
 }
@@ -1784,6 +1823,18 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, ssaoWriteModelDescriptorSet.size(), ssaoWriteModelDescriptorSet.data(), 0, NULL);
 
 
+	//Debug Normal
+	{
+		VkDescriptorSetAllocateInfo debugNormalllocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &debugNormalsDescriptorSetLayout, 1);
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &debugNormalllocInfo, &debugNormalDescriptor));
+		std::vector<VkWriteDescriptorSet> debugNormalWriteModelDescriptorSet =
+		{
+			// Binding 0
+			VkTools::Initializer::WriteDescriptorSet(debugNormalDescriptor,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformData.mesh.descriptor),
+		};
+		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, debugNormalWriteModelDescriptorSet.size(), debugNormalWriteModelDescriptorSet.data(), 0, NULL);
+	}
+
 	VkDescriptorSetAllocateInfo allocInfoMRT = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &frameBufferDescriptorSetLayout, 1);
 	for (uint32_t i = 0; i < staticModel.m_Entries.size(); i++)
 	{
@@ -1965,7 +2016,9 @@ void Renderer::PreparePipeline()
 
 	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 	pipelineCreateInfo.pStages = shaderStages.data();
-	pipelineCreateInfo.pVertexInputState = &quadMesh.vertex.inputState;
+	//pipelineCreateInfo.pVertexInputState = &quadMesh.vertex.inputState;  wrong
+	pipelineCreateInfo.pVertexInputState = &listLocalBuffersVerts[0].inputState;
+
 	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
 	pipelineCreateInfo.pRasterizationState = &rasterizationState;
 	pipelineCreateInfo.pColorBlendState = &colorBlendState;
@@ -1985,6 +2038,24 @@ void Renderer::PreparePipeline()
 	pipelineCreateInfo.pVertexInputState = &quadMesh.vertex.inputState;
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &quadPipeline));
 
+
+	//Debug Normals Pipeline
+	{
+		std::array<VkPipelineShaderStageCreateInfo, 3> debugNormalShaderStages;
+		debugNormalShaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/DebugNormals.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		debugNormalShaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/DebugNormals.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		debugNormalShaderStages[2] = LoadShader(GetAssetPath() + "Shaders/SSAO/DebugNormals.geom.spv", VK_SHADER_STAGE_GEOMETRY_BIT);
+
+		pipelineCreateInfo.stageCount = static_cast<uint32_t>(debugNormalShaderStages.size());
+		pipelineCreateInfo.pStages = debugNormalShaderStages.data();
+		pipelineCreateInfo.layout = debugNormalsPipelineLayout;
+		pipelineCreateInfo.pVertexInputState = &listLocalBuffersVerts[0].inputState;
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &debugNormalsPipeline));
+	}
+
+	//Point back to old shaderstages
+	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+	pipelineCreateInfo.pStages = shaderStages.data();
 
 	//SSAO Pipeline
 	//Seperate render pass for ssao
@@ -2117,6 +2188,21 @@ void Renderer::SetupDescriptorSetLayout()
 
 		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkTools::Initializer::PipelineLayoutCreateInfo(&quadDescriptorSetLayout, 1);
 		VK_CHECK_RESULT(vkCreatePipelineLayout(m_pWRenderer->m_SwapChain.device, &pPipelineLayoutCreateInfo, nullptr, &quadPipelineLayout));
+	}
+
+	//Debug Normals
+	{
+		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings =
+		{
+			// Binding 0 : Fragment shader image sampler
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_GEOMETRY_BIT,0),
+		};
+
+		VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());
+		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, &descriptorLayout, nullptr, &debugNormalsDescriptorSetLayout));
+
+		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkTools::Initializer::PipelineLayoutCreateInfo(&debugNormalsDescriptorSetLayout, 1);
+		VK_CHECK_RESULT(vkCreatePipelineLayout(m_pWRenderer->m_SwapChain.device, &pPipelineLayoutCreateInfo, nullptr, &debugNormalsPipelineLayout));
 	}
 
 	//SSAO

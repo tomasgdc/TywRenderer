@@ -23,6 +23,9 @@ SET(RESOURCES
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DebugQuad.vert"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/SSAO.vert"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/SSAO.frag"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DebugNormals.geom"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DebugNormals.vert"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DebugNormals.frag"
 )
 SOURCE_GROUP("Shader Files" FILES ${RESOURCES})
 

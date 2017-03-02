@@ -523,6 +523,7 @@ VkResult VulkanRendererInitializer::CreateDevice()
 	VkPhysicalDeviceFeatures enabledFeatures = {};
 	enabledFeatures.tessellationShader = true;
 	enabledFeatures.shaderTessellationAndGeometryPointSize = true;
+	enabledFeatures.geometryShader = true;
 	enabledFeatures.shaderClipDistance = true;
 	enabledFeatures.shaderCullDistance = true;
 
