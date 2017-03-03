@@ -282,11 +282,14 @@ private:
 	{
 		std::array<Light, 17>lights;
 		glm::vec4 viewPos;
+		float fScreenGamma;
+		bool  bSSAOFrameBufferDebugOn; //I know. Cache miss
 	} uboFragmentLights;
 
 	struct
 	{
 		std::array<glm::vec4, 64> ssaoKernel;
+		int32_t iSSAOKernelSize; // I know. Cache miss
 	}uboSSAOKernel;
 
 	struct
@@ -343,6 +346,16 @@ private:
 	//RenderModelStatic staticModel;
 	RenderModelAssimp staticModel;
 	VkCommandBuffer  cmdGui;
+
+	//Imguidata
+	struct imgui
+	{
+		bool bSSAOIsOn;
+		bool bDebugFrameBuffers;
+		bool bNormalDebugOn;
+	}imguiData;
+
+	
 public:
 	Renderer();
 	~Renderer();
@@ -393,6 +406,15 @@ Renderer::Renderer() :m_bViewUpdated(false)
 	m_Camera.setTranslation(glm::vec3(-81.0f * 0.2f, 6.25f * 0.2f, -14.0f * 0.2f));
 	m_Camera.setPerspective(60.0f, 1280.0f / 720.0f, zNear, zFar);
 	m_Camera.movementSpeed = 20.0f * 2.0f * 0.2f;
+
+	//Initialize Imgui data
+	imguiData.bSSAOIsOn = true;
+	uboFragmentLights.bSSAOFrameBufferDebugOn = false;
+	imguiData.bDebugFrameBuffers = false;
+	imguiData.bNormalDebugOn = false;
+
+	uboSSAOKernel.iSSAOKernelSize = uboSSAOKernel.ssaoKernel.size();
+	uboFragmentLights.fScreenGamma = 1.0f;
 }
 
 Renderer::~Renderer()
@@ -529,11 +551,37 @@ void Renderer::PrepareSemaphore()
 
 void Renderer::ImguiRender()
 {
+	//Indicates if framebufffers was rebuilt
+	static bool bPressedSSAO, bPressedSSAOFrameDeubg, bPressedDebugFrameBuffers, bPressedbNormalDebug, bSSAOKernelSize;
+
 	ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiSetCond_FirstUseEver);
 	ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+	bSSAOKernelSize = ImGui::DragInt("SSAO Kernel Size", &uboSSAOKernel.iSSAOKernelSize, 0.0f, 0, 64, "%.0f");
+	ImGui::DragFloat("Screen Gamma ", &uboFragmentLights.fScreenGamma, 0.0f, 0.0f, 2.4f, "%.3f");
+
+	bPressedSSAO = ImGui::Checkbox("SSAO (On/Off)", &imguiData.bSSAOIsOn);
+	bPressedSSAOFrameDeubg = ImGui::Checkbox("Show SSAO Framebuffer (On/Off)", &uboFragmentLights.bSSAOFrameBufferDebugOn);
+	bPressedDebugFrameBuffers = ImGui::Checkbox("Show generated framebuffers (On/Off)", &imguiData.bDebugFrameBuffers);
+	bPressedbNormalDebug = ImGui::Checkbox("Normal debug (On/Off)", &imguiData.bNormalDebugOn);
+
+
+	//RebuildCommandBuffers
+	if (bPressedSSAO || bPressedSSAOFrameDeubg || bPressedDebugFrameBuffers || bPressedbNormalDebug)
+	{
+		BuildCommandBuffers();
+	}
+
+	if (bSSAOKernelSize)
+	{
+		void * pData;
+		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.ssaokernel.memory, 0, sizeof(uboSSAOKernel), 0, (void **)&pData));
+		memcpy(pData, &uboSSAOKernel, sizeof(uboSSAOKernel));
+		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.ssaokernel.memory);
+	}
 }
 
-float lerp(float a, float b, float f)
+inline float lerp(float a, float b, float f)
 {
 	return  a + f * (b - a);
 }
@@ -553,7 +601,7 @@ void Renderer::InitializeSSAOData()
 		sample = glm::normalize(sample);
 		sample *= randomFloats(generator);
 
-		float scale = scale = static_cast<float>(i) / 64.0;
+		float scale = scale = static_cast<float>(i) / 64.0f;
 		scale = lerp(0.1f, 1.0f, scale*scale);
 
 		sample *= scale;
@@ -1049,7 +1097,11 @@ void Renderer::PrepareSSAOCommands()
 	//vkCmdBindVertexBuffers(ssaoCmdBuffer, VERTEX_BUFFER_BIND_ID, 1, &quadMesh.vertex.buffer, offsets);
 	//vkCmdBindIndexBuffer(ssaoCmdBuffer, quadMesh.index.buffer, 0, VK_INDEX_TYPE_UINT32);
 	//vkCmdDrawIndexed(ssaoCmdBuffer, 6, 1, 0, 0, 1);
-	vkCmdDraw(ssaoCmdBuffer, 3, 1, 0, 0);
+
+	if (imguiData.bSSAOIsOn)
+	{
+		vkCmdDraw(ssaoCmdBuffer, 3, 1, 0, 0);
+	}
 
 	vkCmdEndRenderPass(ssaoCmdBuffer);
 	VK_CHECK_RESULT(vkEndCommandBuffer(ssaoCmdBuffer));
@@ -1102,6 +1154,7 @@ void Renderer::PrepareMainRendererCommands()
 
 		
 		// Final composition as full screen quad
+		if(!imguiData.bNormalDebugOn)
 		{
 			vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 			vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &defferedModelDescriptorSet, 0, NULL);
@@ -1110,23 +1163,25 @@ void Renderer::PrepareMainRendererCommands()
 			vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], 6, 1, 0, 0, 1);
 		}
 		
-
-		//quad debug
+		if (imguiData.bDebugFrameBuffers)
 		{
-			vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, quadPipeline);
-			vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, quadPipelineLayout, 0, 1, &quadDescriptorSet, 0, NULL);
-			vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &quadMesh.vertex.buffer, offsets);
-			vkCmdBindIndexBuffer(m_pWRenderer->m_DrawCmdBuffers[i], quadMesh.index.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], quadMesh.numIndexes, 1, 0, 0, 1);
+			//quad debug
+			{
+				vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, quadPipeline);
+				vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, quadPipelineLayout, 0, 1, &quadDescriptorSet, 0, NULL);
+				vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &quadMesh.vertex.buffer, offsets);
+				vkCmdBindIndexBuffer(m_pWRenderer->m_DrawCmdBuffers[i], quadMesh.index.buffer, 0, VK_INDEX_TYPE_UINT32);
+				vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], quadMesh.numIndexes, 1, 0, 0, 1);
 
-			//			viewport.x = viewport.width * 0.5f;
-			//			viewport.y = viewport.height * 0.5f;
-			//			vkCmdSetViewport(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &viewport);
+				//			viewport.x = viewport.width * 0.5f;
+				//			viewport.y = viewport.height * 0.5f;
+				//			vkCmdSetViewport(m_pWRenderer->m_DrawCmdBuffers[i], 0, 1, &viewport);
+			}
 		}
 
 
 		//Normal debug -> Uncomment and comment out first one in order to see normals. Still working to get working properly
-		/*
+		if(imguiData.bNormalDebugOn)
 		{
 			//viewport.x = viewport.width * 0.5f;
 			//viewport.y = viewport.height * 0.5f;
@@ -1149,7 +1204,6 @@ void Renderer::PrepareMainRendererCommands()
 				vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], meshSize[j], 1, 0, 0, 1);
 			}
 		}
-		*/
 
 		vkCmdEndRenderPass(m_pWRenderer->m_DrawCmdBuffers[i]);
 		VK_CHECK_RESULT(vkEndCommandBuffer(m_pWRenderer->m_DrawCmdBuffers[i]));

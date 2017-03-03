@@ -5,7 +5,8 @@
 
 layout (location = 0) in vec2 inUV;
 
-struct Light {
+struct Light 
+{
 	vec4 position;
 	vec3 color;
 	float radius;
@@ -22,12 +23,13 @@ layout (binding = 5) uniform UBO
 {
 	Light lights[17];
 	vec4 viewPos;
+	float fScreenGamma;
+	bool  bSSAOFrameBufferDebugOn;
 } ubo;
 
 
 layout (location = 0) out vec4 outFragColor;
 #define lightCount 17
-#define ambient 0.0
 vec3 DefferedPass()
 {
 	ivec2 P0 = ivec2(inUV * textureSize(DiffuseNormalAndDepthPacked, 0));
@@ -49,9 +51,12 @@ vec3 DefferedPass()
 	//Get Specular
 	vec3 specularTexture = texture(SpecularTexture, inUV).rgb;
 
-
 	// Ambient part
-	vec3 fragcolor  = diffuseTexture.rgb * ambient;
+	float AmbientOcclusion = texture(ssaoImage, inUV).r;
+
+	vec3 ambient = vec3(0.3 * diffuseTexture * AmbientOcclusion);
+	vec3 lighting  = ambient;
+
 	for(int i = 0; i < lightCount; ++i)
 	{
 		// Vector to light
@@ -64,7 +69,7 @@ vec3 DefferedPass()
 		vec3 V = ubo.viewPos.xyz - positionTexture;
 		V = normalize(V);
 		
-		if(dist < ubo.lights[i].radius)
+		//if(dist < ubo.lights[i].radius)
 		{
 			// Light to fragment
 			L = normalize(L);
@@ -80,7 +85,7 @@ vec3 DefferedPass()
 			// calculate specular reflection only if
 			// the surface is oriented to the light source
 			float specularTerm = 0;
-			if(dot(normalTexture, L) > 0)
+			//if(dot(normalTexture, L) > 0)
 			{
 				//vec3 R = reflect(-L, N);
 				vec3 H = normalize(L + V);
@@ -89,18 +94,25 @@ vec3 DefferedPass()
 			vec3 spec = ubo.lights[i].color * specularTexture * specularTerm * atten;
 
 			//Final color
-			fragcolor += diff + spec;	
+			lighting += diff + spec;	
 		}	
 	}  
 
-	return fragcolor;
+	return lighting;
 }
 
 
 void main() 
  {
-	float ssaoTexture = texture(ssaoImage, inUV).r;
-	outFragColor = vec4(ssaoTexture);
-
-	//outFragColor = vec4(DefferedPass(), 1.0);
+	if(ubo.bSSAOFrameBufferDebugOn)
+	{
+		float ssaoTexture = texture(ssaoImage, inUV).r;
+		outFragColor = vec4(ssaoTexture);
+	}
+	else
+	{
+		vec3 color = DefferedPass();
+		vec3 colorGammaCorrected = pow(color, vec3(1.0/ubo.fScreenGamma));
+		outFragColor = vec4(colorGammaCorrected, 1.0);
+	}
 }

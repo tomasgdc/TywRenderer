@@ -664,6 +664,18 @@ VkPipelineDynamicStateCreateInfo VkTools::Initializer::PipelineDynamicStateCreat
 }
 
 
+VkPushConstantRange VkTools::Initializer::PushConstantRange(
+	VkShaderStageFlags stageFlags,
+	uint32_t size,
+	uint32_t offset)
+{
+	VkPushConstantRange pushConstantRange = {};
+	pushConstantRange.stageFlags = stageFlags;
+	pushConstantRange.offset = offset;
+	pushConstantRange.size = size;
+	return pushConstantRange;
+}
+
 VkBool32 VkTools::CheckDeviceExtensionPresent(VkPhysicalDevice physicalDevice, const char* extensionName)
 {
 	uint32_t extensionCount = 0;

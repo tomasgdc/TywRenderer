@@ -252,6 +252,15 @@ namespace VkTools
 		*/
 		 VkBufferCreateInfo BufferCreateInfo(VkBufferUsageFlags usage,VkDeviceSize size);
 
+		 /*
+			@param:
+			@param:
+			@param:
+
+			@return
+		 */
+		 VkPushConstantRange PushConstantRange(VkShaderStageFlags stageFlags, uint32_t size, uint32_t offset);
+
 		 VkImageCreateInfo ImageCreateInfo();
 		 VkSamplerCreateInfo SamplerCreateInfo();
 		 VkImageViewCreateInfo ImageViewCreateInfo();

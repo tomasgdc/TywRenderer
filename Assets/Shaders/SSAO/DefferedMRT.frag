@@ -77,5 +77,5 @@ void main()
     outSpecular = vec4(specularTexture, 1.0);
     outNormalDiffuse = outvec1;
 
-	outNormal = vec4(normalize(fs_in.normal) * 0.5 + 0.5, LinearizeDepth(gl_FragCoord.z));
+	outNormal = vec4(fs_in.normal * 0.5 + 0.5, LinearizeDepth(gl_FragCoord.z));
 }

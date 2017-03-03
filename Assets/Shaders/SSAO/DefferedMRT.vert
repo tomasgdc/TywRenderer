@@ -50,14 +50,14 @@ void main()
 	// Vertex position in world space
 	vs_out.ws_coords =  vec3(ubo.modelMatrix * tmpPos);
 
-
 	// GL to Vulkan coord space
 	//vs_out.ws_coords.y = -vs_out.ws_coords.y;
 	vs_out.texcoord = inUv;
 
 	//Face normal map
 	mat3 normalMatrix = transpose(inverse(mat3(mvMatrix)));
-	vs_out.normal = normalMatrix * inNormal;
+	vs_out.normal = normalize(normalMatrix * inNormal);
+	//vs_out.normal.y = -vs_out.normal.y;
 
 	//Depth reconstruction
 	vec4 worldViewPosition = mvMatrix * tmpPos;

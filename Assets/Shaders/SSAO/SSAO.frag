@@ -16,11 +16,13 @@ layout (location = 0) out float FragColor;
 
 
 // parameters (you'd probably want to use them as uniforms to more easily tweak the effect)
-const int SSAO_KERNEL_SIZE = 64;
+//const int SSAO_KERNEL_SIZE = 64;
 const float SSAO_RADIUS = 1.0;
+
 layout (std140 , binding = 4) uniform UBOSSAOKernel 
 {
 	vec4 samples[64];
+	int ssao_kernel_size;
 } ubossaokernel;
 
 layout (binding = 5) uniform UBO
@@ -81,7 +83,7 @@ float SSAOAlgo0()
 
     // Iterate over the sample kernel and calculate occlusion factor
     float f_occlusion = 0.0f;
-    for(int i = 0; i < SSAO_KERNEL_SIZE; ++i)
+    for(int i = 0; i < ubossaokernel.ssao_kernel_size; ++i)
     {
         // get sample position
 		//Problem orienting sample to normal
@@ -108,7 +110,7 @@ float SSAOAlgo0()
 			f_occlusion += (sampleDepth >= Sample.z ? 1.0f : 0.0f);  
 #endif
     }
-    f_occlusion = 1.0f - (f_occlusion / float(SSAO_KERNEL_SIZE));
+    f_occlusion = 1.0f - (f_occlusion / float(ubossaokernel.ssao_kernel_size));
 	return f_occlusion;
 }
 
