@@ -17,12 +17,13 @@ layout (location = 0) out float FragColor;
 
 // parameters (you'd probably want to use them as uniforms to more easily tweak the effect)
 //const int SSAO_KERNEL_SIZE = 64;
-const float SSAO_RADIUS = 1.0;
+//const float SSAO_RADIUS = 1.0;
 
 layout (std140 , binding = 4) uniform UBOSSAOKernel 
 {
 	vec4 samples[64];
-	int ssao_kernel_size;
+	float ssaoRadius;
+	int	  ssao_kernel_size;
 } ubossaokernel;
 
 layout (binding = 5) uniform UBO
@@ -67,8 +68,8 @@ float SSAOAlgo0()
 
 
 	//Get normal
-	vec3 normal = normalize(normalDepthTexture.xyz * 2.0 - 1.0);
-	//normal.y = -normal.y; //wrong normals y for sponza??
+	vec3 normal = normalize(normalDepthTexture.xyz * 2.0f - 1.0f);
+	normal.y = -normal.y; //wrong normals y for sponza??
 
 	//Random vec using noise lookup
 	ivec2 texDim = textureSize(NormalDepth, 0); 
@@ -83,14 +84,17 @@ float SSAOAlgo0()
 
     // Iterate over the sample kernel and calculate occlusion factor
     float f_occlusion = 0.0f;
-    for(int i = 0; i < ubossaokernel.ssao_kernel_size; ++i)
+	int kernelSize = ubossaokernel.ssao_kernel_size;
+	float ssaoRadius = ubossaokernel.ssaoRadius;
+
+    for(int i = 0; i < kernelSize; ++i)
     {
         // get sample position
 		//Problem orienting sample to normal
 	    //vec3 Sample =  TBN * ubossaokernel.samples[i].xyz;
 
         vec3 Sample =  ubossaokernel.samples[i].xyz; // From tangent to view-space
-        Sample = fragPos + Sample * SSAO_RADIUS; 
+        Sample = fragPos + Sample * ssaoRadius; 
         
 		
         // project sample position (to sample texture) (to get position on screen/texture)
@@ -100,17 +104,17 @@ float SSAOAlgo0()
         offset.xyz = offset.xyz * 0.5f + 0.5f; // transform to range 0.0 - 1.0
         
 		// get sample depth
-        float sampleDepth = -texture(NormalDepth, offset.xy, 0).w; // Get depth value of kernel sample
+        float sampleDepth = -texture(NormalDepth, offset.xy, 0).a; // Get depth value of kernel sample
 			
         // range check & accumulate
 #ifdef  RANGE_CHECK
-			float rangeCheck = smoothstep(0.0f, 1.0f, SSAO_RADIUS / abs(fragPos.z - sampleDepth ));
+			float rangeCheck = smoothstep(0.0f, 1.0f, ssaoRadius / abs(fragPos.z - sampleDepth ));
 			f_occlusion += (sampleDepth >= Sample.z ? 1.0f : 0.0f) * rangeCheck;
 #else
 			f_occlusion += (sampleDepth >= Sample.z ? 1.0f : 0.0f);  
 #endif
     }
-    f_occlusion = 1.0f - (f_occlusion / float(ubossaokernel.ssao_kernel_size));
+    f_occlusion = 1.0f - (f_occlusion / float(kernelSize));
 	return f_occlusion;
 }
 

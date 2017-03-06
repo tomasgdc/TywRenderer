@@ -65,7 +65,7 @@ vec3 VisFragment(int index)
 	}
 	else if(index == 4)
 	{
-		float depth = texture(normalDepth, intUV.st, 0).r;
+		float depth = texture(normalDepth, intUV.st, 0).a;
 		result = vec3(depth);
 	}
 	else if(index == 5)
@@ -87,5 +87,5 @@ vec3 VisFragment(int index)
 void main() 
 {
 	int index = int(intUV.z);
-	outFragColor.rgb = VisFragment(index);
+	outFragColor = vec4(VisFragment(index), 1.0);
 }

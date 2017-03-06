@@ -189,6 +189,8 @@ private:
 		VkSemaphore textOverlayComplete;
 		//SSAO passs semaphore
 		VkSemaphore ssaoSemaphore;
+		//Blur pass semaphore
+		VkSemaphore blurSemaphore;
 		//Deffered pass Semaphore
 		VkSemaphore defferedSemaphore;
 	} Semaphores;
@@ -269,6 +271,7 @@ private:
 		VkTools::UniformData vsFullScreen;
 		VkTools::UniformData ssaokernel;
 		VkTools::UniformData ssaoprojection;
+		VkTools::UniformData defferedDebugOption;
 	}  uniformData;
 
 	struct Light
@@ -283,13 +286,22 @@ private:
 		std::array<Light, 17>lights;
 		glm::vec4 viewPos;
 		float fScreenGamma;
-		bool  bSSAOFrameBufferDebugOn; //I know. Cache miss
 	} uboFragmentLights;
 
 	struct
 	{
+		uint32_t  bSSAOIsOn;
+		uint32_t  bShowSSAOBlur;
+		uint32_t  bShowSSAO;
+		uint32_t  bShowDefuseOnly;
+		uint32_t  bShowDefuseAndSSAO;
+	}uboDefferedDebugOptions;
+
+	struct
+	{
 		std::array<glm::vec4, 64> ssaoKernel;
-		int32_t iSSAOKernelSize; // I know. Cache miss
+		float ssaoRadius;
+		int   kernelSize;
 	}uboSSAOKernel;
 
 	struct
@@ -339,6 +351,13 @@ private:
 	VkDescriptorSetLayout	 debugNormalsDescriptorSetLayout;
 	VkDescriptorSet			 debugNormalDescriptor;
 
+	//Blur
+	VkPipeline				blurPipeline;
+	VkPipelineLayout		blurPipelineLayout;
+	VkDescriptorSetLayout	blurDescriptorSetLayout;
+	VkDescriptorSet			blurDescriptorSet;
+	VkCommandBuffer			blurCmdBuffer = VK_NULL_HANDLE;
+
 	struct {
 		glm::mat4 mvp;
 	} quadUniformData;
@@ -383,11 +402,13 @@ public:
 
 	void PrepareFramebufferCommands();
 	void PrepareSSAOCommands();
+	void PrepareSSAOBlurCommands();
 	void PrepareMainRendererCommands();
 
 	void GenerateQuad();
 	void UpdateQuadUniformData(const glm::vec3& pos = glm::vec3(1.0, 1.0, 0.0));
 	void UpdateUniformBuffersLights();
+	void UpdateDefferedDebugUniformData();
 	void ImguiRender();
 
 	void SetupLights();
@@ -408,12 +429,12 @@ Renderer::Renderer() :m_bViewUpdated(false)
 	m_Camera.movementSpeed = 20.0f * 2.0f * 0.2f;
 
 	//Initialize Imgui data
-	imguiData.bSSAOIsOn = true;
-	uboFragmentLights.bSSAOFrameBufferDebugOn = false;
-	imguiData.bDebugFrameBuffers = false;
-	imguiData.bNormalDebugOn = false;
+	imguiData = { true, false, false };
+	uboDefferedDebugOptions = {true, false, false, false, false};
 
-	uboSSAOKernel.iSSAOKernelSize = uboSSAOKernel.ssaoKernel.size();
+	uboSSAOKernel.kernelSize = uboSSAOKernel.ssaoKernel.size();
+	uboSSAOKernel.ssaoRadius = 1.0f;
+
 	uboFragmentLights.fScreenGamma = 1.0f;
 }
 
@@ -459,6 +480,7 @@ Renderer::~Renderer()
 	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.vsFullScreen);
 	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.ssaokernel);
 	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.ssaoprojection);
+	VkTools::DestroyUniformData(m_pWRenderer->m_SwapChain.device, uniformData.defferedDebugOption);
 
 	//QUad
 	VkBufferObject::DeleteBufferMemory(m_pWRenderer->m_SwapChain.device, quadMesh.vertex, nullptr);
@@ -492,9 +514,9 @@ Renderer::~Renderer()
 	vkFreeMemory(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssao.attachement.mem, nullptr);
 
 	//SSAO blur
-	//vkDestroyImageView(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssaoBlur.attachement.view, nullptr);
-	//vkDestroyImage(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssaoBlur.attachement.image, nullptr);
-	//vkFreeMemory(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssaoBlur.attachement.mem, nullptr);
+	vkDestroyImageView(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssaoBlur.attachement.view, nullptr);
+	vkDestroyImage(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssaoBlur.attachement.image, nullptr);
+	vkFreeMemory(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssaoBlur.attachement.mem, nullptr);
 
 	//Depth
 	vkDestroyImageView(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.depth.view, nullptr);
@@ -511,29 +533,37 @@ Renderer::~Renderer()
 	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, quadPipeline, nullptr);
 	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, pipeline, nullptr);
 	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, ssaoPipeline, nullptr);
+	vkDestroyPipeline(m_pWRenderer->m_SwapChain.device, blurPipeline, nullptr);
 
 	//Destroy PipelineLayout
 	vkDestroyPipelineLayout(m_pWRenderer->m_SwapChain.device, frameBufferPipelineLayout, nullptr);
+	vkDestroyPipelineLayout(m_pWRenderer->m_SwapChain.device, quadPipelineLayout, nullptr);
 	vkDestroyPipelineLayout(m_pWRenderer->m_SwapChain.device, pipelineLayout, nullptr);
 	vkDestroyPipelineLayout(m_pWRenderer->m_SwapChain.device, ssaoPipelineLayout, nullptr);
+	vkDestroyPipelineLayout(m_pWRenderer->m_SwapChain.device, blurPipelineLayout, nullptr);
 
 	//Destroy layout
 	vkDestroyDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, quadDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, descriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, ssaoDescriptorSetLayout, nullptr);
+	vkDestroyDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, blurDescriptorSetLayout, nullptr);
 
 	//Destroy RenderPass
 	vkDestroyRenderPass(m_pWRenderer->m_SwapChain.device, offScreenFrameBuf.renderPass, nullptr);
+	vkDestroyRenderPass(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssao.renderPass, nullptr);
+	vkDestroyRenderPass(m_pWRenderer->m_SwapChain.device, frameBuffersSSAO.ssaoBlur.renderPass, nullptr);
 
 	//Destroy Command Buffer
 	vkFreeCommandBuffers(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_CmdPool, 1, &GBufferScreenCmdBuffer);
 	vkFreeCommandBuffers(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_CmdPool, 1, &ssaoCmdBuffer);
+	vkFreeCommandBuffers(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_CmdPool, 1, &blurCmdBuffer);
 
 	//Release semaphores
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.presentComplete, nullptr);
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.renderComplete, nullptr);
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.textOverlayComplete, nullptr);
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.ssaoSemaphore, nullptr);
+	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.blurSemaphore, nullptr);
 	vkDestroySemaphore(m_pWRenderer->m_SwapChain.device, Semaphores.defferedSemaphore, nullptr);
 }
 
@@ -545,6 +575,7 @@ void Renderer::PrepareSemaphore()
 	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.renderComplete));
 	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.textOverlayComplete));
 	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.ssaoSemaphore));
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.blurSemaphore));
 	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.defferedSemaphore));
 }
 
@@ -552,32 +583,68 @@ void Renderer::PrepareSemaphore()
 void Renderer::ImguiRender()
 {
 	//Indicates if framebufffers was rebuilt
-	static bool bPressedSSAO, bPressedSSAOFrameDeubg, bPressedDebugFrameBuffers, bPressedbNormalDebug, bSSAOKernelSize;
+	static bool bTurnOnSSAO, 
+		bPressedSSAOWithBlur,
+		bPressedSSAO,
+		bPressedDebugFrameBuffers, 
+		bPressedbNormalDebug, 
+		bSSAOKernelSize,
+		bSSAOKernelRadius,
+		bDebugDiffuse,
+		bDebugDiffuseAndSSAO;
 
 	ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiSetCond_FirstUseEver);
 	ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
-	bSSAOKernelSize = ImGui::DragInt("SSAO Kernel Size", &uboSSAOKernel.iSSAOKernelSize, 0.0f, 0, 64, "%.0f");
+	bSSAOKernelSize = ImGui::DragInt("SSAO Kernel Size", &uboSSAOKernel.kernelSize, 0.0f, 0, 64, "%.0f");
+	bSSAOKernelRadius = ImGui::DragFloat("SSAO Radius", &uboSSAOKernel.ssaoRadius, 0.0f, 0, 64, "%.3f");
 	ImGui::DragFloat("Screen Gamma ", &uboFragmentLights.fScreenGamma, 0.0f, 0.0f, 2.4f, "%.3f");
 
-	bPressedSSAO = ImGui::Checkbox("SSAO (On/Off)", &imguiData.bSSAOIsOn);
-	bPressedSSAOFrameDeubg = ImGui::Checkbox("Show SSAO Framebuffer (On/Off)", &uboFragmentLights.bSSAOFrameBufferDebugOn);
+	bTurnOnSSAO = ImGui::Checkbox("SSAO (On/Off)", &imguiData.bSSAOIsOn);
+	uboDefferedDebugOptions.bSSAOIsOn = imguiData.bSSAOIsOn;
+
+	//Weelll.. Because I had problem in glsl with booleans as it was converting to uint. Had to go around this problem then with imgui somehow.
+	{
+		//initialize tempvalue;
+		bool valueTemp;
+
+		valueTemp = static_cast<bool>(uboDefferedDebugOptions.bShowSSAOBlur);
+		bPressedSSAOWithBlur = ImGui::Checkbox("Show SSAO with Blur only (On/Off)", &valueTemp);
+		uboDefferedDebugOptions.bShowSSAOBlur = static_cast<uint32_t>(valueTemp);
+
+		valueTemp = static_cast<bool>(uboDefferedDebugOptions.bShowSSAO);
+		bPressedSSAO = ImGui::Checkbox("Show SSAO only (On/Off)", &valueTemp);
+		uboDefferedDebugOptions.bShowSSAO = static_cast<uint32_t>(valueTemp);
+
+		valueTemp = static_cast<bool>(uboDefferedDebugOptions.bShowDefuseOnly);
+		bDebugDiffuse = ImGui::Checkbox("Show diffuse texture only (On/Off)", &valueTemp);
+		uboDefferedDebugOptions.bShowDefuseOnly = static_cast<uint32_t>(valueTemp);
+
+		valueTemp = static_cast<bool>(uboDefferedDebugOptions.bShowDefuseAndSSAO);
+		bDebugDiffuseAndSSAO = ImGui::Checkbox("Show diffuse and SSAO (On/Off)", &valueTemp);
+		uboDefferedDebugOptions.bShowDefuseAndSSAO = static_cast<uint32_t>(valueTemp);
+	}
 	bPressedDebugFrameBuffers = ImGui::Checkbox("Show generated framebuffers (On/Off)", &imguiData.bDebugFrameBuffers);
 	bPressedbNormalDebug = ImGui::Checkbox("Normal debug (On/Off)", &imguiData.bNormalDebugOn);
 
 
 	//RebuildCommandBuffers
-	if (bPressedSSAO || bPressedSSAOFrameDeubg || bPressedDebugFrameBuffers || bPressedbNormalDebug)
+	if (bTurnOnSSAO || bPressedDebugFrameBuffers || bPressedbNormalDebug)
 	{
 		BuildCommandBuffers();
 	}
 
-	if (bSSAOKernelSize)
+	if (bSSAOKernelSize || bSSAOKernelRadius)
 	{
 		void * pData;
 		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.ssaokernel.memory, 0, sizeof(uboSSAOKernel), 0, (void **)&pData));
 		memcpy(pData, &uboSSAOKernel, sizeof(uboSSAOKernel));
 		vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.ssaokernel.memory);
+	}
+
+	if (bDebugDiffuse || bDebugDiffuseAndSSAO || bPressedSSAOWithBlur || bPressedSSAO || bTurnOnSSAO)
+	{
+		UpdateDefferedDebugUniformData();
 	}
 }
 
@@ -874,6 +941,14 @@ void Renderer::SetupLight(Light *light, glm::vec3 pos, glm::vec3 color, float ra
 }
 
 
+void Renderer::UpdateDefferedDebugUniformData()
+{
+	uint8_t *pData;
+	VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.defferedDebugOption.memory, 0, sizeof(uboDefferedDebugOptions), 0, (void **)&pData));
+	memcpy(pData, &uboDefferedDebugOptions, sizeof(uboDefferedDebugOptions));
+	vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.defferedDebugOption.memory);
+}
+
 void Renderer::UpdateUniformBuffersLights()
 {
 	timer += timerSpeed * frameTimer;
@@ -1050,6 +1125,57 @@ void Renderer::UpdateQuadUniformData(const glm::vec3& pos)
 	vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformData.quad.memory);
 }
 
+void Renderer::PrepareSSAOBlurCommands()
+{
+	if (blurCmdBuffer == VK_NULL_HANDLE)
+	{
+		VkCommandBufferAllocateInfo cmdBufAllocateInfo =
+			VkTools::Initializer::CommandBufferAllocateInfo(
+				m_pWRenderer->m_CmdPool,
+				VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+				1);
+
+		VK_CHECK_RESULT(vkAllocateCommandBuffers(m_pWRenderer->m_SwapChain.device, &cmdBufAllocateInfo, &blurCmdBuffer));
+	}
+
+	VkCommandBufferBeginInfo cmdBufInfo = VkTools::Initializer::CommandBufferBeginInfo();
+
+	std::array<VkClearValue, 1> clearValues;
+	clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+	//clearValues[1].depthStencil = { 1.0f, 0 };
+
+	VkRenderPassBeginInfo renderPassBeginInfo = VkTools::Initializer::RenderPassBeginInfo();
+	renderPassBeginInfo.renderPass = frameBuffersSSAO.ssaoBlur.renderPass;
+	renderPassBeginInfo.framebuffer = frameBuffersSSAO.ssaoBlur.frameBuffer;
+	renderPassBeginInfo.renderArea.offset.x = 0;
+	renderPassBeginInfo.renderArea.offset.y = 0;
+	renderPassBeginInfo.renderArea.extent.width = frameBuffersSSAO.ssaoBlur.width;
+	renderPassBeginInfo.renderArea.extent.height = frameBuffersSSAO.ssaoBlur.height;
+	renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	renderPassBeginInfo.pClearValues = clearValues.data();
+
+	VK_CHECK_RESULT(vkBeginCommandBuffer(blurCmdBuffer, &cmdBufInfo));
+
+
+	VkViewport viewport = VkTools::Initializer::Viewport((float)frameBuffersSSAO.ssaoBlur.width, (float)frameBuffersSSAO.ssaoBlur.height, 0.0f, 1.0f);
+	vkCmdSetViewport(blurCmdBuffer, 0, 1, &viewport);
+
+	VkRect2D scissor = VkTools::Initializer::Rect2D(frameBuffersSSAO.ssaoBlur.width, frameBuffersSSAO.ssaoBlur.height, 0, 0);
+	vkCmdSetScissor(blurCmdBuffer, 0, 1, &scissor);
+
+	vkCmdBeginRenderPass(blurCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBindPipeline(blurCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, blurPipeline);
+	vkCmdBindDescriptorSets(blurCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, blurPipelineLayout, 0, 1, &blurDescriptorSet, 0, NULL);
+
+	if (imguiData.bSSAOIsOn)
+	{
+		vkCmdDraw(blurCmdBuffer, 3, 1, 0, 0);
+	}
+
+	vkCmdEndRenderPass(blurCmdBuffer);
+	VK_CHECK_RESULT(vkEndCommandBuffer(blurCmdBuffer));
+}
+
 void Renderer::PrepareSSAOCommands()
 {
 	if (ssaoCmdBuffer == VK_NULL_HANDLE)
@@ -1091,12 +1217,6 @@ void Renderer::PrepareSSAOCommands()
 	vkCmdBeginRenderPass(ssaoCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 	vkCmdBindPipeline(ssaoCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, ssaoPipeline);
 	vkCmdBindDescriptorSets(ssaoCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, ssaoPipelineLayout, 0, 1, &ssaoDescriptorSet, 0, NULL);
-
-	//Just simple quad
-	//VkDeviceSize offsets[1] = { 0 };
-	//vkCmdBindVertexBuffers(ssaoCmdBuffer, VERTEX_BUFFER_BIND_ID, 1, &quadMesh.vertex.buffer, offsets);
-	//vkCmdBindIndexBuffer(ssaoCmdBuffer, quadMesh.index.buffer, 0, VK_INDEX_TYPE_UINT32);
-	//vkCmdDrawIndexed(ssaoCmdBuffer, 6, 1, 0, 0, 1);
 
 	if (imguiData.bSSAOIsOn)
 	{
@@ -1158,9 +1278,7 @@ void Renderer::PrepareMainRendererCommands()
 		{
 			vkCmdBindPipeline(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 			vkCmdBindDescriptorSets(m_pWRenderer->m_DrawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &defferedModelDescriptorSet, 0, NULL);
-			vkCmdBindVertexBuffers(m_pWRenderer->m_DrawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &quadMesh.vertex.buffer, offsets);
-			vkCmdBindIndexBuffer(m_pWRenderer->m_DrawCmdBuffers[i], quadMesh.index.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(m_pWRenderer->m_DrawCmdBuffers[i], 6, 1, 0, 0, 1);
+			vkCmdDraw(m_pWRenderer->m_DrawCmdBuffers[i], 3, 1, 0, 0);
 		}
 		
 		if (imguiData.bDebugFrameBuffers)
@@ -1366,6 +1484,9 @@ void Renderer::CreateFrameBuffer()
 	frameBuffersSSAO.ssao.width = GBUFF_DIM;
 	frameBuffersSSAO.ssao.height = GBUFF_DIM;
 
+	frameBuffersSSAO.ssaoBlur.width = GBUFF_DIM;
+	frameBuffersSSAO.ssaoBlur.height = GBUFF_DIM;
+
 	//Position
 	CreateAttachement(VK_FORMAT_R32G32B32A32_SFLOAT,
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
@@ -1373,7 +1494,7 @@ void Renderer::CreateFrameBuffer()
 		layoutCmd);
 
 
-	//Specular - Packed
+	//Specular
 	CreateAttachement(VK_FORMAT_R32G32B32A32_SFLOAT,
 		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		&offScreenFrameBuf.specular,
@@ -1397,6 +1518,11 @@ void Renderer::CreateFrameBuffer()
 		&frameBuffersSSAO.ssao.attachement,
 		layoutCmd);
 
+	//SSAO Blur
+	CreateAttachement(VK_FORMAT_R8_UNORM,
+		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		&frameBuffersSSAO.ssaoBlur.attachement,
+		layoutCmd);
 
 
 	// Find a suitable depth format
@@ -1574,6 +1700,68 @@ void Renderer::CreateFrameBuffer()
 		VK_CHECK_RESULT(vkCreateFramebuffer(m_pWRenderer->m_SwapChain.device, &fbufCreateInfo, nullptr, &frameBuffersSSAO.ssao.frameBuffer));
 	}
 
+	//SSAO Blur
+	{
+		VkAttachmentDescription attachmentDescription{};
+		attachmentDescription.format = frameBuffersSSAO.ssaoBlur.attachement.format;
+		attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+		attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+		VkAttachmentReference colorReference = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
+
+		VkSubpassDescription subpass = {};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.pColorAttachments = &colorReference;
+		subpass.colorAttachmentCount = 1;
+
+		// Use subpass dependencies for attachment layput transitions
+		std::array<VkSubpassDependency, 2> dependencies;
+
+		dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+		dependencies[0].dstSubpass = 0;
+		dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+		dependencies[1].srcSubpass = 0;
+		dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+		dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+
+		VkRenderPassCreateInfo renderPassInfo = {};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderPassInfo.pAttachments = &attachmentDescription;
+		renderPassInfo.attachmentCount = 1;
+		renderPassInfo.subpassCount = 1;
+		renderPassInfo.pSubpasses = &subpass;
+		renderPassInfo.dependencyCount = 2;
+		renderPassInfo.pDependencies = dependencies.data();
+
+		VK_CHECK_RESULT(vkCreateRenderPass(m_pWRenderer->m_SwapChain.device, &renderPassInfo, nullptr, &frameBuffersSSAO.ssaoBlur.renderPass));
+
+		VkFramebufferCreateInfo fbufCreateInfo = {};
+		fbufCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		fbufCreateInfo.pNext = NULL;
+		fbufCreateInfo.renderPass = frameBuffersSSAO.ssaoBlur.renderPass;
+		fbufCreateInfo.pAttachments = &frameBuffersSSAO.ssaoBlur.attachement.view;
+		fbufCreateInfo.attachmentCount = 1;
+		fbufCreateInfo.width = frameBuffersSSAO.ssaoBlur.width;
+		fbufCreateInfo.height = frameBuffersSSAO.ssaoBlur.height;
+		fbufCreateInfo.layers = 1;
+		VK_CHECK_RESULT(vkCreateFramebuffer(m_pWRenderer->m_SwapChain.device, &fbufCreateInfo, nullptr, &frameBuffersSSAO.ssaoBlur.frameBuffer));
+	}
+
 	// Create sampler to sample from the color attachments
 	VkSamplerCreateInfo sampler = VkTools::Initializer::SamplerCreateInfo();
 	sampler.magFilter = VK_FILTER_LINEAR;
@@ -1614,6 +1802,9 @@ void Renderer::BuildCommandBuffers()
 
 	//Prepare SSAO Commands
 	PrepareSSAOCommands();
+
+	//Prepare Blur commands
+	PrepareSSAOBlurCommands();
 
 	//Main Rendere Commands
 	PrepareMainRendererCommands();
@@ -1720,6 +1911,15 @@ void Renderer::PrepareUniformBuffers()
 		&uboSSAOProjection);
 
 
+	//Deffered debug
+	CreateUniformBuffer(
+		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		sizeof(uboDefferedDebugOptions),
+		uniformData.defferedDebugOption,
+		&uboDefferedDebugOptions);
+
+
 	// Init some values
 	m_uboVS.instancePos[0] = glm::vec4(0.0f);
 	m_uboVS.instancePos[1] = glm::vec4(-4.0f, 0.0, -4.0f, 0.0f);
@@ -1731,6 +1931,7 @@ void Renderer::PrepareUniformBuffers()
 	UpdateUniformBuffers();
 	UpdateQuadUniformData();
 	UpdateUniformBuffersLights();
+	UpdateDefferedDebugUniformData();
 }
 
 void Renderer::PrepareVertices(bool useStagingBuffers)
@@ -1799,82 +2000,98 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 			frameBuffersSSAO.ssao.attachement.view,
 			VK_IMAGE_LAYOUT_GENERAL);
 
+	VkDescriptorImageInfo ssaoBlurImage =
+		VkTools::Initializer::DescriptorImageInfo(
+			colorSampler,
+			frameBuffersSSAO.ssaoBlur.attachement.view,
+			VK_IMAGE_LAYOUT_GENERAL);
+
+
 
 	// Debug Descriptor
-	VkDescriptorSetAllocateInfo quadDebugallocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &quadDescriptorSetLayout, 1);
-	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &quadDebugallocInfo, &quadDescriptorSet));
-	std::vector<VkWriteDescriptorSet> quadWriteDescriptorSets =
 	{
-		// Binding 0 : Vertex shader uniform buffer
-		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.quad.descriptor),
+		VkDescriptorSetAllocateInfo quadDebugallocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &quadDescriptorSetLayout, 1);
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &quadDebugallocInfo, &quadDescriptorSet));
+		std::vector<VkWriteDescriptorSet> quadWriteDescriptorSets =
+		{
+			// Binding 0 : Vertex shader uniform buffer
+			VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.quad.descriptor),
 
-		// Binding 1: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &PositionImage),
+			// Binding 1: Image descriptor
+			VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &PositionImage),
 
-		// Binding 2: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &SpecularImage),
+			// Binding 2: Image descriptor
+			VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &SpecularImage),
 
-		// Binding 3: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &GBufferNM),
+			// Binding 3: Image descriptor
+			VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &GBufferNM),
 
-		//Binding 4: SSAO image
-		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,4, &ssaoImage),
+			//Binding 4: SSAO image
+			VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,4, &ssaoImage),
 
-		//Normal depth
-		VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 5, &modelNormal)
+			//Normal depth
+			VkTools::Initializer::WriteDescriptorSet(quadDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 5, &modelNormal)
 
-	};
-	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, quadWriteDescriptorSets.size(), quadWriteDescriptorSets.data(), 0, NULL);
+		};
+		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, quadWriteDescriptorSets.size(), quadWriteDescriptorSets.data(), 0, NULL);
+	}
 
 	// FullScreen Descriptor
-	VkDescriptorSetAllocateInfo allocInfoFullScreen = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &descriptorSetLayout, 1);
-	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfoFullScreen, &defferedModelDescriptorSet));
-	std::vector<VkWriteDescriptorSet> defferedWriteModelDescriptorSet =
 	{
-		// Binding 0 : Vertex shader uniform buffer
-		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0, &uniformData.vsFullScreen.descriptor),
+		VkDescriptorSetAllocateInfo allocInfoFullScreen = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &descriptorSetLayout, 1);
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &allocInfoFullScreen, &defferedModelDescriptorSet));
+		std::vector<VkWriteDescriptorSet> defferedWriteModelDescriptorSet =
+		{
+			// Binding 1: Image descriptor
+			VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &PositionImage),
 
-		// Binding 1: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &PositionImage),
+			// Binding 2: Image descriptor
+			VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &SpecularImage),
 
-		// Binding 2: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &SpecularImage),
+			// Binding 3: Image descriptor
+			VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &GBufferNM),
 
-		// Binding 3: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &GBufferNM),
+			//Binding 4: Image descriptor
+			VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,4, &ssaoBlurImage),
 
-		//Binding 4: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,4, &ssaoImage),
+			//Binding 5: Image descriptor
+			VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,5, &ssaoImage),
 
-		//Binding 4
-		VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5, &uniformData.fsLights.descriptor),
-	};
-	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, defferedWriteModelDescriptorSet.size(), defferedWriteModelDescriptorSet.data(), 0, NULL);
+			//Binding 6
+			VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 6, &uniformData.fsLights.descriptor),
+
+			//Binding 7
+			VkTools::Initializer::WriteDescriptorSet(defferedModelDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 7, &uniformData.defferedDebugOption.descriptor),
+		};
+		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, defferedWriteModelDescriptorSet.size(), defferedWriteModelDescriptorSet.data(), 0, NULL);
+	}
 
 	//Noise generated texture 
 	VkDescriptorImageInfo noiseImage = VkTools::Initializer::DescriptorImageInfo(m_NoiseGeneratedTexture.sampler, m_NoiseGeneratedTexture.view, VK_IMAGE_LAYOUT_GENERAL);
 
 	//SSAO descriptors
-	VkDescriptorSetAllocateInfo ssaoallocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &ssaoDescriptorSetLayout, 1);
-	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &ssaoallocInfo, &ssaoDescriptorSet));
-	std::vector<VkWriteDescriptorSet> ssaoWriteModelDescriptorSet =
 	{
-		// Binding 1: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &PositionImage),
+		VkDescriptorSetAllocateInfo ssaoallocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &ssaoDescriptorSetLayout, 1);
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &ssaoallocInfo, &ssaoDescriptorSet));
+		std::vector<VkWriteDescriptorSet> ssaoWriteModelDescriptorSet =
+		{
+			// Binding 1: Image descriptor
+			VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1, &PositionImage),
 
-		// Binding 2: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &modelNormal),
+			// Binding 2: Image descriptor
+			VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2, &modelNormal),
 
-		// Binding 3: Image descriptor
-		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &noiseImage),
+			// Binding 3: Image descriptor
+			VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,3, &noiseImage),
 
-		// Binding 4 : Fragment uniform buffer - Kernel
-		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4, &uniformData.ssaokernel.descriptor),
+			// Binding 4 : Fragment uniform buffer - Kernel
+			VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4, &uniformData.ssaokernel.descriptor),
 
-		// Binding 5 : Fragment uniform buffer - Projection
-		VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5, &uniformData.ssaoprojection.descriptor),
-	};
-	vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, ssaoWriteModelDescriptorSet.size(), ssaoWriteModelDescriptorSet.data(), 0, NULL);
+			// Binding 5 : Fragment uniform buffer - Projection
+			VkTools::Initializer::WriteDescriptorSet(ssaoDescriptorSet,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5, &uniformData.ssaoprojection.descriptor),
+		};
+		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, ssaoWriteModelDescriptorSet.size(), ssaoWriteModelDescriptorSet.data(), 0, NULL);
+	}
 
 
 	//Debug Normal
@@ -1885,9 +2102,23 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 		{
 			// Binding 0
 			VkTools::Initializer::WriteDescriptorSet(debugNormalDescriptor,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformData.mesh.descriptor),
+			
 		};
 		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, debugNormalWriteModelDescriptorSet.size(), debugNormalWriteModelDescriptorSet.data(), 0, NULL);
 	}
+
+	//SSAO Blur
+	{
+		VkDescriptorSetAllocateInfo debugNormalllocInfo = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &blurDescriptorSetLayout, 1);
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_pWRenderer->m_SwapChain.device, &debugNormalllocInfo, &blurDescriptorSet));
+		std::vector<VkWriteDescriptorSet> blurWriteModelDescriptorSet =
+		{
+			// Binding 0
+			VkTools::Initializer::WriteDescriptorSet(blurDescriptorSet,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &ssaoImage),
+		};
+		vkUpdateDescriptorSets(m_pWRenderer->m_SwapChain.device, blurWriteModelDescriptorSet.size(), blurWriteModelDescriptorSet.data(), 0, NULL);
+	}
+
 
 	VkDescriptorSetAllocateInfo allocInfoMRT = VkTools::Initializer::DescriptorSetAllocateInfo(m_pWRenderer->m_DescriptorPool, &frameBufferDescriptorSetLayout, 1);
 	for (uint32_t i = 0; i < staticModel.m_Entries.size(); i++)
@@ -2058,7 +2289,7 @@ void Renderer::PreparePipeline()
 
 
 	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
-	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/DefferedModel.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/Fullscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/DefferedModel.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
 
@@ -2068,10 +2299,18 @@ void Renderer::PreparePipeline()
 			m_pWRenderer->m_RenderPass,
 			0);
 
+	//Empty input
+	VkPipelineVertexInputStateCreateInfo emptyInputState{};
+	emptyInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	emptyInputState.vertexAttributeDescriptionCount = 0;
+	emptyInputState.pVertexAttributeDescriptions = nullptr;
+	emptyInputState.vertexBindingDescriptionCount = 0;
+	emptyInputState.pVertexBindingDescriptions = nullptr;
+
+
 	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 	pipelineCreateInfo.pStages = shaderStages.data();
-	//pipelineCreateInfo.pVertexInputState = &quadMesh.vertex.inputState;  wrong
-	pipelineCreateInfo.pVertexInputState = &listLocalBuffersVerts[0].inputState;
+	pipelineCreateInfo.pVertexInputState = &emptyInputState;
 
 	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
 	pipelineCreateInfo.pRasterizationState = &rasterizationState;
@@ -2086,11 +2325,13 @@ void Renderer::PreparePipeline()
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &pipeline));
 
 	//Debug Quad Pipeline
-	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/DebugQuad.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/DebugQuad.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-	pipelineCreateInfo.layout = quadPipelineLayout;
-	pipelineCreateInfo.pVertexInputState = &quadMesh.vertex.inputState;
-	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &quadPipeline));
+	{
+		shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/DebugQuad.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/DebugQuad.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		pipelineCreateInfo.layout = quadPipelineLayout;
+		pipelineCreateInfo.pVertexInputState = &quadMesh.vertex.inputState;
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &quadPipeline));
+	}
 
 
 	//Debug Normals Pipeline
@@ -2111,43 +2352,50 @@ void Renderer::PreparePipeline()
 	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 	pipelineCreateInfo.pStages = shaderStages.data();
 
+	//Blur pipeline. Use same renderpass as SSAO
+	{
+		shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/Fullscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/Blur.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		pipelineCreateInfo.pVertexInputState = &emptyInputState;
+		pipelineCreateInfo.renderPass = frameBuffersSSAO.ssaoBlur.renderPass;
+		pipelineCreateInfo.layout = blurPipelineLayout;
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &blurPipeline));
+	}
+
 	//SSAO Pipeline
 	//Seperate render pass for ssao
-	VkPipelineVertexInputStateCreateInfo emptyInputState{};
-	emptyInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	emptyInputState.vertexAttributeDescriptionCount = 0;
-	emptyInputState.pVertexAttributeDescriptions = nullptr;
-	emptyInputState.vertexBindingDescriptionCount = 0;
-	emptyInputState.pVertexBindingDescriptions = nullptr;
-
-	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/SSAO.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/SSAO.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-	pipelineCreateInfo.pVertexInputState = &emptyInputState;
-	pipelineCreateInfo.layout = ssaoPipelineLayout;
-	pipelineCreateInfo.renderPass = frameBuffersSSAO.ssao.renderPass;
-	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &ssaoPipeline));
+	{
+		shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/Fullscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/SSAO.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		pipelineCreateInfo.pVertexInputState = &emptyInputState;
+		pipelineCreateInfo.layout = ssaoPipelineLayout;
+		pipelineCreateInfo.renderPass = frameBuffersSSAO.ssao.renderPass;
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &ssaoPipeline));
+	}
 
 
 	//G-Buffer
-	shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/DefferedMRT.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/DefferedMRT.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-	pipelineCreateInfo.renderPass = offScreenFrameBuf.renderPass;
-	pipelineCreateInfo.layout = frameBufferPipelineLayout;
-
-	// Blend attachment states required for all color attachments
-	// This is important, as color write mask will otherwise be 0x0 and you
-	// won't see anything rendered to the attachment
-	std::array<VkPipelineColorBlendAttachmentState, 4> blendAttachmentStates =
 	{
-		VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
-		VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
-		VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
-		VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE)
-	};
-	colorBlendState.attachmentCount = static_cast<uint32_t>(blendAttachmentStates.size());
-	colorBlendState.pAttachments = blendAttachmentStates.data();
-	pipelineCreateInfo.pVertexInputState = &listLocalBuffersVerts[0].inputState;
-	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &frameBufferPipeline));
+		shaderStages[0] = LoadShader(GetAssetPath() + "Shaders/SSAO/DefferedMRT.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		shaderStages[1] = LoadShader(GetAssetPath() + "Shaders/SSAO/DefferedMRT.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		pipelineCreateInfo.renderPass = offScreenFrameBuf.renderPass;
+		pipelineCreateInfo.layout = frameBufferPipelineLayout;
+
+		// Blend attachment states required for all color attachments
+		// This is important, as color write mask will otherwise be 0x0 and you
+		// won't see anything rendered to the attachment
+		std::array<VkPipelineColorBlendAttachmentState, 4> blendAttachmentStates =
+		{
+			VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
+			VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
+			VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
+			VkTools::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE)
+		};
+		colorBlendState.attachmentCount = static_cast<uint32_t>(blendAttachmentStates.size());
+		colorBlendState.pAttachments = blendAttachmentStates.data();
+		pipelineCreateInfo.pVertexInputState = &listLocalBuffersVerts[0].inputState;
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_pWRenderer->m_SwapChain.device, m_pWRenderer->m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &frameBufferPipeline));
+	}
 }
 
 
@@ -2164,22 +2412,28 @@ void Renderer::SetupDescriptorSetLayout()
 		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings =
 		{
 			// Binding 0 : Vertex shader uniform buffer
-			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,0),
+			//VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,0),
 
 			// Binding 1 : Fragment shader image sampler
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,1),
 
-			// Binding 1 : Fragment shader image sampler
+			// Binding 2 : Fragment shader image sampler
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,2),
 
-			// Binding 2 : Fragment shader image sampler
+			// Binding 3 : Fragment shader image sampler
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,3),
 
-			// Binding 3 : Fragment shader image sampler
+			// Binding 4 : Fragment shader image sampler
 			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,4),
 
-			// Binding 4 : Fragment shader uniform buffer
-			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT,5),
+			//Binding 5
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,5),
+
+			// Binding 6 : Fragment shader uniform buffer
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT,6),
+
+			// Binding 7 : Fragment shader uniform buffer
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_FRAGMENT_BIT,7)
 		};
 
 		VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());
@@ -2285,6 +2539,20 @@ void Renderer::SetupDescriptorSetLayout()
 		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkTools::Initializer::PipelineLayoutCreateInfo(&ssaoDescriptorSetLayout, 1);
 		VK_CHECK_RESULT(vkCreatePipelineLayout(m_pWRenderer->m_SwapChain.device, &pPipelineLayoutCreateInfo, nullptr, &ssaoPipelineLayout));
 	}
+
+	//Blur
+	{
+		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings =
+		{
+			// Binding 1 : Fragment shader image sampler
+			VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,VK_SHADER_STAGE_FRAGMENT_BIT,1),
+		};
+		VkDescriptorSetLayoutCreateInfo descriptorLayout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings.data(), setLayoutBindings.size());
+		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_pWRenderer->m_SwapChain.device, &descriptorLayout, nullptr, &blurDescriptorSetLayout));
+
+		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = VkTools::Initializer::PipelineLayoutCreateInfo(&blurDescriptorSetLayout, 1);
+		VK_CHECK_RESULT(vkCreatePipelineLayout(m_pWRenderer->m_SwapChain.device, &pPipelineLayoutCreateInfo, nullptr, &blurPipelineLayout));
+	}
 }
 
 void Renderer::SetupDescriptorPool()
@@ -2353,9 +2621,15 @@ void Renderer::StartFrame()
 		submitInfo.pCommandBuffers = &ssaoCmdBuffer;
 		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
 
-		//Start Main Pass (Combines all images and does calculation for all lights)
+		//Start Blur pass
 		submitInfo.pWaitSemaphores = &Semaphores.ssaoSemaphore;
-		//submitInfo.pWaitSemaphores = &Semaphores.defferedSemaphore;
+		submitInfo.pSignalSemaphores = &Semaphores.blurSemaphore;
+		submitInfo.pCommandBuffers = &blurCmdBuffer;
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+
+		//Start Main Pass (Combines all images and does calculation for all lights)
+		submitInfo.pWaitSemaphores = &Semaphores.blurSemaphore;
 		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
 		submitInfo.pCommandBuffers = &m_pWRenderer->m_DrawCmdBuffers[m_pWRenderer->m_currentBuffer];
 		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));

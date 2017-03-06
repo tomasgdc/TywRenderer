@@ -303,7 +303,9 @@ VkCommandBufferBeginInfo VkTools::Initializer::CommandBufferBeginInfo()
 {
 	VkCommandBufferBeginInfo cmdBufferBeginInfo = {};
 	cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdBufferBeginInfo.pNext = NULL;
+	cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+	cmdBufferBeginInfo.pNext = nullptr;
+	cmdBufferBeginInfo.pInheritanceInfo = nullptr;
 	return cmdBufferBeginInfo;
 }
 

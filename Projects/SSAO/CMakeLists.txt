@@ -16,16 +16,16 @@ SOURCE_GROUP("Source Files" FILES ${SOURCES})
 
 SET(RESOURCES
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DefferedModel.frag"
-	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DefferedModel.vert"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DefferedMRT.frag"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DefferedMRT.vert"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DebugQuad.frag"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DebugQuad.vert"
-	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/SSAO.vert"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/SSAO.frag"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DebugNormals.geom"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DebugNormals.vert"
 	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/DebugNormals.frag"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/Fullscreen.vert"
+	"${CMAKE_SOURCE_DIR}/Assets/Shaders/SSAO/Blur.frag"
 )
 SOURCE_GROUP("Shader Files" FILES ${RESOURCES})
 

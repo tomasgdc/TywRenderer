@@ -17,15 +17,25 @@ struct Light
 layout (binding = 1) uniform   sampler2D  PositionTexture;
 layout (binding = 2) uniform   sampler2D  SpecularTexture;
 layout (binding = 3) uniform   usampler2D  DiffuseNormalAndDepthPacked;
-layout (binding = 4) uniform   sampler2D   ssaoImage; 
+layout (binding = 4) uniform   sampler2D   ssaoBlurImage; 
+layout (binding = 5) uniform   sampler2D   ssaoImage; 
 
-layout (binding = 5) uniform UBO 
+layout (binding = 6) uniform UBO 
 {
 	Light lights[17];
 	vec4 viewPos;
 	float fScreenGamma;
-	bool  bSSAOFrameBufferDebugOn;
 } ubo;
+
+
+layout (binding = 7) uniform UBODebug
+{
+	uint  bSSAOIsOn;
+	uint  bShowBlurSSAO;
+	uint  bShowSSAO;
+	uint  bShowDefuseOnly;
+	uint  bShowDefuseAndSSAO;
+}uboDebugOption;
 
 
 layout (location = 0) out vec4 outFragColor;
@@ -52,11 +62,23 @@ vec3 DefferedPass()
 	vec3 specularTexture = texture(SpecularTexture, inUV).rgb;
 
 	// Ambient part
-	float AmbientOcclusion = texture(ssaoImage, inUV).r;
+	float AmbientOcclusion = texture(ssaoBlurImage, inUV).r;
 
-	vec3 ambient = vec3(0.3 * diffuseTexture * AmbientOcclusion);
-	vec3 lighting  = ambient;
 
+	//Using ssao only in initialization stepped. Gennerated much brighter look;
+	//What we want. Is to use SSAO Diffuse Texture Combination (diffuse with shadows) in diffuse calculation part if SSAO Is On
+	//If it is off. We just use diffuse texture.
+	vec3 ambient;
+	if(uboDebugOption.bSSAOIsOn == 1)
+	{
+		ambient = vec3(diffuseTexture * AmbientOcclusion);
+	}
+	else
+	{
+		ambient = diffuseTexture;
+	}
+
+	vec3 lighting  = vec3(0.0);
 	for(int i = 0; i < lightCount; ++i)
 	{
 		// Vector to light
@@ -79,7 +101,7 @@ vec3 DefferedPass()
 
 			// Diffuse part
 			float NdotL = max(0.0, dot(normalTexture, L));
-			vec3 diff = ubo.lights[i].color * diffuseTexture.rgb * NdotL * atten;
+			vec3 diff = ubo.lights[i].color * ambient * NdotL * atten;
 
 
 			// calculate specular reflection only if
@@ -104,10 +126,43 @@ vec3 DefferedPass()
 
 void main() 
  {
-	if(ubo.bSSAOFrameBufferDebugOn)
+	if(uboDebugOption.bShowBlurSSAO == 1)
+	{
+		float ssaoTexture = texture(ssaoBlurImage, inUV).r;
+		outFragColor = vec4(ssaoTexture);
+	}
+	else if(uboDebugOption.bShowSSAO == 1)
 	{
 		float ssaoTexture = texture(ssaoImage, inUV).r;
 		outFragColor = vec4(ssaoTexture);
+	}
+	else if(uboDebugOption.bShowDefuseOnly == 1)
+	{
+		ivec2 P0 = ivec2(inUV * textureSize(DiffuseNormalAndDepthPacked, 0));
+		uvec4 uvec4_DiffuseNormalAndDepthPacked = texelFetch(DiffuseNormalAndDepthPacked, P0, 0);
+
+		//Get Diffuse
+		vec2 tempDiffuse0 = unpackHalf2x16(uvec4_DiffuseNormalAndDepthPacked.x);
+		vec2 tempDiffAndNormal = unpackHalf2x16(uvec4_DiffuseNormalAndDepthPacked.y);
+		vec3 diffuseTexture = vec3(tempDiffuse0, tempDiffAndNormal.x);
+
+		outFragColor = vec4(diffuseTexture, 1.0);
+	}
+	else if(uboDebugOption.bShowDefuseAndSSAO == 1)
+	{
+		ivec2 P0 = ivec2(inUV * textureSize(DiffuseNormalAndDepthPacked, 0));
+		uvec4 uvec4_DiffuseNormalAndDepthPacked = texelFetch(DiffuseNormalAndDepthPacked, P0, 0);
+
+		//Get Diffuse
+		vec2 tempDiffuse0 = unpackHalf2x16(uvec4_DiffuseNormalAndDepthPacked.x);
+		vec2 tempDiffAndNormal = unpackHalf2x16(uvec4_DiffuseNormalAndDepthPacked.y);
+		vec3 diffuseTexture = vec3(tempDiffuse0, tempDiffAndNormal.x);
+
+		// Ambient part
+		float AmbientOcclusion = texture(ssaoBlurImage, inUV).r;
+
+		vec3 ambient = vec3(diffuseTexture * AmbientOcclusion);
+		outFragColor = vec4(ambient, 1.0);
 	}
 	else
 	{
