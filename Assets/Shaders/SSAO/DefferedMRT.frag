@@ -42,7 +42,7 @@ float color2float(vec3 color)
     return floor(color.r * c_precision + 0.5) 
         + floor(color.b * c_precision + 0.5) * c_precisionp1
         + floor(color.g * c_precision + 0.5) * c_precisionp1 * c_precisionp1;
-}
+} 
  
 const float NEAR_PLANE = 0.1f; //todo: specialization const
 const float FAR_PLANE = 256.0f; //todo: specialization const 

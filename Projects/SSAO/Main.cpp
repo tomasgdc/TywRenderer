@@ -301,6 +301,7 @@ private:
 	{
 		std::array<glm::vec4, 64> ssaoKernel;
 		float ssaoRadius;
+		float ssaoBias;
 		int   kernelSize;
 	}uboSSAOKernel;
 
@@ -434,6 +435,7 @@ Renderer::Renderer() :m_bViewUpdated(false)
 
 	uboSSAOKernel.kernelSize = uboSSAOKernel.ssaoKernel.size();
 	uboSSAOKernel.ssaoRadius = 1.0f;
+	uboSSAOKernel.ssaoBias = 0.270f;
 
 	uboFragmentLights.fScreenGamma = 1.0f;
 }
@@ -583,13 +585,14 @@ void Renderer::PrepareSemaphore()
 void Renderer::ImguiRender()
 {
 	//Indicates if framebufffers was rebuilt
-	static bool bTurnOnSSAO, 
+	static bool bTurnOnSSAO,
 		bPressedSSAOWithBlur,
 		bPressedSSAO,
-		bPressedDebugFrameBuffers, 
-		bPressedbNormalDebug, 
+		bPressedDebugFrameBuffers,
+		bPressedbNormalDebug,
 		bSSAOKernelSize,
 		bSSAOKernelRadius,
+		bSSAOBias,
 		bDebugDiffuse,
 		bDebugDiffuseAndSSAO;
 
@@ -598,6 +601,7 @@ void Renderer::ImguiRender()
 
 	bSSAOKernelSize = ImGui::DragInt("SSAO Kernel Size", &uboSSAOKernel.kernelSize, 0.0f, 0, 64, "%.0f");
 	bSSAOKernelRadius = ImGui::DragFloat("SSAO Radius", &uboSSAOKernel.ssaoRadius, 0.0f, 0, 64, "%.3f");
+	bSSAOBias = ImGui::DragFloat("SSAO Bias", &uboSSAOKernel.ssaoBias, 0.0f, 0, 3, "%.3f");
 	ImGui::DragFloat("Screen Gamma ", &uboFragmentLights.fScreenGamma, 0.0f, 0.0f, 2.4f, "%.3f");
 
 	bTurnOnSSAO = ImGui::Checkbox("SSAO (On/Off)", &imguiData.bSSAOIsOn);
@@ -634,7 +638,7 @@ void Renderer::ImguiRender()
 		BuildCommandBuffers();
 	}
 
-	if (bSSAOKernelSize || bSSAOKernelRadius)
+	if (bSSAOKernelSize || bSSAOKernelRadius || bSSAOBias)
 	{
 		void * pData;
 		VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformData.ssaokernel.memory, 0, sizeof(uboSSAOKernel), 0, (void **)&pData));

@@ -23,6 +23,7 @@ layout (std140 , binding = 4) uniform UBOSSAOKernel
 {
 	vec4 samples[64];
 	float ssaoRadius;
+	float ssaoBias;
 	int	  ssao_kernel_size;
 } ubossaokernel;
 
@@ -86,6 +87,7 @@ float SSAOAlgo0()
     float f_occlusion = 0.0f;
 	int kernelSize = ubossaokernel.ssao_kernel_size;
 	float ssaoRadius = ubossaokernel.ssaoRadius;
+	float ssaoBias = ubossaokernel.ssaoBias;
 
     for(int i = 0; i < kernelSize; ++i)
     {
@@ -109,9 +111,9 @@ float SSAOAlgo0()
         // range check & accumulate
 #ifdef  RANGE_CHECK
 			float rangeCheck = smoothstep(0.0f, 1.0f, ssaoRadius / abs(fragPos.z - sampleDepth ));
-			f_occlusion += (sampleDepth >= Sample.z ? 1.0f : 0.0f) * rangeCheck;
+			f_occlusion += (sampleDepth >= Sample.z + ssaoBias ? 1.0f : 0.0f) * rangeCheck;
 #else
-			f_occlusion += (sampleDepth >= Sample.z ? 1.0f : 0.0f);  
+			f_occlusion += (sampleDepth >= Sample.z + ssaoBias ? 1.0f : 0.0f);  
 #endif
     }
     f_occlusion = 1.0f - (f_occlusion / float(kernelSize));
