@@ -8,7 +8,8 @@ Vulkan Renderer. Work in progress. All testing was done on (AMD R9 480)
 
 #How to Build
 Currently works only under windows.
-Run .bat file which will build vs2015 solution
+Run .bat file which will build vs2015 solution.
+Works with Visual Studio 2017 version as well.
 
 In order to get working. You need to have working Vulkan driver and Vulkan SDK that you can download from LunarG site
 - LunarG Vulkan SDK - https://lunarg.com/
