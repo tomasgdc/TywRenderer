@@ -57,14 +57,57 @@ float rand(vec2 co){
 }
 
 
+// Function for converting depth to view-space position
+// in deferred pixel shader pass.  vTexCoord is a texture
+// coordinate for a full-screen quad, such that x=0 is the
+// left of the screen, and y=0 is the top of the screen.
+vec3 VSPositionFromDepth(vec2 vTexCoord)
+{
+    // Get the depth value for this pixel
+    //float z = texture(Position, vTexCoord).a;  
+
+    // Get x/w and y/w from the viewport position
+    //float x = vTexCoord.x * 2 - 1;
+    //float y = (1 - vTexCoord.y) * 2 - 1;
+    //vec4 vProjectedPos = vec4(x, y, z, 1.0f);
+
+    // Transform by the inverse projection matrix
+    //vec4 vPositionVS = inverse(ubo.projection) * vProjectedPos; 
+	 
+    // Divide by w to get the view-space position
+    //return vPositionVS.xyz / vPositionVS.w;
+	
+	//NEW TECHNIQUE
+	float z = texture(Position, vTexCoord).w;
+	z = z - 1.0;
+	  
+	vec4 clipSpacePosition = vec4(vTexCoord - 1.0, z, 1.0);
+	vec4 viewSpacePosition = inverse(ubo.projection) * clipSpacePosition;
+	  
+	//Perspective division
+	viewSpacePosition /= viewSpacePosition.w;
+	
+	//vec4 worldSpacePosition = inverse(ubo.view) * viewSpacePosition;
+    return viewSpacePosition.xyz;  
+}
+
+    
+
+    
+
+
+
+
 
 float SSAOAlgo0()
 {
 	vec4 normalDepthTexture = texture(NormalDepth, inUV, 0);
-	vec3 fragPos = texture(Position, inUV, 0).xyz;
+	//vec3 fragPos = texture(Position, inUV, 0).xyz;
+
+	vec3 fragPos = VSPositionFromDepth(inUV);
 
 	//Convert frag pos to view space
-	fragPos = vec3(ubo.view * vec4(fragPos, 1.0f));
+	//fragPos = vec3(ubo.view * vec4(fragPos, 1.0f));
 	//fragPos.y = -fragPos.y;
 
 

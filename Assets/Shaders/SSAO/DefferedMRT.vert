@@ -26,7 +26,7 @@ layout (binding = 0) uniform UBO
 layout(location = 5) out struct
 {
 	mat3 TBN;
-	vec3 ws_coords;
+	vec3 posWorld;
 	vec3 normal;
 	vec2 depth;
     vec2 texcoord;
@@ -38,7 +38,7 @@ void main()
 {
 	vec4 tmpPos = vec4(inPos,1.0);
 	mat4 mvMatrix  = ubo.viewMatrix * ubo.modelMatrix;
-	
+	mat4 mWorldViewProj = ubo.projectionMatrix *  mvMatrix;
 	
 	//Calculate TBN
 	mat3 mNormal = transpose(inverse(mat3(ubo.modelMatrix)));
@@ -48,20 +48,22 @@ void main()
 	vs_out.TBN = mat3(T, B, N);
 	
 	// Vertex position in world space
-	vs_out.ws_coords =  vec3(ubo.modelMatrix * tmpPos);
+	vs_out.posWorld =  vec3(ubo.modelMatrix * tmpPos);
+
+	//texture coordinates
+	vs_out.texcoord = inUv;
 
 	// GL to Vulkan coord space
 	//vs_out.ws_coords.y = -vs_out.ws_coords.y;
-	vs_out.texcoord = inUv;
-
+	
 	//Face normal map
 	mat3 normalMatrix = transpose(inverse(mat3(mvMatrix)));
 	vs_out.normal = normalize(normalMatrix * inNormal);
-	//vs_out.normal.y = -vs_out.normal.y;
 
 	//Depth reconstruction
-	vec4 worldViewPosition = mvMatrix * tmpPos;
+	vec4 worldViewPosition = mWorldViewProj * tmpPos;
 	vs_out.depth = worldViewPosition.zw;
 
-	gl_Position = ubo.projectionMatrix *  mvMatrix * tmpPos;
+	//final vertex shader output
+	gl_Position = worldViewPosition;
 }

@@ -43,8 +43,8 @@
 #	define TYW_NEW new
 #endif
 
-#define TYW_MACRO_BLOCK_BEGIN for(;;) {
-#define TYW_MACRO_BLOCK_END break; }
+#define VKFX_MACRO_BLOCK_BEGIN for(;;) {
+#define VKFX_MACRO_BLOCK_END break; }
 
 #define TEXTURE_LOCATION	"bin/Data/textures/"
 #define GEOMETRY_LOCATION	"bin/Data/geometry/"

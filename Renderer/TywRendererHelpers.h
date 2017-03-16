@@ -1,3 +1,8 @@
+/*
+*	Copyright 2015-2016 Tomas Mikalauskas. All rights reserved.
+*	GitHub repository - https://github.com/TywyllSoftware/TywRenderer
+*	This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
+*/
 #pragma once
 #include <RendererPch\macro.h>
 
@@ -5,7 +10,7 @@
 #include <cstdint> //http://en.cppreference.com/w/cpp/header/cstdint
 
 
-namespace tywrnd
+namespace vkfx
 {
 	/*
 		
@@ -19,14 +24,14 @@ namespace tywrnd
 }
 
 
-#define TYW_TRACE _TYW_TRACE
-#define _TYW_TRACE(_format, ...) \
-				TYW_MACRO_BLOCK_BEGIN \
-					tywrnd::log(__FILE__, uint16_t(__LINE__), "TywRenderer " _format "\n", ##__VA_ARGS__); \
-				TYW_MACRO_BLOCK_END
+#define VKFX_TRACE _VKFX_TRACE
+#define _VKFX_TRACE(_format, ...) \
+				VKFX_MACRO_BLOCK_BEGIN \
+					vkfx::log(__FILE__, uint16_t(__LINE__), "vkfx " _format "\n", ##__VA_ARGS__); \
+				VKFX_MACRO_BLOCK_END
 
 
-namespace tywrnd
+namespace vkfx
 {
 	/*
 

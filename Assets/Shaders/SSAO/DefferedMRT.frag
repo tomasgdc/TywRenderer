@@ -7,7 +7,7 @@
 layout(location = 5) in struct
 {
 	mat3 TBN;
-	vec3 ws_coords;
+	vec3 posWorld;
 	vec3 normal;
 	vec2 depth;
     vec2 texcoord;
@@ -73,7 +73,10 @@ void main()
 	//Normal
 	outvec1.z = packHalf2x16(normalTexture.yz);
 
-	outPosition = vec4(fs_in.ws_coords, LinearizeDepth(gl_FragCoord.z));
+
+	//outPosition = vec4(fs_in.posWorld, fs_in.depth.x / gl_FragCoord.y);
+	outPosition = vec4(fs_in.posWorld, gl_FragCoord.z);
+
     outSpecular = vec4(specularTexture, 1.0);
     outNormalDiffuse = outvec1;
 
