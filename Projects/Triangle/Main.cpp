@@ -144,6 +144,8 @@ private:
 		glm::mat4 modelMatrix;
 		glm::mat4 viewMatrix;
 	} uboVS;
+
+	vkfx::UniformDataHandle uboHandle;
 public:
 	Renderer();
 	~Renderer();
@@ -188,7 +190,13 @@ void Renderer::SetupDescriptorPool()
 
 void Renderer::SetupDescriptorSetLayout()
 {
+	std::vector<vkfx::DescriptorSetLayoutBindingHandle> setLayoutBindings =
+	{
+		vkfx::CreateDescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,VK_SHADER_STAGE_VERTEX_BIT,1),
+	};
 
+	vkfx::DescriptorSetLayoutHandle descriptorLayoutHandle = vkfx::CreateDescriptorSetLayout(setLayoutBindings.data(), setLayoutBindings.size());
+	vkfx::PipelineLayoutHandle pipelineLayoutHandle = vkfx::CreatePipelineLayout(descriptorLayoutHandle);
 }
 
 
@@ -246,17 +254,13 @@ void Renderer::UpdateUniformBuffers()
 	uboVS.modelMatrix = glm::rotate(uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
 	uboVS.modelMatrix = glm::rotate(uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
-	// Map uniform buffer and update it
-	uint8_t *pData;
-	VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory, 0, sizeof(uboVS), 0, (void **)&pData));
-	memcpy(pData, &uboVS, sizeof(uboVS));
-	vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory);
+
+	vkfx::UpdateUniformBuffer(uboHandle, &uboVS, sizeof(uboVS));
 }
 
 void Renderer::PrepareUniformBuffers()
 {
-	vkfx::UniformDataHandle uboHandle = vkfx::CreateUniformBuffer(&uboVS, sizeof(uboVS));
-
+	uboHandle = vkfx::CreateUniformBuffer(&uboVS, sizeof(uboVS));
 	UpdateUniformBuffers();
 }
 
@@ -283,6 +287,31 @@ void Renderer::PrepareVertices(bool useStagingBuffers)
 	uint32_t indexBufferSize = indices.count * sizeof(uint32_t);
 
 
+	//Create stagging buffer for vertices
+	vkfx::BufferObjectHandle staggingVertexBuffer = vkfx::CreateBufferObject(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, sizeof(Vertex) * vertexBuffer.size(), vertexBuffer.data());
+
+	//Create Local Copy for vertices
+	vkfx::BufferObjectHandle  localVertexBuffer = vkfx::CreateBufferObject(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, sizeof(Vertex) * vertexBuffer.size(), vertexBuffer.data());
+
+	//Create stagging buffer for indices
+	vkfx::BufferObjectHandle staggingIndicesBuffer = vkfx::CreateBufferObject(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, sizeof(uint32_t) * indexBuffer.size(), indexBuffer.data());
+
+	//Create Local Copy for indices
+	vkfx::BufferObjectHandle  localIndicesBuffer = vkfx::CreateBufferObject(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, sizeof(uint32_t) * indexBuffer.size(), indexBuffer.data());
+
+	/*
+		Submitting vertices
+	*/
+	vkfx::SubmitBufferObject(staggingVertexBuffer, localVertexBuffer, sizeof(Vertex) * vertexBuffer.size());
+
+	/*
+		Submitting indices
+	*/
+	vkfx::SubmitBufferObject(staggingIndicesBuffer, localIndicesBuffer, sizeof(uint32_t) * indexBuffer.size());
 }
 
 void Renderer::StartFrame()

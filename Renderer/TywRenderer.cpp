@@ -1,5 +1,5 @@
 /*
-*	Copyright 2015-2016 Tomas Mikalauskas. All rights reserved.
+*	Copyright 2015-2017 Tomas Mikalauskas. All rights reserved.
 *	GitHub repository - https://github.com/TywyllSoftware/TywRenderer
 *	This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
 */
@@ -95,116 +95,37 @@ namespace vkfx
 		return VKFX_INVALID_HANDLE;
 	}
 }
+
+
 /*
-	Data structures
+===============================================================================================
+						Functions needed for DescriptorSetup
+===============================================================================================
 */
 namespace vkfx
 {
-	class VPipelineCreateInfo
+
+	DescriptorSetLayoutBindingHandle CreateDescriptorSetLayoutBinding(uint32_t type, uint32_t stageFlags, uint32_t binding)
 	{
-	public:
-		VPipelineCreateInfo(VkPipelineLayout layout,VkRenderPass renderPass,VkPipelineCreateFlags flags)
-		{
-			m_pipelineCreateInfo = VkTools::Initializer::PipelineCreateInfo(layout, renderPass, flags);
-		}
+		return VKFX_INVALID_HANDLE;
+	}
 
-		void PipelineInputAssemblyStateCreateInfo(
-			VkPrimitiveTopology topology,
-			VkPipelineInputAssemblyStateCreateFlags flags,
-			VkBool32 primitiveRestartEnable)
-		{
-			m_pipelineCreateInfo.pInputAssemblyState = &(VkTools::Initializer::PipelineInputAssemblyStateCreateInfo(topology, flags, primitiveRestartEnable));
-		}
-
-		void PipelineRasterizationStateCreateInfo(
-			VkPolygonMode polygonMode,
-			VkCullModeFlags cullMode,
-			VkFrontFace frontFace,
-			VkPipelineRasterizationStateCreateFlags flags)
-		{
-			m_pipelineCreateInfo.pRasterizationState = &(VkTools::Initializer::PipelineRasterizationStateCreateInfo(polygonMode, cullMode, frontFace, flags));
-		}
-
-		VkPipelineColorBlendAttachmentState PipelineColorBlendAttachmentState(
-			VkColorComponentFlags colorWriteMask,
-			VkBool32 blendEnable)
-		{
-			return VkTools::Initializer::PipelineColorBlendAttachmentState(colorWriteMask,blendEnable);
-		}
-
-		void PipelineColorBlendStateCreateInfo(
-			uint32_t attachmentCount,
-			const VkPipelineColorBlendAttachmentState * pAttachments)
-		{
-			m_pipelineCreateInfo.pColorBlendState = &(VkTools::Initializer::PipelineColorBlendStateCreateInfo(attachmentCount, pAttachments));
-		}
-
-		void PipelineDepthStencilStateCreateInfo(
-			VkBool32 depthTestEnable,
-			VkBool32 depthWriteEnable,
-			VkCompareOp depthCompareOp)
-		{
-			m_pipelineCreateInfo.pDepthStencilState = &(VkTools::Initializer::PipelineDepthStencilStateCreateInfo(depthTestEnable, depthWriteEnable, depthCompareOp));
-		}
-
-		void PipelineViewportStateCreateInfo(
-			uint32_t viewportCount,
-			uint32_t scissorCount,
-			VkPipelineViewportStateCreateFlags flags)
-		{
-			m_pipelineCreateInfo.pViewportState = &(VkTools::Initializer::PipelineViewportStateCreateInfo(viewportCount, scissorCount, flags));
-		}
-
-		void PipelineMultisampleStateCreateInfo(
-			VkSampleCountFlagBits rasterizationSamples,
-			VkPipelineMultisampleStateCreateFlags flags)
-		{
-			m_pipelineCreateInfo.pMultisampleState = &(VkTools::Initializer::PipelineMultisampleStateCreateInfo(rasterizationSamples, flags));
-		}
-
-		void PipelineDynamicStateCreateInfo(
-			const VkDynamicState * pDynamicStates,
-			uint32_t dynamicStateCount,
-			VkPipelineDynamicStateCreateFlags flags)
-		{
-			m_pipelineCreateInfo.pDynamicState =  &(VkTools::Initializer::PipelineDynamicStateCreateInfo(pDynamicStates,dynamicStateCount,flags));
-		}
-
-		inline void SetStagesCount(uint32_t iShaderStages)
-		{
-			m_pipelineCreateInfo.stageCount = iShaderStages;
-		}
-
-		inline void SetShaderStages(VkPipelineShaderStageCreateInfo* shaderStages)
-		{
-			m_pipelineCreateInfo.pStages = shaderStages;
-		}
-
-		inline void SetRenderPass(VkRenderPass renderPass)
-		{
-			m_pipelineCreateInfo.renderPass = renderPass;
-		}
-
-		void SetVertexInputState(VkPipelineVertexInputStateCreateInfo* inputState)
-		{
-			m_pipelineCreateInfo.pVertexInputState = inputState;
-		}
-
-	private:
-		VkGraphicsPipelineCreateInfo m_pipelineCreateInfo;
-	};
-
-
-	class VCommandBuffer
+	DescriptorSetLayoutHandle CreateDescriptorSetLayout(DescriptorSetLayoutBindingHandle* pData, uint64_t size)
 	{
-		VkCommandBuffer m_commandBuffer;
-	};
+		return VKFX_INVALID_HANDLE;
+	}
 
+
+	PipelineLayoutHandle CreatePipelineLayout(DescriptorSetLayoutHandle handle)
+	{
+		return VKFX_INVALID_HANDLE;
+	}
 }
 
-
 /*
-	Main commands
+===============================================================================================
+									Main commands
+===============================================================================================
 */
 namespace vkfx
 {
@@ -252,6 +173,25 @@ namespace vkfx
 		return VKFX_INVALID_HANDLE;
 	}
 
+	BufferObjectHandle CreateBufferObject(uint32_t usageFlags, uint32_t memoryPropertyFlags, uint64_t size, void * pData)
+	{
+		return VKFX_INVALID_HANDLE;
+	}
+
+
+	void UpdateUniformBuffer(UniformDataHandle handle, void * pData, uint64_t size)
+	{
+		//uint8_t *pData;
+		//VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory, 0, sizeof(uboVS), 0, (void **)&pData));
+		//memcpy(pData, &uboVS, sizeof(uboVS));
+		//vkUnmapMemory(g_pRenderer->m_SwapChain.device, uniformDataVS.memory);
+	}
+
+	void SubmitBufferObject(BufferObjectHandle stagingBuffer, BufferObjectHandle localBuffer, uint64_t size)
+	{
+
+	}
+
 
 	void submitCommandBuffer()
 	{
@@ -293,4 +233,114 @@ namespace vkfx
 	{
 		::memcpy(_dst, _src, _numBytes);
 	}
+}
+
+
+/*
+===============================================================================================
+									Data structures
+===============================================================================================
+*/
+namespace vkfx
+{
+	class VPipelineCreateInfo
+	{
+	public:
+		VPipelineCreateInfo(VkPipelineLayout layout, VkRenderPass renderPass, VkPipelineCreateFlags flags)
+		{
+			m_pipelineCreateInfo = VkTools::Initializer::PipelineCreateInfo(layout, renderPass, flags);
+		}
+
+		void PipelineInputAssemblyStateCreateInfo(
+			VkPrimitiveTopology topology,
+			VkPipelineInputAssemblyStateCreateFlags flags,
+			VkBool32 primitiveRestartEnable)
+		{
+			m_pipelineCreateInfo.pInputAssemblyState = &(VkTools::Initializer::PipelineInputAssemblyStateCreateInfo(topology, flags, primitiveRestartEnable));
+		}
+
+		void PipelineRasterizationStateCreateInfo(
+			VkPolygonMode polygonMode,
+			VkCullModeFlags cullMode,
+			VkFrontFace frontFace,
+			VkPipelineRasterizationStateCreateFlags flags)
+		{
+			m_pipelineCreateInfo.pRasterizationState = &(VkTools::Initializer::PipelineRasterizationStateCreateInfo(polygonMode, cullMode, frontFace, flags));
+		}
+
+		VkPipelineColorBlendAttachmentState PipelineColorBlendAttachmentState(
+			VkColorComponentFlags colorWriteMask,
+			VkBool32 blendEnable)
+		{
+			return VkTools::Initializer::PipelineColorBlendAttachmentState(colorWriteMask, blendEnable);
+		}
+
+		void PipelineColorBlendStateCreateInfo(
+			uint32_t attachmentCount,
+			const VkPipelineColorBlendAttachmentState * pAttachments)
+		{
+			m_pipelineCreateInfo.pColorBlendState = &(VkTools::Initializer::PipelineColorBlendStateCreateInfo(attachmentCount, pAttachments));
+		}
+
+		void PipelineDepthStencilStateCreateInfo(
+			VkBool32 depthTestEnable,
+			VkBool32 depthWriteEnable,
+			VkCompareOp depthCompareOp)
+		{
+			m_pipelineCreateInfo.pDepthStencilState = &(VkTools::Initializer::PipelineDepthStencilStateCreateInfo(depthTestEnable, depthWriteEnable, depthCompareOp));
+		}
+
+		void PipelineViewportStateCreateInfo(
+			uint32_t viewportCount,
+			uint32_t scissorCount,
+			VkPipelineViewportStateCreateFlags flags)
+		{
+			m_pipelineCreateInfo.pViewportState = &(VkTools::Initializer::PipelineViewportStateCreateInfo(viewportCount, scissorCount, flags));
+		}
+
+		void PipelineMultisampleStateCreateInfo(
+			VkSampleCountFlagBits rasterizationSamples,
+			VkPipelineMultisampleStateCreateFlags flags)
+		{
+			m_pipelineCreateInfo.pMultisampleState = &(VkTools::Initializer::PipelineMultisampleStateCreateInfo(rasterizationSamples, flags));
+		}
+
+		void PipelineDynamicStateCreateInfo(
+			const VkDynamicState * pDynamicStates,
+			uint32_t dynamicStateCount,
+			VkPipelineDynamicStateCreateFlags flags)
+		{
+			m_pipelineCreateInfo.pDynamicState = &(VkTools::Initializer::PipelineDynamicStateCreateInfo(pDynamicStates, dynamicStateCount, flags));
+		}
+
+		inline void SetStagesCount(uint32_t iShaderStages)
+		{
+			m_pipelineCreateInfo.stageCount = iShaderStages;
+		}
+
+		inline void SetShaderStages(VkPipelineShaderStageCreateInfo* shaderStages)
+		{
+			m_pipelineCreateInfo.pStages = shaderStages;
+		}
+
+		inline void SetRenderPass(VkRenderPass renderPass)
+		{
+			m_pipelineCreateInfo.renderPass = renderPass;
+		}
+
+		void SetVertexInputState(VkPipelineVertexInputStateCreateInfo* inputState)
+		{
+			m_pipelineCreateInfo.pVertexInputState = inputState;
+		}
+
+	private:
+		VkGraphicsPipelineCreateInfo m_pipelineCreateInfo;
+	};
+
+
+	class VCommandBuffer
+	{
+		VkCommandBuffer m_commandBuffer;
+	};
+
 }

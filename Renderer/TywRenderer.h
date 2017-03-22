@@ -39,6 +39,8 @@ namespace vkfx
 	VKFX_HANDLE(DescriptorSetHandle);
 	VKFX_HANDLE(DescriptorSetLayoutHandle);
 	VKFX_HANDLE(ShaderStageHandle);
+	VKFX_HANDLE(DescriptorSetLayoutBindingHandle);
+	VKFX_HANDLE(WriteDescriptorSetHandle);
 
 	/*
 	Used for storing data on gpu
@@ -140,6 +142,52 @@ namespace vkfx
 	ShaderStageHandle CreateShaderStageHandle(const std::string& fileName, uint32_t stage);
 }
 
+/*
+===============================================================================================
+					Functions needed for DescriptorSetup
+===============================================================================================
+*/
+namespace vkfx
+{
+	/*
+		@param: VkDescriptorType type 
+		@param: VkShaderStageFlags stageFlags
+		@param: uint32_t binding
+		@return DescriptorSetLayoutBindingHandle
+	*/
+	DescriptorSetLayoutBindingHandle CreateDescriptorSetLayoutBinding(uint32_t type, uint32_t stageFlags, uint32_t binding);
+
+	/*
+		@param: DescriptorSetLayoutBindingHandle* pData
+		@param: uint64_t size
+		@return DescriptorSetLayoutHandle
+	*/
+	DescriptorSetLayoutHandle CreateDescriptorSetLayout(DescriptorSetLayoutBindingHandle* pData, uint64_t size);
+
+	/*
+		@param:  DescriptorSetLayoutHandle handle
+		@return: PipelineLayoutHandle
+	*/
+	PipelineLayoutHandle CreatePipelineLayout(DescriptorSetLayoutHandle handle);
+
+	/*
+		@param: DescriptorSetHandle handle
+		@param: VkDescriptorType type
+		@param: uint32_t binding
+		@return WriteDescriptorSetHandle
+	*/
+	WriteDescriptorSetHandle CreateWriteDescriptorSet(DescriptorSetHandle handle, uint32_t type, uint32_t binding);
+
+
+	/*
+		@param: DescriptorSetHandle handle
+		@param: VkDescriptorType type
+		@param: uint32_t binding
+		@return WriteDescriptorSetHandle
+	*/
+	WriteDescriptorSetHandle CreateWriteDescriptorSet(DescriptorSetHandle handle, uint32_t type, uint32_t binding);
+}
+
 
 /*
 ===============================================================================================
@@ -184,15 +232,36 @@ namespace vkfx
 	*/
 	UniformDataHandle CreateUniformBuffer(void * pData, uint64_t size);
 
+
+	/*
+		@parma: VkBufferUsageFlags usageFlags
+		@param: VkMemoryPropertyFlags memoryPropertyFlags
+		@param: VkDeviceSize size
+		@param: void *data
+		@return: BufferObjectHandle
+	*/
+	BufferObjectHandle CreateBufferObject(uint32_t usageFlags, uint32_t memoryPropertyFlags, uint64_t size, void * pData);
+
+
+	/*
+		@param: UniformDataHandle handle
+		@param: void * pData
+		@param: uint64_t size
+	*/
+	void UpdateUniformBuffer(UniformDataHandle handle, void * pData, uint64_t size);
+
+
+	/*
+		@param: BufferObjectHandle stagingBuffer
+		@parma: BufferObjectHandle localBuffer
+		@param: uint64_t size
+	*/
+	void SubmitBufferObject(BufferObjectHandle stagingBuffer, BufferObjectHandle localBuffer, uint64_t size);
+
 	/*
 	*/
 	void submitCommandBuffer();
 
-
-	/*
-	
-	*/
-	
 
 	/*
 		Render
