@@ -1,4 +1,8 @@
 # TywRenderer
+<a href="https://scan.coverity.com/projects/tywyllsoftware-tywrenderer">
+  <img alt="Coverity Scan Build Status"
+       src="https://scan.coverity.com/projects/12201/badge.svg"/>
+</a>
 
 Vulkan Renderer. Work in progress. All testing was done on (AMD R9 480)
 - Warning. Take the code with grain of salt as it might violate Vulkan specs.
