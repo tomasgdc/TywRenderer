@@ -102,12 +102,12 @@ vec3 VSPositionFromDepth(vec2 vTexCoord)
 float SSAOAlgo0()
 {
 	vec4 normalDepthTexture = texture(NormalDepth, inUV, 0);
-	//vec3 fragPos = texture(Position, inUV, 0).xyz;
+	vec3 fragPos = texture(Position, inUV, 0).xyz;
 
-	vec3 fragPos = VSPositionFromDepth(inUV);
+	//vec3 fragPos = VSPositionFromDepth(inUV);
 
 	//Convert frag pos to view space
-	//fragPos = vec3(ubo.view * vec4(fragPos, 1.0f));
+	fragPos = vec3(ubo.view * vec4(fragPos, 1.0f));
 	//fragPos.y = -fragPos.y;
 
 
