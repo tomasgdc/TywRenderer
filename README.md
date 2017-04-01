@@ -10,14 +10,14 @@ Vulkan Renderer. Work in progress. All testing was done on (AMD R9 480)
 - Always happy to hear what could be fixed or improved.
 - Still have validation errors on some projects. Work in progress....
 
-#How to Build
+# How to Build
 Currently works only under windows.
 
 Go to ScriptsWin32 folder
-Run ConfigAndBuildDependencies.bat -> It will build dependencies and will create their .libs and .dlls files
-Run CopyDllsToAppDir_Release.bat -> Will create folder 'App' and will copy all release .dlls to it.
-Run Config.bat -> Will create new folder 'Build' and will create project solution.
-Then run Build_Debug.bat or Build_Release.bat which will compile the project.
+* Run ConfigAndBuildDependencies.bat -> It will build dependencies and will create their .libs and .dlls files
+* Run CopyDllsToAppDir_Release.bat -> Will create folder 'App' and will copy all release .dlls to it.
+* Run Config.bat -> Will create new folder 'Build' and will create project solution.
+* Then run Build_Debug.bat or Build_Release.bat which will compile the project.
 
 
 In order to get working. You need to have working Vulkan driver and Vulkan SDK that you can download from LunarG site
@@ -26,24 +26,25 @@ In order to get working. You need to have working Vulkan driver and Vulkan SDK t
 - More information about validation layer - https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers
 - More information about Vulkan - https://github.com/KhronosGroup/Vulkan-Docs
 
-#Dll and Lib dependencies
+# Dll and Lib dependencies
 - Assimp
-- LibPng
+- SDL
 - Freetype 
 
-#Please check ThirdParty Licenses
+# Please check ThirdParty Licenses
 - Freetype -  https://www.freetype.org/
 - ImGui    -  https://github.com/ocornut/imgui
 - Assimp   -  https://github.com/assimp/assimp
-- LibPng   -  http://www.libpng.org/pub/png/libpng.htm
+- GLM      -  https://github.com/g-truc/glm
 - GLI      -  http://gli.g-truc.net/0.8.1/index.html
 - Cotire   -  https://github.com/sakra/cotire
+- SDL 2    -  https://www.libsdl.org/license.php
 
-#Credits
+# Credits
 - Sascha Willems - https://github.com/SaschaWillems/Vulkan
 
 
-#Projects
+# rojects
 ## [Triangle](Projects/Triangle)
 <img src="ScreenShots/Triangle.png" height="96px" align="right">
 Shader - [Triangle Shader](Assets/Shaders/Triangle)
