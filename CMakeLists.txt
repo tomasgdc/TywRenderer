@@ -29,7 +29,7 @@ SET(CMAKE_DEBUG_POSTFIX "_d")
 INCLUDE_DIRECTORIES(
 	"${CMAKE_SOURCE_DIR}/External/glm"
 	"${CMAKE_SOURCE_DIR}/External/gli"
-	"${CMAKE_SOURCE_DIR}/External/Assimp-3.2"
+	"${CMAKE_SOURCE_DIR}/External/assimp"
 	"${CMAKE_SOURCE_DIR}/External/freetype/include"
 )
 
@@ -49,23 +49,32 @@ SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMakeModules")
 SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Lib)
 SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Bin)
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Bin)
-
 INCLUDE(cotire)
 
+# includes cmake/FindSDL2.cmake
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
+
+find_package(SDL2 REQUIRED)
+include_directories(${SDL2_INCLUDE_DIR})
+
+find_package(ASSIMP REQUIRED)
+include_directories(${ASSIMP_INCLUDE_DIR})
+
+find_package(FREETYPE REQUIRED)
+include_directories(${FREETYPE_INCLUDE_DIR})
+
 IF(WIN32)
-	find_library(VULKAN_LIB NAMES vulkan-1 vulkan PATHS ${CMAKE_SOURCE_DIR}/libs/vulkan)
+	find_library(VULKAN_LIB NAMES vulkan-1 vulkan PATHS ${CMAKE_SOURCE_DIR}/App)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVK_USE_PLATFORM_WIN32_KHR")
-ELSE(WIN32)
-	find_library(VULKAN_LIB NAMES libvulkan.so PATHS ${CMAKE_SOURCE_DIR}/libs/vulkan)	
-	find_package(XCB REQUIRED)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVK_USE_PLATFORM_XCB_KHR")
 ENDIF(WIN32)
 
-message(STATUS ${VULKAN_LIB})
+message(STATUS "Vulkan lib path:   " 	${VULKAN_LIB})
+message(STATUS "SDL2 lib path: 	   "   	${SDL2_LIBRARY})
+message(STATUS "Assimp lib path:   " 	${ASSIMP_LIBRARY})
+message(STATUS "Freetype lib path: " 	${FREETYPE_LIBRARY})
 
 ADD_SUBDIRECTORY(Renderer)
 ADD_SUBDIRECTORY(Projects)
-
 
 MESSAGE("Generated with config types: ${CMAKE_CONFIGURATION_TYPES}")
 if(CMAKE_CONFIGURATION_TYPES)

@@ -17,12 +17,12 @@
 
 
 //Assimp Includes
-#include <External\Assimp-3.2\assimp\Importer.hpp> 
-#include <External\Assimp-3.2\assimp\scene.h>     
-#include <External\Assimp-3.2\assimp\postprocess.h>
-#include <External\Assimp-3.2\assimp\cimport.h>
-#include <External\Assimp-3.2\assimp\DefaultLogger.hpp>
-#include <External\Assimp-3.2\assimp\LogStream.hpp>
+#include <External\assimp\include\assimp\Importer.hpp> 
+#include <External\assimp\include\assimp\scene.h>     
+#include <External\assimp\include\assimp\postprocess.h>
+#include <External\assimp\include\assimp\cimport.h>
+#include <External\assimp\include\assimp\DefaultLogger.hpp>
+#include <External\assimp\include\assimp\LogStream.hpp>
 
 
 

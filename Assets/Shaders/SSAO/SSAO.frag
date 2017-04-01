@@ -91,14 +91,7 @@ vec3 VSPositionFromDepth(vec2 vTexCoord)
     return viewSpacePosition.xyz;  
 }
 
-    
-
-    
-
-
-
-
-
+ 
 float SSAOAlgo0()
 {
 	vec4 normalDepthTexture = texture(NormalDepth, inUV, 0);
@@ -118,7 +111,7 @@ float SSAOAlgo0()
 	//Random vec using noise lookup
 	ivec2 texDim = textureSize(NormalDepth, 0); 
 	ivec2 noiseDim = textureSize(texNoise, 0);
-	const vec2 noiseUV = vec2(float(texDim.x)/float(noiseDim.x), float(texDim.y)/(noiseDim.y)) * inUV;  
+	const vec2 noiseUV = vec2(float(texDim.x)/float(noiseDim.x), float(texDim.y)/(noiseDim.y)) ;  
 	vec3 randomVec = texture(texNoise, noiseUV).xyz * 2.0 - 1.0;
 
     // Create TBN change-of-basis matrix: from tangent-space to view-space

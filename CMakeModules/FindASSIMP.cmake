@@ -1,5 +1,5 @@
 # Find assimp
-# Copyright © 2016 Dylan Baker
+# Copyright © 2017 Tomas Mikalauskas
 
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the "Software"),
@@ -18,39 +18,55 @@
 # DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# Locate ASSIMP
+# This module defines
+#  ASSIMP_FOUND, if false, do not try to link to ASSIMP
+#  ASSIMP_LIBRARIES
+#  ASSIMP_INCLUDE_DIR
 
-# Provides a subset of what the one would get by calling CONFIG REQUIRED
-# directly, it will unset any unsupported versions
-# Currently it provides the following:
-#  ASSIMP_FOUND      -- TRUE if assimp was found
-#  ASSIMP_LIBRARIES  -- Libraries to link against
+FIND_PATH(ASSIMP_INCLUDE_DIR mesh.h
+  PATH_SUFFIXES include/assimp assimp
+  PATHS
+  ~/Library/Frameworks
+  /Library/Frameworks
+  /usr/local/include
+  /usr/local
+  /usr
+  /sw # Fink
+  /opt/local # DarwinPorts
+  /opt/csw # Blastwave
+  /opt
+  ${CMAKE_SOURCE_DIR}/External/assimp
+)
 
-find_package(ASSIMP CONFIG)
-if (ASSIMP_LIBRARIES)
-    # Unset variables that would be difficult to get via the find module
-    unset(ASSIMP_ROOT_DIR)
-    unset(ASSIMP_CXX_FLAGS)
-    unset(ASSIMP_LINK_FLAGS)
-    unset(ASSIMP_Boost_VERSION)
+if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(_sdl_lib_suffix lib/x64)
+else()
+    set(_sdl_lib_suffix lib/x86)
+endif()
 
-    # TODO: It would be nice to find these, but they're not being used at the
-    # moment. They also need to be added to REQUIRED_VARS if added
-    unset(ASSIMP_INCLUDE_DIRS)
-    unset(ASSIMP_LIBRARY_DIRS)
+FIND_LIBRARY(ASSIMP_LIBRARY 
+  NAMES assimp-vc140-mt
+  PATHS
+  ~/Library/Frameworks
+  /Library/Frameworks
+  /usr/local
+  /usr
+  /sw
+  /opt/local
+  /opt/csw
+  /opt
+  ${CMAKE_SOURCE_DIR}/External/assimp/build/code
+  ${CMAKE_SOURCE_DIR}/External/assimp/build/code/Release
+)
 
-    # Like the found path
-    set(ASSIMP_FOUND TRUE)
-    message("-- Found ASSIMP")
-else ()
-    find_library(ASSIMP_LIBRARIES
-                 NAMES assimp
-    )
 
-    include(FindPackageHandleStandardArgs)
-    find_package_handle_standard_args(
-        ASSIMP
-        REQUIRED_VARS ASSIMP_LIBRARIES
-    )
-endif (ASSIMP_LIBRARIES)
+SET(ASSIMP_LIBRARIES
+  ${ASSIMP_LIBRARY}
+)
 
-set(ASSIMP_FOUND True)
+INCLUDE(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(ASSIMP  DEFAULT_MSG  ASSIMP_INCLUDE_DIR ASSIMP_LIBRARY)
+
+MARK_AS_ADVANCED(ASSIMP_INCLUDE_DIR ASSIMP_LIBRARY)

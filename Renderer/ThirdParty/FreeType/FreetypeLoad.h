@@ -5,13 +5,19 @@
 */
 #pragma once
 
+//Needed for loading freetpye dll modules.
+#if defined _WIN32 || defined _WIN64
+	#define FT_EXPORT(x) __declspec(import) x
+	#define FT_EXPORT_DEF(x) __declspec(import) x
+	#define FT_BASE(x) __declspec(import) x
+#endif
+
 #include <External\freetype\include\ft2build.h>
 #include FT_FREETYPE_H //Include main FREETYPE2 API
 
 
-
-	typedef struct  Data_
-	{
+typedef struct  Data_
+{
 		//FT_VECTOR - 2 Longs
 		FT_Vector advance;  // this variable contains the information of how much we need to move to the right from the last character
 
@@ -22,7 +28,7 @@
 		unsigned int bitmap_rows;    // texture height
 		unsigned int size;   // font size
 		char c;     // the character of this glyph
-	}Data;
+}Data;
 
 class  GlyphData 
 {
