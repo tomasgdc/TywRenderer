@@ -18,6 +18,7 @@ Go to ScriptsWin32 folder
 * Run CopyDllsToAppDir_Release.bat -> Will create folder 'App' and will copy all release .dlls to it.
 * Run Config.bat -> Will create new folder 'Build' and will create project solution.
 * Then run Build_Debug.bat or Build_Release.bat which will compile the project.
+* Copy built .dlls from 'App' folder to 'Build/Bin/Debug' or 'Build/Bin/Release'
 
 
 In order to get working. You need to have working Vulkan driver and Vulkan SDK that you can download from LunarG site
