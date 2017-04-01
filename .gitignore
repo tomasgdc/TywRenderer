@@ -51,3 +51,7 @@ External/assimp/build
 *.db
 *.vcxproj
 *.suo
+*.user
+*.opendb
+*.filters
+*.dsp
