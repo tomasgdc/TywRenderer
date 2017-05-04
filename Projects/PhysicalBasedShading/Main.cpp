@@ -373,7 +373,7 @@ void Renderer::UpdateUniformBuffers()
 		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
 		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
 		m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-		m_uboVS.normal = (glm::inverseTranspose(m_uboVS.modelMatrix));
+		m_uboVS.normal = (glm::inverseTranspose(m_uboVS.viewMatrix * m_uboVS.modelMatrix));
 
 		m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -15.0f, 0.0f);
 
@@ -771,7 +771,7 @@ void Renderer::ImguiRender()
 		ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		ImGui::DragFloat3("Kd", (float*)&m_UniformShaderData.Kd, 0.0f, 0.0f, 50.0f, "%.3f");
 		ImGui::DragFloat3("Light Position", (float*)&m_UniformShaderData.lightPos, 0.0f, 0.0f, 50.0f, "%.3f");
-		ImGui::DragFloat("Roughness Value ", &m_UniformShaderData.roughnessValue, 0.0f, 0.0f, 2.4f, "%.3f");
+		ImGui::DragFloat("Roughness Value ", &m_UniformShaderData.roughnessValue, 0.0f, 0.0f, 1.0f, "%.3f");
 		ImGui::DragFloat("Fresnel reflectance ", &m_UniformShaderData.F0, 0.0f, 0.0f, 2.4f, "%.3f");
 		ImGui::DragFloat("Fraction of diffuse reflectance ", &m_UniformShaderData.k, 0.0f, 0.0f, 2.4f, "%.3f");
 		ImGui::DragFloat("Lod Bias Cube Map texture ", &m_UniformShaderData.loadBias, 0.0f, 0.0f, 1.0f, "%.3f");

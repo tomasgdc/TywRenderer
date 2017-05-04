@@ -60,9 +60,9 @@ float V_SmithGGXCorrelated ( float NdotL , float NdotV , float alphaG )
 }
 
 //The Fresnel function describes the amount of light that reflects from a mirror surface given its index of refraction. 
-float F_Schlick(float F0, float Ndot)
+float F_Schlick(float F0, float cosTheta)
 {
-    return  F0 + (1.0f - F0) * pow(1.0f - Ndot, 5.0f);
+    return  F0 + (1.0f - F0) * pow(1.0f - cosTheta, 5.0f);
 }
 
 //Self shadowing of microfacet
@@ -114,9 +114,9 @@ vec3 Color(vec3 normal, vec3 LightVec, vec3 EyeDirection)
 	 //Specular
 	float alphaG = lightData.roughnessValue * lightData.roughnessValue;
     float G = G_CookTolerance(NdotH, NdotV, VdotH, NdotL);
-	float V = V_SmithGGXCorrelated (NdotL , NdotV , alphaG);
+	float V = V_SmithGGXCorrelated (NdotL , NdotV , lightData.roughnessValue);
 	float F = F_Schlick(lightData.F0, VdotH);
-	float D = D_GGX(NdotH, alphaG);
+	float D = D_GGX(NdotH, lightData.roughnessValue);
 
     specular = (D  * V * F * G) / (4 * NdotV * NdotL);
     specular = (lightData.k + specular * (1.0 - lightData.k));
@@ -132,7 +132,11 @@ vec3 Color(vec3 normal, vec3 LightVec, vec3 EyeDirection)
 
 void main() 
 {
-    vec3 colorLinear = Color(fs_in.normal, fs_in.lightDir, fs_in.eyeDir);
+	vec3 colorLinear = vec3(0);
+	for(int i = 0; i < 1; i++)
+	{
+		colorLinear += Color(fs_in.normal, fs_in.lightDir, fs_in.eyeDir);
+	}
 
 	//Gamma correction
 	vec3 colorGammaCorrected = pow(colorLinear, vec3(1.0/lightData.ScreenGamma));

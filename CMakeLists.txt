@@ -40,6 +40,16 @@ add_definitions(-std=c++14)
 add_definitions(-std=c++0x)
 add_definitions(-std=gnu++14)
 
+if (ANDROID)
+	set(CMAKE_ANDROID_GUI TRUE)
+	set(CMAKE_ANDROID_API 24)
+	set(CMAKE_ANDROID_API_MIN 24)
+	
+	if(DEFINED ANDROID_NDK)
+		add_definitions(-DVK_USE_PLATFORM_ANDROID_KHR)
+	endif()
+endif()
+
 
 IF(WIN32)
   ADD_DEFINITIONS(-DUNICODE -D_UNICODE)
