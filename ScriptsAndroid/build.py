@@ -1,12 +1,12 @@
+"""****************************************************************************
+*	Copyright 2016-2017 Tomas Mikalauskas. All rights reserved.
+*	GitHub repository - https://github.com/TywyllSoftware/TywRenderer
+*	This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
+****************************************************************************"""
+
 import os
 import sys
-import fileinput
-import shutil
 import subprocess
-from optparse import OptionParser
-
-
-
 
 class Logging:
     # TODO maybe the right way to do this is to use something like colorama?

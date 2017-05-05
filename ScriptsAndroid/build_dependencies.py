@@ -1,12 +1,12 @@
+"""****************************************************************************
+*	Copyright 2016-2017 Tomas Mikalauskas. All rights reserved.
+*	GitHub repository - https://github.com/TywyllSoftware/TywRenderer
+*	This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
+****************************************************************************"""
+
 import os
 import sys
-import fileinput
-import shutil
 import subprocess
-from optparse import OptionParser
-
-
-
 
 class Logging:
     # TODO maybe the right way to do this is to use something like colorama?
@@ -57,39 +57,55 @@ def check_environment_variable(var):
         raise Exception('ERROR: Environment varialbe not found = ', var)
     return value
 
-def build(build_path, args):
+def build(build_path, root_path, args = None):
     try:
         #Check if build path exists
         if not os.path.exists(build_path):
             os.makedirs(build_path)
 
-        #Go to directory
-        os.chdir(build_path)
 
         #Set ndk and cmake path
         ndk_toolchain_path = os.environ['NDK_ROOT'] + "\\build\\cmake\\android.toolchain.cmake"
         cmake_program_path = os.environ['ANDROID_SDK_ROOT'] + "\\cmake\\3.6.3155560\\bin\\ninja"
+        cmake_bin = os.environ['ANDROID_SDK_ROOT'] + '\\cmake\\3.6.3155560\\bin\\cmake'
 
         shell = False
         if sys.platform.startswith('win'):
             shell = True
         else:
             shell = False
-			
 
-        cmakeCmd = ['cmake',
-                ' -GAndroid Gradle - Ninja',
-                ' -DANDROID_ABI=arm64-v8a',
-                ' -DANDROID_NDK=' + os.environ['NDK_ROOT'],
-                ' -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + build_path + '\\lib',
-                ' -DCMAKE_MAKE_PROGRAM=" + cmake_program_path',
-                ' -DCMAKE_TOOLCHAIN_FILE=" + ndk_toolchain_path',
-                ' -DANDROID_NATIVE_API_LEVEL = 24',
-                ' -DANDROID_TOOLCHAIN = clang ',
-                args,
-                ' ..\\..\\']
 
-        retCode = subprocess.check_call(cmakeCmd, stderr=subprocess.STDOUT, shell=shell)
+        if args is None:
+            cmakeCmd = [cmake_bin,
+                    '-GAndroid Gradle - Ninja',
+                    '-DANDROID_ABI=arm64-v8a',
+                    '-DANDROID_NDK=' + os.environ['NDK_ROOT'],
+                    '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + build_path + '\\lib',
+                    '-DCMAKE_MAKE_PROGRAM=' + cmake_program_path,
+                    '-DCMAKE_TOOLCHAIN_FILE=' + ndk_toolchain_path,
+                    '-DANDROID_NATIVE_API_LEVEL = 24',
+                    '-DANDROID_TOOLCHAIN = clang ',
+                    '-DANDROID_TOOLCHAIN_NAME=arm-linux-androideabi-4.9',
+                    '-DCMAKE_BUILD_TYPE=Debug;Release',
+                    '-B'+build_path,
+                    '-H'+root_path]
+        else:
+            cmakeCmd = [cmake_bin,
+                    '-GAndroid Gradle - Ninja',
+                    '-DANDROID_ABI=arm64-v8a',
+                    '-DANDROID_NDK=' + os.environ['NDK_ROOT'],
+                    '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + build_path + '\\lib',
+                    '-DCMAKE_MAKE_PROGRAM=' + cmake_program_path,
+                    '-DCMAKE_TOOLCHAIN_FILE=' + ndk_toolchain_path,
+                    '-DANDROID_NATIVE_API_LEVEL = 24',
+                    '-DANDROID_TOOLCHAIN = clang ',
+                    '-DANDROID_TOOLCHAIN_NAME=arm-linux-androideabi-4.9',
+                    '-DCMAKE_BUILD_TYPE=Debug;Release',
+                    '-B'+build_path,
+                    '-H'+root_path,
+                    args]
+
         retCode = subprocess.check_call(cmakeCmd, stderr=subprocess.STDOUT, shell=shell)
     except Exception as e:
         raise e
@@ -105,12 +121,13 @@ if __name__ == "__main__":
         current_path = os.getcwd()
 
         Logging._print("Building Assimp")
-        build('..\\External\\assimp\\build\\android', ['-DASSIMP_BUILD_ASSIMP_TOOLS=off', ' -DASSIMP_BUILD_SAMPLES=off', ' -DASSIMP_BUILD_TESTS=off'])
-
-        #Come back to original path
-        os.chdir(current_path)
+        build('..\\External\\assimp\\build\\android', '..\\External\\assimp', ['-DASSIMP_BUILD_ASSIMP_TOOLS=off', ' -DASSIMP_BUILD_SAMPLES=off', ' -DASSIMP_BUILD_TESTS=off'])
 
         Logging._print("Building SDL2")
-        build('..\\External\\sdl\\build\\android', [])
+        build('..\\External\\sdl\\build\\android', '..\\External\\sdl')
+
+        Logging._print("Building Freetype")
+        build('..\\External\\freetype\\build\\android', '..\\External\\freetype')
+
     except Exception as e:
         Logging.error(e)
