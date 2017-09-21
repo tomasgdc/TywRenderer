@@ -55,14 +55,13 @@ IF(WIN32)
   ADD_DEFINITIONS(-DUNICODE -D_UNICODE)
 ENDIF()
 
-SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMakeModules")
 SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Lib)
 SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Bin)
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Bin)
-INCLUDE(cotire)
 
-# includes cmake/FindSDL2.cmake
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/CMakeModules")
+
+include(cotire)
 
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIR})
@@ -70,8 +69,15 @@ include_directories(${SDL2_INCLUDE_DIR})
 find_package(ASSIMP REQUIRED)
 include_directories(${ASSIMP_INCLUDE_DIR})
 
-find_package(FREETYPE REQUIRED)
+set(FREETPYE_PATH ${CMAKE_SOURCE_DIR}/External/freetype)
+set(FREETYPE_LIB_SEARCH_PATH "${CMAKE_SOURCE_DIR}/External/freetype/objs/vc2017/x64")
+
+find_package(Freetype_custom QUIET)
 include_directories(${FREETYPE_INCLUDE_DIR})
+
+#As we are building Assimp as static library. We need to get zlib. Luckily assimp contains zlib and builds it
+set(ZLIB_LIB_SEARCH_PATH ${CMAKE_SOURCE_DIR}/External/assimp/build/contrib/zlib)
+find_package(Zlib REQUIRED)
 
 IF(WIN32)
 	find_library(VULKAN_LIB NAMES vulkan-1 vulkan PATHS ${CMAKE_SOURCE_DIR}/App)
@@ -80,8 +86,11 @@ ENDIF(WIN32)
 
 message(STATUS "Vulkan lib path:   " 	${VULKAN_LIB})
 message(STATUS "SDL2 lib path: 	   "   	${SDL2_LIBRARY})
-message(STATUS "Assimp lib path:   " 	${ASSIMP_LIBRARY})
-message(STATUS "Freetype lib path: " 	${FREETYPE_LIBRARY})
+message(STATUS "Assimp lib path:   " 	${ASSIMP_LIBRARIES})
+message(STATUS "Freetype lib path: " 	${FREETYPE_LIBRARIES})
+message(STATUS "Freetype include path: " ${FREETYP_INCLUDE_DIR})
+message(STATUS "Zlib lib path: "        ${ZLIB_LIBRARIES}) 
+
 
 ADD_SUBDIRECTORY(Renderer)
 ADD_SUBDIRECTORY(Projects)

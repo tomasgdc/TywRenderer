@@ -7,9 +7,9 @@
 
 //Needed for loading freetpye dll modules.
 #if defined _WIN32 || defined _WIN64
-	#define FT_EXPORT(x) __declspec(import) x
-	#define FT_EXPORT_DEF(x) __declspec(import) x
-	#define FT_BASE(x) __declspec(import) x
+	//#define FT_EXPORT(x) __declspec(import) x
+	//#define FT_EXPORT_DEF(x) __declspec(import) x
+	//#define FT_BASE(x) __declspec(import) x
 #endif
 
 #include <External\freetype\include\ft2build.h>

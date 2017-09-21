@@ -1,4 +1,4 @@
-# Find assimp
+# Find Zlib
 # Copyright © 2017 Tomas Mikalauskas
 
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -19,35 +19,14 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 # OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-# Locate ASSIMP
-# This module defines
-#  ASSIMP_FOUND, if false, do not try to link to ASSIMP
-#  ASSIMP_LIBRARIES
-#  ASSIMP_INCLUDE_DIR
+# Locate Zlib
 
-FIND_PATH(ASSIMP_INCLUDE_DIR mesh.h
-  PATH_SUFFIXES include/assimp assimp
-  PATHS
-  ~/Library/Frameworks
-  /Library/Frameworks
-  /usr/local/include
-  /usr/local
-  /usr
-  /sw # Fink
-  /opt/local # DarwinPorts
-  /opt/csw # Blastwave
-  /opt
-  ${CMAKE_SOURCE_DIR}/External/assimp
-)
 
-if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(_sdl_lib_suffix lib/x64)
-else()
-    set(_sdl_lib_suffix lib/x86)
-endif()
 
-FIND_LIBRARY(ASSIMP_LIBRARY_RELEASE
-  NAMES assimp-vc140-mt
+FIND_LIBRARY(ZLIB_LIBRARY_RELEASE
+  NAMES zlib zlibstatic
+  PATH_SUFFIXES "" release
+  HINTS ${ZLIB_LIB_SEARCH_PATH}
   PATHS
   ~/Library/Frameworks
   /Library/Frameworks
@@ -57,11 +36,12 @@ FIND_LIBRARY(ASSIMP_LIBRARY_RELEASE
   /opt/local
   /opt/csw
   /opt
-  ${CMAKE_SOURCE_DIR}/External/assimp/build/code/Release
 )
 
-FIND_LIBRARY(ASSIMP_LIBRARY_DEBUG
-  NAMES assimp-vc140-mt
+FIND_LIBRARY(ZLIB_LIBRARY_DEBUG
+  NAMES zlib zlibstaticd
+  PATH_SUFFIXES "" debug
+  HINTS ${ZLIB_LIB_SEARCH_PATH}
   PATHS
   ~/Library/Frameworks
   /Library/Frameworks
@@ -71,16 +51,15 @@ FIND_LIBRARY(ASSIMP_LIBRARY_DEBUG
   /opt/local
   /opt/csw
   /opt
-  ${CMAKE_SOURCE_DIR}/External/assimp/build/code/Debug
 )
 
-SET(ASSIMP_LIBRARIES
-  ${ASSIMP_LIBRARY_RELEASE}
-  ${ASSIMP_LIBRARY_DEBUG}
+SET(ZLIB_LIBRARIES
+  ${ZLIB_LIBRARY_RELEASE}
+  ${ZLIB_LIBRARY_DEBUG}
 )
 
 
 INCLUDE(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(ASSIMP  DEFAULT_MSG  ASSIMP_INCLUDE_DIR ASSIMP_LIBRARY_DEBUG ASSIMP_LIBRARY_RELEASE)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(ZLIB  DEFAULT_MSG  ZLIB_LIBRARY_DEBUG ZLIB_LIBRARY_RELEASE)
 
-MARK_AS_ADVANCED(ASSIMP_INCLUDE_DIR ASSIMP_LIBRARY_DEBUG ASSIMP_LIBRARY_RELEASE)
+MARK_AS_ADVANCED(ZLIB_LIBRARY_DEBUG ZLIB_LIBRARY_RELEASE)

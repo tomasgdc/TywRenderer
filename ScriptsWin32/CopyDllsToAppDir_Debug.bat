@@ -11,7 +11,7 @@ copy external\\sdl\\build\\Debug\\SDL2.dll App\\SDL2.dll
 copy external\\assimp\build\code\Debug\\assimp-vc140-mt.dll App\\assimp-vc140-mt.dll
 
 ::GET FREETYPE
-copy "External\\freetype\\builds\\windows\\visualc\\x64\\Debug Multithreaded\\freetype.dll" App\\freetype.dll
+copy "External\\freetype\\builds\\vc2017\\x64\\freetype.dll" App\\freetype.dll
 
 cd ScriptsWin32
 timeout 2

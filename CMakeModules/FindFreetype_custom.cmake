@@ -27,6 +27,7 @@
 
 FIND_PATH(FREETYPE_INCLUDE_DIR ft2build.h
   PATH_SUFFIXES include 
+  HINTS ${FREETPYE_PATH}
   PATHS
   ~/Library/Frameworks
   /Library/Frameworks
@@ -37,17 +38,12 @@ FIND_PATH(FREETYPE_INCLUDE_DIR ft2build.h
   /opt/local # DarwinPorts
   /opt/csw # Blastwave
   /opt
-  ${CMAKE_SOURCE_DIR}/External/freetype
 )
 
-if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(_sdl_lib_suffix lib/x64)
-else()
-    set(_sdl_lib_suffix lib/x86)
-endif()
-
-FIND_LIBRARY(FREETYPE_LIBRARY 
-  NAMES freetype
+FIND_LIBRARY(FREETYPE_LIBRARY_DEBUG
+  NAMES freetyped freetype28d
+  PATH_SUFFIXES "" debug
+  HINTS  ${FREETYPE_LIB_SEARCH_PATH}
   PATHS
   ~/Library/Frameworks
   /Library/Frameworks
@@ -57,16 +53,30 @@ FIND_LIBRARY(FREETYPE_LIBRARY
   /opt/local
   /opt/csw
   /opt
-  ${CMAKE_SOURCE_DIR}/External/freetype/objs
-  ${CMAKE_SOURCE_DIR}/External/freetype/builds/windows/visualc/x64/Release\ Multithreaded
 )
 
+FIND_LIBRARY(FREETYPE_LIBRARY_RELEASE
+  NAMES freetype freetype28
+  PATH_SUFFIXES "" release
+  HINTS  ${FREETYPE_LIB_SEARCH_PATH} 
+  PATHS
+  ~/Library/Frameworks
+  /Library/Frameworks
+  /usr/local
+  /usr
+  /sw
+  /opt/local
+  /opt/csw
+  /opt
+)
 
 SET(FREETYPE_LIBRARIES
-  ${FREETYPE_LIBRARY}
+  ${FREETYPE_LIBRARY_RELEASE}
+  ${FREETYPE_LIBRARY_DEBUG}
 )
 
-INCLUDE(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(FREETYPE  DEFAULT_MSG  FREETYPE_INCLUDE_DIR FREETYPE_LIBRARY)
 
-MARK_AS_ADVANCED(FREETYPE_INCLUDE_DIR FREETYPE_LIBRARY)
+INCLUDE(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(FREETYPE_CUSTOM  DEFAULT_MSG  FREETYPE_INCLUDE_DIR FREETYPE_LIBRARY_DEBUG FREETYPE_LIBRARY_RELEASE)
+
+MARK_AS_ADVANCED(FREETYPE_INCLUDE_DIR FREETYPE_LIBRARY_DEBUG FREETYPE_LIBRARY_RELEASE)
