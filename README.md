@@ -15,10 +15,9 @@ Currently works only under windows.
 
 Go to ScriptsWin32 folder
 * Run ConfigAndBuildDependencies.bat -> It will build dependencies and will create their .libs and .dlls files
-* Run CopyDllsToAppDir_Release.bat -> Will create folder 'App' and will copy all release .dlls to it.
+* Go to External\freetype\builds\windows\vc2017 and build Debug and Release (No multithreading)
 * Run Config.bat -> Will create new folder 'Build' and will create project solution.
 * Then run Build_Debug.bat or Build_Release.bat which will compile the project.
-* Copy built .dlls from 'App' folder to 'Build/Bin/Debug' or 'Build/Bin/Release'
 
 
 In order to get working. You need to have working Vulkan driver and Vulkan SDK that you can download from LunarG site
@@ -28,7 +27,7 @@ In order to get working. You need to have working Vulkan driver and Vulkan SDK t
 - More information about Vulkan - https://github.com/KhronosGroup/Vulkan-Docs
 
 # Dll and Lib dependencies
-- Assimp
+- Assimp (Zlib)
 - SDL
 - Freetype 
 
