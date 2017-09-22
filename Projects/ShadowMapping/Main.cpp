@@ -159,7 +159,7 @@ LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 // Shadowmap properties
 #if defined(__ANDROID__)
-#define SHADOWMAP_DIM 1024
+define SHADOWMAP_DIM 1024
 #else
 #define SHADOWMAP_DIM 2048
 #endif
@@ -661,9 +661,10 @@ void Renderer::PrepareOffscreenFrameBuffer()
 	offScreenFrameBuf.height = SHADOWMAP_DIM;
 
 	// Find a suitable depth format
-	VkFormat fbColorFormat;
-	VkBool32 validDepthFormat = VkTools::GetSupportedDepthFormat(m_pWRenderer->m_SwapChain.physicalDevice, fbColorFormat);
-	assert(validDepthFormat);
+	VkFormat fbColorFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+	//VkBool32 validDepthFormat = VkTools::GetSupportedDepthFormat(m_pWRenderer->m_SwapChain.physicalDevice, fbColorFormat);
+	//assert(validDepthFormat);
+
 
 	// Color attachment
 	VkImageCreateInfo image = VkTools::Initializer::ImageCreateInfo();
