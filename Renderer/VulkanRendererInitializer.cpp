@@ -374,6 +374,8 @@ VkResult VulkanRendererInitializer::CreateVulkanInstance(bool bEnableValidation)
 	appInfo.pApplicationName = className.c_str();
 	appInfo.pEngineName = className.c_str();
 	appInfo.apiVersion = VK_API_VERSION_1_0;
+	appInfo.pNext = NULL;
+	//appInfo.engineVersion = 
 
 
 	std::vector<const char*> enabledExtensions = { VK_KHR_SURFACE_EXTENSION_NAME };
@@ -391,6 +393,7 @@ VkResult VulkanRendererInitializer::CreateVulkanInstance(bool bEnableValidation)
 	VkInstanceCreateInfo instanceCreateInfo = {};
 	instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	instanceCreateInfo.pNext = NULL;
+	instanceCreateInfo.flags = 0;
 	instanceCreateInfo.pApplicationInfo = &appInfo;
 	if (enabledExtensions.size() > 0)
 	{
