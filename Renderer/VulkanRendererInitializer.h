@@ -132,7 +132,7 @@ public:
 	VkRenderPass							m_RenderPass;
 
 	// Pipeline cache object
-	VkPipelineCache							m_PipelineCache;
+	static VkPipelineCache							m_PipelineCache;
 
 	// List of available frame buffers (same as number of swap chain images)
 	std::vector<VkFramebuffer>				m_FrameBuffers;

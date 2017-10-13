@@ -106,6 +106,10 @@ SET(HEADERS_VULKAN
 	"Vulkan/VulkanAndroid.h"
 	"Vulkan/VulkanSwapChain.h"
 	"Vulkan/VulkanTools.h"
+	"Vulkan/VkGpuProgram.h"
+	"Vulkan/VkPipelineLayoutManager.h"
+	"Vulkan/VkRenderPassManager.h"
+	"Vulkan/VkPipelineManager.h"
 )
 SET(SOURCES_VULKAN
 	"Vulkan/VkBufferObject.cpp"
@@ -114,6 +118,10 @@ SET(SOURCES_VULKAN
 	"Vulkan/VulkanAndroid.cpp"
 	"Vulkan/VulkanTools.cpp"
 	"Vulkan/VulkanSwapChain.cpp"
+	"Vulkan/VkGpuProgram.cpp"
+	"Vulkan/VkPipelineLayoutManager.cpp"
+	"Vulkan/VkRenderPassManager.cpp"
+	"Vulkan/VkPipelineManager.cpp"
 )
 SOURCE_GROUP("Vulkan\\Header Files" FILES ${HEADERS_VULKAN})
 SOURCE_GROUP("Vulkan\\Source Files" FILES ${SOURCES_VULKAN})
@@ -121,6 +129,8 @@ SOURCE_GROUP("Vulkan\\Source Files" FILES ${SOURCES_VULKAN})
 
 
 SET(HEADERS
+	"DOD.h"
+	"DODResource.h"
 	"Camera.h"
 	"VulkanRendererInitializer.h"
 	"TywRendererHelpers.h"

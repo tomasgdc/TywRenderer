@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <vector>
+#include <cassert>
 
 namespace DOD
 {
@@ -32,6 +33,16 @@ namespace DOD
             return _id != kInvalidId && _generation != kInvalidGenerationId;
         }
 
+		bool operator < (const Ref& p_Rhs) const
+		{
+			return _id < p_Rhs._id && _generation < p_Rhs._generation;
+		}
+
+		bool operator > (const Ref& p_Rhs) const
+		{
+			return _id > p_Rhs._id && _generation > p_Rhs._generation;
+		}
+
         bool operator==(const Ref& p_Rhs) const
         {
             return _id == p_Rhs._id && _generation == p_Rhs._generation;
@@ -43,38 +54,53 @@ namespace DOD
         }
 
         uint32_t _generation : 8;
-        uint32_t _id : 24;
+        uint32_t _id :  24;
     };
 
-    template<class DataType, uint32_t iDcount>
+    template<class DataType, uint32_t IdCount>
     struct ManagerBase
     {
-        static std::vector(Ref)                activeRefs;
+        static std::vector<Ref> activeRefs;
+		
+		static bool isAlive(Ref p_Ref)
+		{
+			return generations[p_Ref._id] == p_Ref._generation;
+		}
 
-    protected:
+		static uint32_t getActiveResourceCount()
+		{
+			return (uint32_t)activeRefs.size();
+		}
+		static Ref getActiveResourceAtIndex(uint32_t p_Idx)
+		{
+			return activeRefs[p_Idx];
+		}
+
+	protected:
+
         static void initManager()
         {
-            _freeIds.reserve(IdCount);
-            _activeRefs.reserve(IdCount);
-            _generations.resize(IdCount);
+            freeIds.reserve(IdCount);
+            activeRefs.reserve(IdCount);
+            generations.resize(IdCount);
 
             for (uint32_t i = 0u; i < IdCount; ++i)
             {
-                _freeIds.push_back(IdCount - i - 1u);
+                freeIds.push_back(IdCount - i - 1u);
             }
         }
 
         static Ref allocate()
         {
-            assert(!_freeIds.empty() && "Resource pool exhausted");
-            uint32_t id = _freeIds.back();
-            _freeIds.pop_back();
+            assert(!freeIds.empty() && "Resource pool exhausted");
+            uint32_t id = freeIds.back();
+            freeIds.pop_back();
 
             Ref ref;
             ref._id = id;
-            ref._generation = _generations[id];
+            ref._generation = generations[id];
 
-            _activeRefs.push_back(ref);
+            activeRefs.push_back(ref);
 
             return ref;
         }
@@ -84,24 +110,26 @@ namespace DOD
             assert(p_Ref.isValid() && isAlive(p_Ref));
 
             // Erase an swap
-            for (uint32_t i = 0; i < _activeRefs.size(); ++i)
+            for (uint32_t i = 0; i < activeRefs.size(); ++i)
             {
-                if (_activeRefs[i] == p_Ref)
+                if (activeRefs[i] == p_Ref)
                 {
-                    _activeRefs[i] = _activeRefs[_activeRefs.size() - 1u];
-                    _activeRefs.resize(_activeRefs.size() - 1u);
+                    activeRefs[i] = activeRefs[activeRefs.size() - 1u];
+                    activeRefs.resize(activeRefs.size() - 1u);
                     break;
                 }
             }
 
-            _freeIds.push_back(p_Ref._id);
+            freeIds.push_back(p_Ref._id);
 
-            const GenerationType currentGenId = _generations[p_Ref._id];
-            _generations[p_Ref._id] = (currentGenId + 1u) % (maxGenerationIdValue + 1u);
+            const GenerationType currentGenId = generations[p_Ref._id];
+            generations[p_Ref._id] = (currentGenId + 1u) % (maxGenerationIdValue + 1u);
         }
 
         static std::vector<IdType>         freeIds;
         static std::vector<GenerationType> generations;
 
     };
+
+	//using std::vector<Ref> = RefArray;
 }

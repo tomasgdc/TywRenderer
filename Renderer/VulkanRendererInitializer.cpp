@@ -18,7 +18,7 @@
 
 std::string className = "window_class";
 std::string titleName = "Vulkan demo";
-
+VkPipelineCache VulkanRendererInitializer::m_PipelineCache;
 
 
 //In Vulkan the API version is encoded as a 32 - bit integer with the major and minor version being encoded into bits 31 - 22 and 21 - 12 

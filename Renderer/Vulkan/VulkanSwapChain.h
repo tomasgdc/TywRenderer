@@ -61,7 +61,7 @@ class  VulkanSwapChain
 {
 public:
 	VkInstance instance;
-	VkDevice device;
+	static VkDevice device;
 	VkPhysicalDevice physicalDevice;
 	VkSurfaceKHR surface;
 

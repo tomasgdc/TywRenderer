@@ -1,17 +1,17 @@
 #pragma once
 #include <vector>
 #include <External\vulkan\vulkan.h>
-#include "DODResource.h"
+#include "../DODResource.h"
 
 namespace Renderer
 {
-	namespace Pipeline
+	namespace Resource
 	{
 		const uint32_t MAX_PIPELINES = 1024u;
 
 		struct PipelineData : DOD::Resource::ResourceDatabase
 		{
-			PipelineData(uint32_t MAX_PIPELINES)
+			PipelineData(): ResourceDatabase(MAX_PIPELINES)
 			{
 				input_assembly_states.resize(MAX_PIPELINES);
 				rasterization_states.resize(MAX_PIPELINES);
@@ -27,6 +27,7 @@ namespace Renderer
 				fragment_shaders.resize(MAX_PIPELINES);
 				geometry_shaders.resize(MAX_PIPELINES);
 				compute_shaders.resize(MAX_PIPELINES);
+				pipelines.resize(MAX_PIPELINES);
 			}
 
 			std::vector<VkPipelineInputAssemblyStateCreateInfo> input_assembly_states;
@@ -39,10 +40,11 @@ namespace Renderer
 			std::vector<VkPipelineDynamicStateCreateInfo>       dynamic_states;
 			std::vector<VkGraphicsPipelineCreateInfo>           vertex_inputs;
 			std::vector<VkPipelineLayout>                       pipeline_layouts;
-			std::vector<VkPipelineShaderStageCreateInfo>        vertex_shaders;
-			std::vector<VkPipelineShaderStageCreateInfo>        fragment_shaders;
-			std::vector<VkPipelineShaderStageCreateInfo>        geometry_shaders;
-			std::vector<VkPipelineShaderStageCreateInfo>        compute_shaders;
+			std::vector<DOD::Ref>								vertex_shaders;
+			std::vector<DOD::Ref>								fragment_shaders;
+			std::vector<DOD::Ref>								geometry_shaders;
+			std::vector<DOD::Ref>								compute_shaders;
+			std::vector<VkPipeline>								pipelines;
 		};
 
 		struct PipelineManager : DOD::Resource::ResourceManagerBase<PipelineData, MAX_PIPELINES>
@@ -53,9 +55,9 @@ namespace Renderer
 					MAX_PIPELINES>::initResourceManager();
 			}
 
-			static void		createGraphicsPipelineData(const DOD::Ref& ref);
+			static void		CreateGraphicsPipelineData(const DOD::Ref& ref);
 
-			static DOD::Ref createPipelineData(const std::string& name)
+			static DOD::Ref CreatePipelineData(const std::string& name)
 			{
 				DOD::Ref ref = DOD::Resource::
 					ResourceManagerBase<PipelineData, MAX_PIPELINES>::createResource(name);
@@ -63,9 +65,85 @@ namespace Renderer
 				return ref;
 			}
 
-			static void destroyPipelineData(const DOD::Ref& ref)
+			static void DestroyPipelineData(const DOD::Ref& ref)
 			{
 				DOD::Resource::ResourceManagerBase<PipelineData, MAX_PIPELINES>::destroyResource(ref);
+			}
+
+			/*
+			static const DOD::Ref GetInputAssemblyState(const DOD::Ref& ref)
+			{
+				return input_assembly_states[ref];
+			}
+
+			static const DOD::Ref GetRasterizationState(const DOD::Ref& ref)
+			{
+				return rasterization_states[ref];
+			}
+
+			static const DOD::Ref GetBlendAttachementsState(const DOD::Ref& ref)
+			{
+				return blend_attachements_states[ref];
+			}
+
+			static const DOD::Ref GetColorBlendState(const DOD::Ref& ref)
+			{
+				return color_blend_states[ref];
+			}
+			static const DOD::Ref GetDepthStencilState(const DOD::Ref& ref)
+			{
+				return depth_stencil_states[ref];
+			}
+			
+			static const DOD::Ref GetViewportState(const DOD::Ref& ref)
+			{
+				return viewport_states[ref];
+			}
+
+			static const DOD::Ref GetMultisampleState(const DOD::Ref& ref)
+			{
+				return multisample_states[ref];
+			}
+
+			static const DOD::Ref GetDynamicState(const DOD::Ref& ref)
+			{
+				return dynamic_states.resize(MAX_PIPELINES);
+			}
+
+			static const GetVertexInput(const DOD::Ref& ref)
+			{
+				return vertex_inputs[ref];
+			}
+
+			static const GetPipelineLayouyt(const DOD::Ref& ref)
+			{
+				return pipeline_layouts[ref];
+			}
+
+			static const GetVertexShader(const DOD::Ref& ref)
+			{
+				return vertex_shaders[ref];
+			}
+
+			static const GetFragmentShader(const DOD::Ref& ref)
+			{
+				return fragment_shaders[ref];
+			}
+
+			static const GetGeometryShader(const DOD::Ref& ref)
+			{
+				return geometry_shaders[ref];
+			}
+
+			static const GetComputeShader(const DOD::Ref& ref)
+			{
+				return compute_shaders[ref];
+			}
+			*/
+
+			static VkPipeline& GetPipeline(const DOD::Ref& ref)
+			{
+				return data.pipelines[ref._id];
 			}
 		};
 	}

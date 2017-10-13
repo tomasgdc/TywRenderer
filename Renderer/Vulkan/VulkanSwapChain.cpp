@@ -1,7 +1,8 @@
 #include "Vulkan\VulkanSwapChain.h"
 #include "Vulkan\VulkanTools.h"
 
-
+//Global
+VkDevice VulkanSwapChain::device;
 
 // Creates an os specific surface
 // Tries to find a graphics and a present queue
