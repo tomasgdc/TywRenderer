@@ -8,15 +8,17 @@ namespace Renderer
 {
 	namespace Resource
 	{
-		void GpuProgramManager::LoadShader(const DOD::Ref& ref, std::string fileName, VkShaderStageFlagBits stage)
+		void GpuProgramManager::LoadAndCompileShader(const DOD::Ref& ref, std::string file_path, VkShaderStageFlagBits stage)
 		{
 			VkPipelineShaderStageCreateInfo& shader_stage = GpuProgramManager::GetShaderStageCreateInfo(ref);
 			VkShaderModule& shader_module = GpuProgramManager::GetShaderModule(ref);
 
+			const std::string shader_name = GpuProgramManager::GetNameByRef(ref);
+
 #if defined(__ANDROID__)
 			shader_module = VkTools::LoadShader(fileName.c_str(), VulkanSwapChain::device, stage);
 #else
-			shader_module = VkTools::LoadShader(fileName.c_str(), VulkanSwapChain::device, stage);
+			shader_module = VkTools::LoadShader(file_path.c_str() + shader_name, VulkanSwapChain::device, stage);
 #endif
 
 			shader_stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;

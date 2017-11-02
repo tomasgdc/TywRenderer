@@ -16,12 +16,15 @@ namespace Renderer
 			{
 				pipeline_layouts.resize(MAX_PIPELINE_LAYOUT_COUNT);
 				descriptor_set_layouts.resize(MAX_PIPELINE_LAYOUT_COUNT);
+				descriptor_set_layout_bindings.resize(MAX_PIPELINE_LAYOUT_COUNT);
 				descriptor_pools.resize(MAX_PIPELINE_LAYOUT_COUNT);
 			}
 
-			std::vector<VkPipelineLayout>	   pipeline_layouts;
-			std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
-			std::vector<VkDescriptorPool>	   descriptor_pools;
+			std::vector<VkPipelineLayout>			   pipeline_layouts;
+			std::vector<VkDescriptorSetLayout>		   descriptor_set_layouts;
+			std::vector<std::vector<VkDescriptorSetLayoutBinding>>  descriptor_set_layout_bindings;
+			std::vector<VkDescriptorPool>	           descriptor_pools;
+			
 		};
 
 		struct PipelineLayoutManager : DOD::Resource::ResourceManagerBase<PipelineLayoutData, MAX_PIPELINE_LAYOUT_COUNT>
@@ -32,9 +35,9 @@ namespace Renderer
 					MAX_PIPELINE_LAYOUT_COUNT>::initResourceManager();
 			}
 
-			static void	CreatePipelineLayout(const DOD::Ref& ref);
+			static void	CreateResource(const DOD::Ref& ref);
 
-			static DOD::Ref CreatePipelineLayoutData(const std::string& name)
+			static DOD::Ref CreatePipelineLayout(const std::string& name)
 			{
 				DOD::Ref ref = DOD::Resource::
 					ResourceManagerBase<PipelineLayoutData, MAX_PIPELINE_LAYOUT_COUNT>::createResource(name);
@@ -42,26 +45,12 @@ namespace Renderer
 				return ref;
 			}
 
-			static void DestroyPipelineLayoutData(const DOD::Ref& ref)
+			static void DestroyPipelineLayoutAndResource(const DOD::Ref& ref)
 			{
 				DOD::Resource::ResourceManagerBase<PipelineLayoutData, MAX_PIPELINE_LAYOUT_COUNT>::destroyResource(ref);
 			}
 
-			static void DestroyResources(const std::vector<DOD::Ref>& refs)
-			{
-				for (uint32_t i = 0; i < refs.size(); i++)
-				{
-					DOD::Ref ref = refs[i];
-					VkPipelineLayout& pipeline_layout = GetPipelineLayout(ref);
-
-					if (pipeline_layout != VK_NULL_HANDLE)
-					{
-						vkDestroyPipelineLayout(VulkanSwapChain::device, pipeline_layout, nullptr);
-						pipeline_layout = VK_NULL_HANDLE;
-					}
-				}
-			}
-
+			static void DestroyResources(const std::vector<DOD::Ref>& refs);
 
 			static VkPipelineLayout& GetPipelineLayout(const DOD::Ref& ref)
 			{
@@ -77,6 +66,12 @@ namespace Renderer
 			{
 				return data.descriptor_pools[ref._id];
 			}
+
+			static std::vector<VkDescriptorSetLayoutBinding>& GetDescriptorSetLayoutBinding(const DOD::Ref& ref)
+			{
+				return data.descriptor_set_layout_bindings[ref._id];
+			}
+
 		};
 	}
 }

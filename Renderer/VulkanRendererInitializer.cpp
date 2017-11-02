@@ -18,8 +18,10 @@
 
 std::string className = "window_class";
 std::string titleName = "Vulkan demo";
-VkPipelineCache VulkanRendererInitializer::m_PipelineCache;
 
+VkPipelineCache VulkanRendererInitializer::m_PipelineCache;
+VkCommandPool   VulkanRendererInitializer::m_CmdPool;
+VkQueue		    VulkanRendererInitializer::m_Queue;
 
 //In Vulkan the API version is encoded as a 32 - bit integer with the major and minor version being encoded into bits 31 - 22 and 21 - 12 
 //respectively(for 10 bits each.); the final 12 - bits encode the patch version number.
@@ -27,7 +29,6 @@ VkPipelineCache VulkanRendererInitializer::m_PipelineCache;
 #define VK_VER_MAJOR(X) ((((uint32_t)(X))>>22)&0x3FF)
 #define VK_VER_MINOR(X) ((((uint32_t)(X))>>12)&0x3FF)
 #define VK_VER_PATCH(X) (((uint32_t)(X)) & 0xFFF)
-
 
 
 VulkanRendererInitializer::VulkanRendererInitializer(): m_bPrepared(false)

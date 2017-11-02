@@ -5,7 +5,7 @@ namespace Renderer
 {
 	namespace Resource
 	{
-		void RenderPassManager::CreateRenderPass(const DOD::Ref& ref)
+		void RenderPassManager::CreateResource(const DOD::Ref& ref)
 		{
 			VkAttachmentDescription attachments[2] = {};
 

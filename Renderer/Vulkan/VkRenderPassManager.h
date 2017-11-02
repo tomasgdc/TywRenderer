@@ -28,9 +28,9 @@ namespace Renderer
 					MAX_RENDER_PASS_COUNT>::initResourceManager();
 			}
 
-			static void		CreateRenderPass(const DOD::Ref& ref);
+			static void		CreateResource(const DOD::Ref& ref);
 
-			static DOD::Ref CreateRenderPassData(const std::string& name)
+			static DOD::Ref CreateRenderPass(const std::string& name)
 			{
 				DOD::Ref ref = DOD::Resource::
 					ResourceManagerBase<RenderPassData, MAX_RENDER_PASS_COUNT>::createResource(name);

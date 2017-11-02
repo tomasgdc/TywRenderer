@@ -100,6 +100,8 @@ SOURCE_GROUP("Animation Manager\\Source Files" FILES ${SOURCES_ANIMATION})
 
 
 SET(HEADERS_VULKAN
+	"Vulkan/VkBufferLayoutManager.h"
+	"Vulkan/VkBufferObjectManager.h"
 	"Vulkan/VkBufferObject.h"
 	"Vulkan/VulkanTextureLoader.h"
 	"Vulkan/VulkanDebug.h"
@@ -112,6 +114,8 @@ SET(HEADERS_VULKAN
 	"Vulkan/VkPipelineManager.h"
 )
 SET(SOURCES_VULKAN
+	"Vulkan/VkBufferLayoutManager.cpp"
+	"Vulkan/VkBufferObjectManager.cpp"
 	"Vulkan/VkBufferObject.cpp"
 	"Vulkan/VulkanTextureLoader.cpp"
 	"Vulkan/VulkanDebug.cpp"

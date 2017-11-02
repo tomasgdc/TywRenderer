@@ -118,7 +118,7 @@ public:
 	VkPipelineStageFlags					m_SubmitPipelineStages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
 	// Command buffer pool
-	VkCommandPool							m_CmdPool;
+	static VkCommandPool							m_CmdPool;
 
 	// Command buffer used for setup
 	VkCommandBuffer							m_SetupCmdBuffer = VK_NULL_HANDLE;
@@ -138,7 +138,7 @@ public:
 	std::vector<VkFramebuffer>				m_FrameBuffers;
 
 	// Handle to the device graphics queue that command buffers are submitted to
-	VkQueue									m_Queue;
+	static VkQueue									m_Queue;
 
 	// Descriptor set pool
 	VkDescriptorPool						m_DescriptorPool = VK_NULL_HANDLE;
@@ -165,4 +165,3 @@ public:
 
 
 };
-

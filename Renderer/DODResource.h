@@ -30,14 +30,19 @@ namespace DOD
 			static Ref createResource(const std::string& name)
 			{
 				Ref ref = ManagerBase<DataType, count>::allocate();
-				//data.name(ref._id) = name;
+				data.name[ref._id] = name;
 				nameResourceMap[name] = ref;
 				return ref;
 			}
 
+			static std::string GetNameByRef(const DOD::Ref& ref)
+			{
+				return data.name[ref._id];
+			}
+
 			static void destroyResource(const Ref& ref)
 			{
-				//nameResourceMap.erase(ref);
+				nameResourceMap.erase(GetNameByRef(ref));
 				ManagerBase<DataType, count>::release(ref);
 			}
 

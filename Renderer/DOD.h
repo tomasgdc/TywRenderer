@@ -93,15 +93,14 @@ namespace DOD
         static Ref allocate()
         {
             assert(!freeIds.empty() && "Resource pool exhausted");
-            uint32_t id = freeIds.back();
+			uint32_t id = freeIds.back();
             freeIds.pop_back();
 
             Ref ref;
             ref._id = id;
             ref._generation = generations[id];
-
-            activeRefs.push_back(ref);
-
+			
+			activeRefs.push_back(ref);
             return ref;
         }
 
@@ -131,5 +130,12 @@ namespace DOD
 
     };
 
-	//using std::vector<Ref> = RefArray;
+	template <class DataType, uint32_t IdCount>
+	std::vector<IdType> ManagerBase<DataType, IdCount>::freeIds;
+
+	template <class DataType, uint32_t IdCount>
+	std::vector<Ref> ManagerBase<DataType, IdCount>::activeRefs;
+
+	template <class DataType, uint32_t IdCount>
+	std::vector<GenerationType> ManagerBase<DataType, IdCount>::generations;
 }

@@ -229,7 +229,7 @@ protected:
 	//Log Renderer Shaders
 	FILE*                     m_LogFileSh;
 
-protected:
+public:
 	bool								m_bIsOpenglRunning;
 	bool								m_bLogRenderer;
 	uint32_t							m_iTimerQueryId;

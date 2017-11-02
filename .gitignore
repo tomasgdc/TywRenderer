@@ -46,12 +46,3 @@ External/freetype/objs
 External/freetype/builds/windows/visualc/x64
 External/sdl/build
 External/assimp/build
-*.dll
-*.vcproj
-*.db
-*.vcxproj
-*.suo
-*.user
-*.opendb
-*.filters
-*.dsp

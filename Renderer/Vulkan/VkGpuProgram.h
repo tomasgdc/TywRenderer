@@ -29,7 +29,15 @@ namespace Renderer
 					MAX_GPU_PROGRAMS>::initResourceManager();
 			}
 
-			static void LoadShader(const DOD::Ref& ref, std::string fileName, VkShaderStageFlagBits stage);
+			static DOD::Ref CreateGPUProgram(const std::string& p_Name)
+			{
+				DOD::Ref ref = DOD::Resource::ResourceManagerBase<
+					GpuProgramData, MAX_GPU_PROGRAMS>::createResource(p_Name);
+
+				return ref;
+			}
+
+			static void LoadAndCompileShader(const DOD::Ref& ref, std::string file_path, VkShaderStageFlagBits stage);
 
 			static VkPipelineShaderStageCreateInfo& GetShaderStageCreateInfo(const DOD::Ref& ref)
 			{
