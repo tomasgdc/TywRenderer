@@ -347,6 +347,7 @@ VkBufferCreateInfo VkTools::Initializer::BufferCreateInfo(VkBufferUsageFlags usa
 	bufCreateInfo.usage = usage;
 	bufCreateInfo.size = size;
 	bufCreateInfo.flags = 0;
+	bufCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	return bufCreateInfo;
 }
 
@@ -398,6 +399,7 @@ VkDescriptorSetLayoutCreateInfo VkTools::Initializer::DescriptorSetLayoutCreateI
 	descriptorSetLayoutCreateInfo.pNext = NULL;
 	descriptorSetLayoutCreateInfo.pBindings = pBindings;
 	descriptorSetLayoutCreateInfo.bindingCount = bindingCount;
+	descriptorSetLayoutCreateInfo.flags = 0;
 	return descriptorSetLayoutCreateInfo;
 }
 
@@ -447,13 +449,13 @@ VkWriteDescriptorSet  VkTools::Initializer::WriteDescriptorSet(VkDescriptorSet d
 {
 	VkWriteDescriptorSet writeDescriptorSet = {};
 	writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writeDescriptorSet.pNext = NULL;
+	writeDescriptorSet.pNext = nullptr;
 	writeDescriptorSet.dstSet = dstSet;
 	writeDescriptorSet.descriptorType = type;
 	writeDescriptorSet.dstBinding = binding;
 	writeDescriptorSet.pBufferInfo = bufferInfo;
 	// Default value in all examples
-	writeDescriptorSet.descriptorCount = 1;
+	writeDescriptorSet.descriptorCount = 1u;
 	return writeDescriptorSet;
 }
 

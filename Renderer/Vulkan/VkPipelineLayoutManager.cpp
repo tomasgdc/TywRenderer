@@ -1,4 +1,5 @@
 #include "VkPipelineLayoutManager.h"
+#include "VkBufferObjectManager.h"
 
 #include "VulkanTools.h"
 #include "VulkanRendererInitializer.h"
@@ -25,13 +26,57 @@ namespace Renderer
 			std::vector<VkDescriptorPoolSize> pool_size;
 			pool_size.reserve(set_layout_bindings.size());
 
+			uint32_t max_pool_count = 0u;
 			for (auto& layout_binding : set_layout_bindings)
 			{
 				pool_size.push_back(VkTools::Initializer::DescriptorPoolSize(layout_binding.descriptorType, layout_binding.descriptorCount));
+				max_pool_count = std::max(max_pool_count, layout_binding.descriptorCount);
 			}
 
-			VkDescriptorPoolCreateInfo descriptorPoolInfo = VkTools::Initializer::DescriptorPoolCreateInfo(pool_size.size(), pool_size.data(), 2);
+			VkDescriptorPoolCreateInfo descriptorPoolInfo = VkTools::Initializer::DescriptorPoolCreateInfo(pool_size.size(), pool_size.data(), max_pool_count);
 			VK_CHECK_RESULT(vkCreateDescriptorPool(VulkanSwapChain::device, &descriptorPoolInfo, nullptr, &descriptor_pool));
+		}
+
+		void PipelineLayoutManager::AllocateWriteDescriptorSet(const DOD::Ref& ref, const std::vector<BindingInfo>& binding_infos)
+		{
+			VkDescriptorPool& descriptor_pool = PipelineLayoutManager::GetDescriptorPool(ref);
+			VkDescriptorSetLayout& descriptor_set_layout = PipelineLayoutManager::GetDescriptorSetLayout(ref);
+			
+			
+			VkDescriptorSetAllocateInfo descriptor_allocate_info = VkTools::Initializer::DescriptorSetAllocateInfo(descriptor_pool, &descriptor_set_layout, 1);
+
+			VkDescriptorSet descriptor_set;
+			VK_CHECK_RESULT(vkAllocateDescriptorSets(VulkanSwapChain::device, &descriptor_allocate_info, &descriptor_set));
+
+			auto& pipeline_layouts = PipelineLayoutManager::GetDescriptorSetLayoutBinding(ref);
+			
+
+			std::vector<VkWriteDescriptorSet>   write_descriptor_set;
+			std::vector<VkDescriptorImageInfo>  image_infos;
+			std::vector<VkDescriptorBufferInfo> buffer_infos;
+
+			write_descriptor_set.resize(pipeline_layouts.size());
+			image_infos.resize(pipeline_layouts.size());
+			buffer_infos.resize(pipeline_layouts.size());
+
+			for (uint32_t i = 0; i < pipeline_layouts.size(); i++)
+			{
+				auto& pipeline_layout = pipeline_layouts[i];
+
+				const BindingInfo&     info      = binding_infos[i];
+				BufferObject& buffer_object      = BufferObjectManager::GetBufferObject(info.buffer_ref);
+				const VkDeviceSize size_in_bytes = BufferObjectManager::GetBufferSize(info.buffer_ref);
+
+				VkDescriptorBufferInfo& buffer_info = buffer_infos[i];
+
+				buffer_info.buffer = buffer_object.buffer;
+				buffer_info.offset = 0u;
+				buffer_info.range  = size_in_bytes;
+
+				write_descriptor_set[i] = VkTools::Initializer::WriteDescriptorSet(descriptor_set, pipeline_layout.descriptorType, pipeline_layout.binding, &buffer_info);
+			}
+
+			vkUpdateDescriptorSets(VulkanSwapChain::device, write_descriptor_set.size(), write_descriptor_set.data(), 0, NULL);
 		}
 
 		void PipelineLayoutManager::DestroyResources(const std::vector<DOD::Ref>& refs)

@@ -4,6 +4,9 @@
 #include "../DODResource.h"
 #include "VulkanSwapChain.h"
 
+//BindingInfo
+#include "DrawCallManager.h"
+
 namespace Renderer
 {
 	namespace Resource
@@ -36,6 +39,8 @@ namespace Renderer
 			}
 
 			static void	CreateResource(const DOD::Ref& ref);
+
+			static void AllocateWriteDescriptorSet(const DOD::Ref& ref, const std::vector<BindingInfo>& binding_infos);
 
 			static DOD::Ref CreatePipelineLayout(const std::string& name)
 			{

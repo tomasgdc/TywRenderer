@@ -41,6 +41,9 @@ VulkanRendererInitializer::VulkanRendererInitializer(): m_bPrepared(false)
 
 VulkanRendererInitializer::~VulkanRendererInitializer()
 {
+	//Free debug callback
+	vkDebug::freeDebugCallback(m_SwapChain.instance);
+
 	// Clean up Vulkan resources
 	if (m_DescriptorPool != VK_NULL_HANDLE)
 	{

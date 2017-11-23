@@ -11,25 +11,43 @@ namespace Renderer
 		void BufferObjectManager::CreateResource(const DOD::Ref& ref, VkPhysicalDeviceMemoryProperties&  memory_properties)
 		{
 			BufferObject& buffer_object = BufferObjectManager::GetBufferObject(ref);
-			VkDeviceSize data_size = Renderer::Resource::BufferObjectManager::GetBufferSize(ref);
-			VkBufferUsageFlags& usage_flags = Renderer::Resource::BufferObjectManager::GetBufferUsageFlag(ref);
+			const VkDeviceSize data_size = Renderer::Resource::BufferObjectManager::GetBufferSize(ref);
+			const VkBufferUsageFlags usage_flags = Renderer::Resource::BufferObjectManager::GetBufferUsageFlag(ref) | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 			void*& data = Renderer::Resource::BufferObjectManager::GetBufferData(ref);
-
-			BufferObject temp_staging_buffer;
 
 			// Create the buffer handle
 			VkBufferCreateInfo bufferCreateInfo = VkTools::Initializer::BufferCreateInfo(usage_flags, data_size);
-			VK_CHECK_RESULT(vkCreateBuffer(VulkanSwapChain::device, &bufferCreateInfo, nullptr, &temp_staging_buffer.buffer));
+			VK_CHECK_RESULT(vkCreateBuffer(VulkanSwapChain::device, &bufferCreateInfo, nullptr, &buffer_object.buffer));
 
 			// Create the memory backing up the buffer handle
 			VkMemoryRequirements memReqs;
 			VkMemoryAllocateInfo memAlloc = VkTools::Initializer::MemoryAllocateInfo();
-			vkGetBufferMemoryRequirements(VulkanSwapChain::device, temp_staging_buffer.buffer, &memReqs);
+
+			vkGetBufferMemoryRequirements(VulkanSwapChain::device, buffer_object.buffer, &memReqs);
 			memAlloc.allocationSize = memReqs.size;
 
 			// Find a memory type index that fits the properties of the buffer
+			memAlloc.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memory_properties);
+			VK_CHECK_RESULT(vkAllocateMemory(VulkanSwapChain::device, &memAlloc, nullptr, &buffer_object.memory));
+
+
+			// Attach the memory to the buffer object
+			VK_CHECK_RESULT(vkBindBufferMemory(VulkanSwapChain::device, buffer_object.buffer, buffer_object.memory, 0));
+
+			BufferObject temp_staging_buffer;
+			VkBufferCreateInfo stagingBufferCreateInfo = bufferCreateInfo;
+			{
+				stagingBufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+			}
+
+			VK_CHECK_RESULT(vkCreateBuffer(VulkanSwapChain::device, &stagingBufferCreateInfo, nullptr, &temp_staging_buffer.buffer));
+
+			VkMemoryRequirements stagingMemReqs;
+			vkGetBufferMemoryRequirements(VulkanSwapChain::device, temp_staging_buffer.buffer, &stagingMemReqs);
+
 			memAlloc.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, memory_properties);
 			VK_CHECK_RESULT(vkAllocateMemory(VulkanSwapChain::device, &memAlloc, nullptr, &temp_staging_buffer.memory));
+			VK_CHECK_RESULT(vkBindBufferMemory(VulkanSwapChain::device, temp_staging_buffer.buffer, temp_staging_buffer.memory, 0));
 
 			// If a pointer to the buffer data has been passed, map the buffer and copy over the data
 			if (data != nullptr)
@@ -39,19 +57,6 @@ namespace Renderer
 				memcpy(mapped, data, data_size);
 				vkUnmapMemory(VulkanSwapChain::device, temp_staging_buffer.memory);
 			}
-
-			// Attach the memory to the buffer object
-			VK_CHECK_RESULT(vkBindBufferMemory(VulkanSwapChain::device, temp_staging_buffer.buffer, temp_staging_buffer.memory, 0));
-
-			// Create the destination buffer with device only visibility
-			// Buffer will be used as a vertex buffer and is the copy destination
-			bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-			VK_CHECK_RESULT(vkCreateBuffer(VulkanSwapChain::device, &bufferCreateInfo, nullptr, &buffer_object.buffer));
-			vkGetBufferMemoryRequirements(VulkanSwapChain::device, buffer_object.buffer, &memReqs);
-
-			memAlloc.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memory_properties);
-			VK_CHECK_RESULT(vkAllocateMemory(VulkanSwapChain::device, &memAlloc, nullptr, &buffer_object.memory));
-			VK_CHECK_RESULT(vkBindBufferMemory(VulkanSwapChain::device, buffer_object.buffer, buffer_object.memory, 0));
 
 
 			// Buffer copies have to be submitted to a queue, so we need a command buffer for them

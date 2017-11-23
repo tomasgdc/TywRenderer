@@ -13,6 +13,7 @@ namespace Renderer
 		{
 			VkBuffer buffer;
 			VkDeviceMemory memory;
+			uint64_t size_in_bytes;
 		};
 
 		struct BufferOjbectData : DOD::Resource::ResourceDatabase
