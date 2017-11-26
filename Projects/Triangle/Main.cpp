@@ -1,5 +1,5 @@
-#include <iostream>
-#include <External\glm\glm\glm.hpp>
+#include <RendererPch\stdafx.h>
+#include <External\glm\glm\gtc\matrix_inverse.hpp>
 
 #include "../../Renderer/VKRenderer.h"
 #include "../../Renderer/Vulkan/VkPipelineManager.h"
@@ -12,27 +12,90 @@
 
 #include "../../Renderer/Vulkan/VkBufferObject.h"
 #include "../../Renderer/Vulkan/DrawCallManager.h"
+#include "../../Renderer/Vulkan/VkDrawCallDispatcher.h"
 
 LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-int g_iDesktopWidth = 800;
-int g_iDesktopHeight = 600;
-bool g_bPrepared = false;
-VKRenderer g_Renderer;
 
-struct 
+//Global variables
+//====================================================================================
+uint32_t	g_iDesktopWidth = 800;
+uint32_t	g_iDesktopHeight = 600;
+bool		g_bPrepared = false;
+
+glm::vec3	g_Rotation = glm::vec3();
+glm::vec3	g_CameraPos = glm::vec3();
+glm::vec2	g_MousePos;
+
+
+// Use to adjust mouse rotation speed
+float		g_RotationSpeed = 1.0f;
+// Use to adjust mouse zoom speed
+float		g_ZoomSpeed = 1.0f;
+float       g_zoom = 1.0f;
+
+class RendererTest final : public VKRenderer
 {
-	glm::mat4 projectionMatrix;
-	glm::mat4 modelMatrix;
-	glm::mat4 viewMatrix;
-	glm::vec4 viewPos;
-	float lodBias = 0.0f;
+private:
 
-}m_uboVS;
+	// Synchronization semaphores
+	// Semaphores are used to synchronize dependencies between command buffers
+	// We use them to ensure that we e.g. don't present to the swap chain
+	// until all rendering has completed
+	struct 
+	{
+		// Swap chain image presentation
+		VkSemaphore presentComplete;
+		// Command buffer submission and execution
+		VkSemaphore renderComplete;
+	} Semaphores;
 
+
+public:
+
+	struct
+	{
+		glm::mat4 projectionMatrix;
+		glm::mat4 modelMatrix;
+		glm::mat4 viewMatrix;
+		glm::vec4 viewPos;
+		float lodBias = 0.0f;
+
+	}m_uboVS;
+
+
+	RendererTest() {}
+	~RendererTest() {}
+
+	void StartFrame() override;
+	void PrepareSemaphore() override;
+	void UpdateUniformBuffers() override;
+};
+RendererTest g_Renderer;
+
+
+
+
+bool GenerateEvents(MSG& msg)
+{
+	if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+	{
+		if (msg.message == WM_QUIT)
+		{
+			return false;
+		}
+		else
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+	}
+	return true;
+}
 
 int main()
 {
 	g_bPrepared = g_Renderer.VInitRenderer(800, 600, false, HandleWindowMessages);
+	g_Renderer.UpdateUniformBuffers();
 
 	DOD::Ref ref(0, 0);
 
@@ -54,7 +117,7 @@ int main()
 	Renderer::Resource::GpuProgramManager::LoadAndCompileShader(frag_ref, "../../../Assets/Shaders/Triangle/", VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	//Set bindings positions
-	DOD::Ref pipeline_layout_ref = Renderer::Resource::PipelineLayoutManager::CreatePipelineLayout("Pipeline_1");
+	DOD::Ref pipeline_layout_ref = Renderer::Resource::PipelineLayoutManager::CreatePipelineLayout("Pipeline_layout_1");
 
 	//Describe at which position uniform and image buffer object goes
 	auto& descriptor_layout = Renderer::Resource::PipelineLayoutManager::GetDescriptorSetLayoutBinding(pipeline_layout_ref);
@@ -130,9 +193,9 @@ int main()
 
 		DOD::Ref uniform_buffer_ref = Renderer::Resource::BufferObjectManager::CreateBufferOjbect("Uniform_Buffer_1");
 
-		Renderer::Resource::BufferObjectManager::GetBufferSize(uniform_buffer_ref) = sizeof(m_uboVS);
+		Renderer::Resource::BufferObjectManager::GetBufferSize(uniform_buffer_ref) = sizeof(g_Renderer.m_uboVS);
 		Renderer::Resource::BufferObjectManager::GetBufferUsageFlag(uniform_buffer_ref) = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-		Renderer::Resource::BufferObjectManager::GetBufferData(uniform_buffer_ref) = &m_uboVS;
+		Renderer::Resource::BufferObjectManager::GetBufferData(uniform_buffer_ref) = &g_Renderer.m_uboVS;
 		Renderer::Resource::BufferObjectManager::CreateResource(uniform_buffer_ref, g_Renderer.m_pWRenderer->m_DeviceMemoryProperties);
 	//}
 
@@ -142,9 +205,32 @@ int main()
 
 	binding_infos.push_back(std::move(Renderer::Resource::BindingInfo{ 0, uniform_buffer_ref }));
 
+	Renderer::Resource::DrawCallManager::GetIndexCount(draw_call_ref) = indexBufferSize;
+	Renderer::Resource::DrawCallManager::GetIndexBufferRef(draw_call_ref) = staging_buffer_indices_ref;
+	Renderer::Resource::DrawCallManager::GetVertexBufferRef(draw_call_ref) = staging_buffer_vertices_ref;
 	Renderer::Resource::DrawCallManager::GetPipelineLayoutRef(draw_call_ref) = pipeline_layout_ref;
+	Renderer::Resource::DrawCallManager::GetPipelineRef(draw_call_ref) = pipeline_ref;
+
 	Renderer::Resource::DrawCallManager::CreateResource(draw_call_ref);
 	
+	//Build commands
+	Renderer::Vulkan::DrawCall::BuildCommandBuffer(draw_call_ref, g_iDesktopWidth, g_iDesktopHeight);
+
+#if defined(_WIN32)
+	MSG msg;
+#endif
+
+	while (TRUE)
+	{
+		if (!GenerateEvents(msg))break;
+
+		auto tStart = std::chrono::high_resolution_clock::now();
+		g_Renderer.StartFrame();
+		//Do something
+		g_Renderer.EndFrame(nullptr);
+		auto tEnd = std::chrono::high_resolution_clock::now();
+	}
+
 	//Release resources
 	Renderer::Resource::RenderPassManager::DestroyResources(Renderer::Resource::RenderPassManager::activeRefs);
 	Renderer::Resource::GpuProgramManager::DestroyResources(Renderer::Resource::GpuProgramManager::activeRefs);
@@ -155,6 +241,96 @@ int main()
 
 	system("pause");
 	return 0;
+}
+
+void RendererTest::UpdateUniformBuffers()
+{
+	// Update matrices
+	m_uboVS.projectionMatrix = glm::perspective(glm::radians(60.0f), (float)m_WindowWidth / (float)m_WindowHeight, 0.1f, 256.0f);
+
+	m_uboVS.viewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, g_zoom));
+
+	m_uboVS.modelMatrix = m_uboVS.viewMatrix * glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -5.0f));
+	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_uboVS.modelMatrix = glm::rotate(m_uboVS.modelMatrix, glm::radians(g_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+	m_uboVS.viewPos = glm::vec4(0.0f, 0.0f, -5.0f, 0.0f);
+
+	//Renderer::Resource::BufferObjectManager::
+
+	// Map uniform buffer and update it
+	uint8_t *pData;
+	//VK_CHECK_RESULT(vkMapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory, 0, sizeof(m_uboVS), 0, (void **)&pData));
+	//memcpy(pData, &m_uboVS, sizeof(m_uboVS));
+	//vkUnmapMemory(m_pWRenderer->m_SwapChain.device, uniformDataVS.memory);
+}
+
+void RendererTest::PrepareSemaphore()
+{
+	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreCreateInfo.pNext = NULL;
+
+	// This semaphore ensures that the image is complete
+	// before starting to submit again
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.presentComplete));
+
+	// This semaphore ensures that all commands submitted
+	// have been finished before submitting the image to the queue
+	VK_CHECK_RESULT(vkCreateSemaphore(m_pWRenderer->m_SwapChain.device, &semaphoreCreateInfo, nullptr, &Semaphores.renderComplete));
+}
+
+void RendererTest::StartFrame()
+{
+	{
+		// Get next image in the swap chain (back/front buffer)
+		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.GetNextImage(Semaphores.presentComplete, &m_pWRenderer->m_currentBuffer));
+
+		// Submit the post present image barrier to transform the image back to a color attachment
+		// that can be used to write to by our render pass
+		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_pWRenderer->m_PostPresentCmdBuffers[m_pWRenderer->m_currentBuffer];
+
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+		// Make sure that the image barrier command submitted to the queue 
+		// has finished executing
+		VK_CHECK_RESULT(vkQueueWaitIdle(m_pWRenderer->m_Queue));
+	}
+
+
+
+	{
+		// The submit infor strcuture contains a list of
+		// command buffers and semaphores to be submitted to a queue
+		// If you want to submit multiple command buffers, pass an array
+		VkPipelineStageFlags pipelineStages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		VkSubmitInfo submitInfo = VkTools::Initializer::SubmitInfo();
+		submitInfo.pWaitDstStageMask = &pipelineStages;
+		// The wait semaphore ensures that the image is presented 
+		// before we start submitting command buffers agein
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &Semaphores.presentComplete;
+		// Submit the currently active command buffer
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_pWRenderer->m_DrawCmdBuffers[m_pWRenderer->m_currentBuffer];
+		// The signal semaphore is used during queue presentation
+		// to ensure that the image is not rendered before all
+		// commands have been submitted
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &Semaphores.renderComplete;
+
+		// Submit to the graphics queue
+		VK_CHECK_RESULT(vkQueueSubmit(m_pWRenderer->m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+		// Present the current buffer to the swap chain
+		// We pass the signal semaphore from the submit info
+		// to ensure that the image is not rendered until
+		// all commands have been submitted
+		VK_CHECK_RESULT(m_pWRenderer->m_SwapChain.QueuePresent(m_pWRenderer->m_Queue, m_pWRenderer->m_currentBuffer, Semaphores.renderComplete));
+	}
 }
 
 void WIN_Sizing(WORD side, RECT *rect)

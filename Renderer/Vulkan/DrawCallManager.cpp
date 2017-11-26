@@ -11,12 +11,15 @@ namespace Renderer
 			DOD::Ref pipeline_layout_ref  = DrawCallManager::GetPipelineLayoutRef(ref);
 
 
-			PipelineLayoutManager::AllocateWriteDescriptorSet(pipeline_layout_ref, infos);
+			DrawCallManager::GetDescriptorSet(ref) = Renderer::Resource::PipelineLayoutManager::AllocateWriteDescriptorSet(pipeline_layout_ref, infos);
 		}
 
 		void DrawCallManager::DestroyResources(const std::vector<DOD::Ref>& refs)
 		{
+			for (int i = 0; i < refs.size(); i++)
+			{
 
+			}
 		}
 	}
 }

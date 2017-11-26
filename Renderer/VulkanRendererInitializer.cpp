@@ -22,6 +22,9 @@ std::string titleName = "Vulkan demo";
 VkPipelineCache VulkanRendererInitializer::m_PipelineCache;
 VkCommandPool   VulkanRendererInitializer::m_CmdPool;
 VkQueue		    VulkanRendererInitializer::m_Queue;
+VulkanSwapChain	 VulkanRendererInitializer::m_SwapChain;
+std::vector<VkFramebuffer>	 VulkanRendererInitializer::m_FrameBuffers;
+std::vector<VkCommandBuffer> VulkanRendererInitializer::m_DrawCmdBuffers;
 
 //In Vulkan the API version is encoded as a 32 - bit integer with the major and minor version being encoded into bits 31 - 22 and 21 - 12 
 //respectively(for 10 bits each.); the final 12 - bits encode the patch version number.

@@ -95,7 +95,7 @@ public:
 
 public:
 	// Command buffers used for rendering
-	std::vector<VkCommandBuffer>			m_DrawCmdBuffers;
+	static std::vector<VkCommandBuffer>			m_DrawCmdBuffers;
 
 	// Command buffers for submitting a pre present image barrier
 	std::vector<VkCommandBuffer>			m_PrePresentCmdBuffers = { VK_NULL_HANDLE };
@@ -107,7 +107,7 @@ public:
 	std::vector<VkPhysicalDevice>			m_PhysicalDevices;
 	std::vector<VkQueueFamilyProperties>	m_QueueFamilyProperties;
 
-	VulkanSwapChain							m_SwapChain;
+	static VulkanSwapChain							m_SwapChain;
 	VkSemaphores							m_Semaphores;
 	VkTools::VkDepthStencil					m_DepthStencil;
 
@@ -135,7 +135,7 @@ public:
 	static VkPipelineCache							m_PipelineCache;
 
 	// List of available frame buffers (same as number of swap chain images)
-	std::vector<VkFramebuffer>				m_FrameBuffers;
+	static std::vector<VkFramebuffer>				m_FrameBuffers;
 
 	// Handle to the device graphics queue that command buffers are submitted to
 	static VkQueue									m_Queue;

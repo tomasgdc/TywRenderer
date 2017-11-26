@@ -37,7 +37,7 @@ namespace Renderer
 			VK_CHECK_RESULT(vkCreateDescriptorPool(VulkanSwapChain::device, &descriptorPoolInfo, nullptr, &descriptor_pool));
 		}
 
-		void PipelineLayoutManager::AllocateWriteDescriptorSet(const DOD::Ref& ref, const std::vector<BindingInfo>& binding_infos)
+		VkDescriptorSet PipelineLayoutManager::AllocateWriteDescriptorSet(const DOD::Ref& ref, const std::vector<BindingInfo>& binding_infos)
 		{
 			VkDescriptorPool& descriptor_pool = PipelineLayoutManager::GetDescriptorPool(ref);
 			VkDescriptorSetLayout& descriptor_set_layout = PipelineLayoutManager::GetDescriptorSetLayout(ref);
@@ -77,6 +77,7 @@ namespace Renderer
 			}
 
 			vkUpdateDescriptorSets(VulkanSwapChain::device, write_descriptor_set.size(), write_descriptor_set.data(), 0, NULL);
+			return descriptor_set;
 		}
 
 		void PipelineLayoutManager::DestroyResources(const std::vector<DOD::Ref>& refs)
