@@ -1,8 +1,7 @@
 #include "VkBufferObjectManager.h"
 #include "VulkanTools.h"
 #include "VulkanSwapChain.h"
-
-#include "VulkanRendererInitializer.h"
+#include "VkRenderSystem.h"
 
 namespace Renderer
 {
@@ -17,22 +16,22 @@ namespace Renderer
 
 			// Create the buffer handle
 			VkBufferCreateInfo bufferCreateInfo = VkTools::Initializer::BufferCreateInfo(usage_flags, data_size);
-			VK_CHECK_RESULT(vkCreateBuffer(VulkanSwapChain::device, &bufferCreateInfo, nullptr, &buffer_object.buffer));
+			VK_CHECK_RESULT(vkCreateBuffer(Vulkan::RenderSystem::vkDevice, &bufferCreateInfo, nullptr, &buffer_object.buffer));
 
 			// Create the memory backing up the buffer handle
 			VkMemoryRequirements memReqs;
 			VkMemoryAllocateInfo memAlloc = VkTools::Initializer::MemoryAllocateInfo();
 
-			vkGetBufferMemoryRequirements(VulkanSwapChain::device, buffer_object.buffer, &memReqs);
+			vkGetBufferMemoryRequirements(Vulkan::RenderSystem::vkDevice, buffer_object.buffer, &memReqs);
 			memAlloc.allocationSize = memReqs.size;
 
 			// Find a memory type index that fits the properties of the buffer
 			memAlloc.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memory_properties);
-			VK_CHECK_RESULT(vkAllocateMemory(VulkanSwapChain::device, &memAlloc, nullptr, &buffer_object.memory));
+			VK_CHECK_RESULT(vkAllocateMemory(Vulkan::RenderSystem::vkDevice, &memAlloc, nullptr, &buffer_object.memory));
 
 
 			// Attach the memory to the buffer object
-			VK_CHECK_RESULT(vkBindBufferMemory(VulkanSwapChain::device, buffer_object.buffer, buffer_object.memory, 0));
+			VK_CHECK_RESULT(vkBindBufferMemory(Vulkan::RenderSystem::vkDevice, buffer_object.buffer, buffer_object.memory, 0));
 
 			BufferObject temp_staging_buffer;
 			VkBufferCreateInfo stagingBufferCreateInfo = bufferCreateInfo;
@@ -40,22 +39,22 @@ namespace Renderer
 				stagingBufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 			}
 
-			VK_CHECK_RESULT(vkCreateBuffer(VulkanSwapChain::device, &stagingBufferCreateInfo, nullptr, &temp_staging_buffer.buffer));
+			VK_CHECK_RESULT(vkCreateBuffer(Vulkan::RenderSystem::vkDevice, &stagingBufferCreateInfo, nullptr, &temp_staging_buffer.buffer));
 
 			VkMemoryRequirements stagingMemReqs;
-			vkGetBufferMemoryRequirements(VulkanSwapChain::device, temp_staging_buffer.buffer, &stagingMemReqs);
+			vkGetBufferMemoryRequirements(Vulkan::RenderSystem::vkDevice, temp_staging_buffer.buffer, &stagingMemReqs);
 
 			memAlloc.memoryTypeIndex = VkTools::GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, memory_properties);
-			VK_CHECK_RESULT(vkAllocateMemory(VulkanSwapChain::device, &memAlloc, nullptr, &temp_staging_buffer.memory));
-			VK_CHECK_RESULT(vkBindBufferMemory(VulkanSwapChain::device, temp_staging_buffer.buffer, temp_staging_buffer.memory, 0));
+			VK_CHECK_RESULT(vkAllocateMemory(Vulkan::RenderSystem::vkDevice, &memAlloc, nullptr, &temp_staging_buffer.memory));
+			VK_CHECK_RESULT(vkBindBufferMemory(Vulkan::RenderSystem::vkDevice, temp_staging_buffer.buffer, temp_staging_buffer.memory, 0));
 
 			// If a pointer to the buffer data has been passed, map the buffer and copy over the data
 			if (data != nullptr)
 			{
 				void *mapped;
-				VK_CHECK_RESULT(vkMapMemory(VulkanSwapChain::device, temp_staging_buffer.memory, 0, data_size, 0, &mapped));
+				VK_CHECK_RESULT(vkMapMemory(Vulkan::RenderSystem::vkDevice, temp_staging_buffer.memory, 0, data_size, 0, &mapped));
 				memcpy(mapped, data, data_size);
-				vkUnmapMemory(VulkanSwapChain::device, temp_staging_buffer.memory);
+				vkUnmapMemory(Vulkan::RenderSystem::vkDevice, temp_staging_buffer.memory);
 			}
 
 
@@ -67,11 +66,11 @@ namespace Renderer
 
 			VkCommandBufferAllocateInfo cmdBufAllocateInfo = {};
 			cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			cmdBufAllocateInfo.commandPool = VulkanRendererInitializer::m_CmdPool;
+			cmdBufAllocateInfo.commandPool = Vulkan::RenderSystem::vkPrimalCommandPool;
 			cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			cmdBufAllocateInfo.commandBufferCount = 1;
 
-			VK_CHECK_RESULT(vkAllocateCommandBuffers(VulkanSwapChain::device, &cmdBufAllocateInfo, &cmd_buffer));
+			VK_CHECK_RESULT(vkAllocateCommandBuffers(Vulkan::RenderSystem::vkDevice, &cmdBufAllocateInfo, &cmd_buffer));
 			VkCommandBufferBeginInfo cmdBufInfo = VkTools::Initializer::CommandBufferBeginInfo();
 			VK_CHECK_RESULT(vkBeginCommandBuffer(cmd_buffer, &cmdBufInfo));
 
@@ -88,14 +87,14 @@ namespace Renderer
 			submitInfo.commandBufferCount = 1;
 			submitInfo.pCommandBuffers = &cmd_buffer;
 
-			VK_CHECK_RESULT(vkQueueSubmit(VulkanRendererInitializer::m_Queue, 1, &submitInfo, VK_NULL_HANDLE));
-			VK_CHECK_RESULT(vkQueueWaitIdle(VulkanRendererInitializer::m_Queue));
+			VK_CHECK_RESULT(vkQueueSubmit(Vulkan::RenderSystem::vkQueue, 1, &submitInfo, VK_NULL_HANDLE));
+			VK_CHECK_RESULT(vkQueueWaitIdle(Vulkan::RenderSystem::vkQueue));
 
-			vkFreeCommandBuffers(VulkanSwapChain::device, VulkanRendererInitializer::m_CmdPool, 1, &cmd_buffer);
+			vkFreeCommandBuffers(Vulkan::RenderSystem::vkDevice, Vulkan::RenderSystem::vkPrimalCommandPool, 1, &cmd_buffer);
 
 			//Delete stagging buffer data as all needed data is sent to gpu
-			vkDestroyBuffer(VulkanSwapChain::device, temp_staging_buffer.buffer, nullptr);
-			vkFreeMemory(VulkanSwapChain::device, temp_staging_buffer.memory, nullptr);
+			vkDestroyBuffer(Vulkan::RenderSystem::vkDevice, temp_staging_buffer.buffer, nullptr);
+			vkFreeMemory(Vulkan::RenderSystem::vkDevice, temp_staging_buffer.memory, nullptr);
 		}
 
 		void BufferObjectManager::DestroyResources(const std::vector<DOD::Ref>& refs)
@@ -106,8 +105,8 @@ namespace Renderer
 
 				if (buffer_object.buffer != VK_NULL_HANDLE)
 				{
-					vkDestroyBuffer(VulkanSwapChain::device, buffer_object.buffer, nullptr);
-					vkFreeMemory(VulkanSwapChain::device, buffer_object.memory, nullptr);
+					vkDestroyBuffer(Vulkan::RenderSystem::vkDevice, buffer_object.buffer, nullptr);
+					vkFreeMemory(Vulkan::RenderSystem::vkDevice, buffer_object.memory, nullptr);
 					buffer_object.buffer = VK_NULL_HANDLE;
 				}
 			}

@@ -2,7 +2,6 @@
 #include <vector>
 #include <External\vulkan\vulkan.h>
 #include "../DODResource.h"
-#include "VulkanSwapChain.h"
 
 namespace Renderer
 {
@@ -43,21 +42,7 @@ namespace Renderer
 				DOD::Resource::ResourceManagerBase<RenderPassData, MAX_RENDER_PASS_COUNT>::destroyResource(ref);
 			}
 
-			static void DestroyResources(const std::vector<DOD::Ref>& refs)
-			{
-				for (uint32_t i = 0; i < refs.size(); i++)
-				{
-					DOD::Ref ref = refs[i];
-					VkRenderPass& render_pass = GetRenderPass(ref);
-
-					if (render_pass != VK_NULL_HANDLE)
-					{
-						vkDestroyRenderPass(VulkanSwapChain::device, render_pass, nullptr);
-						render_pass = VK_NULL_HANDLE;
-					}
-				}
-			}
-
+			static void DestroyResources(const std::vector<DOD::Ref>& refs);
 
 			static VkRenderPass& GetRenderPass(const DOD::Ref& ref)
 			{

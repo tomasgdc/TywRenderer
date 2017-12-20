@@ -5,6 +5,7 @@
 #include "Vulkan\VkPipelineLayoutManager.h"
 #include "Vulkan\VkGpuProgram.h"
 #include "Vulkan\VkBufferLayoutManager.h"
+#include "VkRenderSystem.h"
 
 namespace Renderer
 {
@@ -99,7 +100,7 @@ namespace Renderer
             pipelineCreateInfo.pDynamicState = &dynamicState;
 
             // Create rendering pipeline
-            VK_CHECK_RESULT(vkCreateGraphicsPipelines(VulkanSwapChain::device, VulkanRendererInitializer::m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &pipeline));
+            VK_CHECK_RESULT(vkCreateGraphicsPipelines(Vulkan::RenderSystem::vkDevice, VulkanRendererInitializer::m_PipelineCache, 1, &pipelineCreateInfo, nullptr, &pipeline));
 
         }
 
@@ -113,7 +114,7 @@ namespace Renderer
 				VkPipeline& pipeline = GetPipeline(ref);
 				if (pipeline != VK_NULL_HANDLE)
 				{
-					vkDestroyPipeline(VulkanSwapChain::device, pipeline, nullptr);
+					vkDestroyPipeline(Vulkan::RenderSystem::vkDevice, pipeline, nullptr);
 					pipeline = VK_NULL_HANDLE;
 				}
 			}

@@ -107,7 +107,7 @@ namespace vkDebug
 
 	void freeDebugCallback(VkInstance instance)
 	{
-		if (msgCallback != VK_NULL_HANDLE)
+		if (msgCallback != VK_NULL_HANDLE && instance != VK_NULL_HANDLE)
 		{
 			DestroyDebugReportCallback(instance, msgCallback, nullptr);
 		}

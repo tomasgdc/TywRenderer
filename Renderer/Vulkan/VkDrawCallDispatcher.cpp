@@ -4,6 +4,7 @@
 #include "VkPipelineManager.h"
 #include "VkRenderPassManager.h"
 #include "VkBufferObjectManager.h"
+#include "VkRenderSystem.h"
 #include "VulkanTools.h"
 
 #include "VulkanRendererInitializer.h"
@@ -13,6 +14,8 @@ namespace Renderer
 {
 	namespace Vulkan
 	{
+		uint32_t secondaryCommandBufferIndex = 0;
+
 		void DrawCall::BuildCommandBuffer(const DOD::Ref& ref, int width, int height)
 		{
 			const DOD::Ref pipeline_layout_ref  = Renderer::Resource::DrawCallManager::GetPipelineLayoutRef(ref);
@@ -26,9 +29,11 @@ namespace Renderer
 			const VkRenderPass& render_pass = Renderer::Resource::RenderPassManager::GetRenderPass(ref);
 
 
+			//Renderer::Vulkan::RenderSystem::BeginSecondaryComandBuffer(secondaryCommandBufferIndex, render_pass, );
+
 			//VkCommandBuffer command_buffer;
 			//VkCommandBufferAllocateInfo cmdBufAllocateInfo = VkTools::Initializer::CommandBufferAllocateInfo(VulkanRendererInitializer::m_CmdPool,  VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
-			//VK_CHECK_RESULT(vkAllocateCommandBuffers(VulkanSwapChain::device, &cmdBufAllocateInfo, &command_buffer));
+			//VK_CHECK_RESULT(vkAllocateCommandBuffers(Vulkan::RenderSystem::vkDevice, &cmdBufAllocateInfo, &command_buffer));
 
 			std::array<VkClearValue, 2> clearValues;
 			clearValues[0].color = { { 0.5f, 0.5f, 0.5f, 1.0f } };

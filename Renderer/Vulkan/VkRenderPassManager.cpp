@@ -1,6 +1,6 @@
 #include "VkRenderPassManager.h"
 #include "VulkanTools.h"
-
+#include "VkRenderSystem.h"
 #include "VulkanRendererInitializer.h"
 
 namespace Renderer
@@ -12,7 +12,9 @@ namespace Renderer
 			VkAttachmentDescription attachments[2] = {};
 
 			// Color attachment
-			attachments[0].format = VulkanRendererInitializer::m_SwapChain.colorFormat;
+			//Vulkan::RenderSystem::
+
+			attachments[0].format = Vulkan::RenderSystem::vkColorFormatToUse;
 			attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
 			attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 			attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -22,7 +24,7 @@ namespace Renderer
 			attachments[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 			// Depth attachment
-			attachments[1].format = VulkanRendererInitializer::m_SwapChain.depthFormat;
+			attachments[1].format = Vulkan::RenderSystem::vkDepthFormatToUse;
 			attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
 			attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 			attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -63,7 +65,22 @@ namespace Renderer
 
 			VkRenderPass& render_pass = GetRenderPass(ref);
 
-			VK_CHECK_RESULT(vkCreateRenderPass(VulkanSwapChain::device, &renderPassInfo, nullptr, &render_pass));
+			VK_CHECK_RESULT(vkCreateRenderPass(Vulkan::RenderSystem::vkDevice, &renderPassInfo, nullptr, &render_pass));
+		}
+
+		void RenderPassManager::DestroyResources(const std::vector<DOD::Ref>& refs)
+		{
+			for (uint32_t i = 0; i < refs.size(); i++)
+			{
+				DOD::Ref ref = refs[i];
+				VkRenderPass& render_pass = RenderPassManager::GetRenderPass(ref);
+
+				if (render_pass != VK_NULL_HANDLE)
+				{
+					vkDestroyRenderPass(Vulkan::RenderSystem::vkDevice, render_pass, nullptr);
+					render_pass = VK_NULL_HANDLE;
+				}
+			}
 		}
 	}
 }

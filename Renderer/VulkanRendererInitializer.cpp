@@ -44,6 +44,9 @@ VulkanRendererInitializer::VulkanRendererInitializer(): m_bPrepared(false)
 
 VulkanRendererInitializer::~VulkanRendererInitializer()
 {
+	if (m_SwapChain.instance == VK_NULL_HANDLE)
+		return;
+
 	//Free debug callback
 	vkDebug::freeDebugCallback(m_SwapChain.instance);
 
@@ -106,7 +109,7 @@ void VulkanRendererInitializer::Render()
 	
 }
 
-bool VulkanRendererInitializer::CreateRendererScreen(uint32_t height, uint32_t widht, bool isFullscreen, LRESULT(CALLBACK MainWindowProc)(HWND, UINT, WPARAM, LPARAM))
+bool VulkanRendererInitializer::CreateRendererScreen (uint32_t height, uint32_t widht, bool isFullscreen, LRESULT(CALLBACK MainWindowProc)(HWND, UINT, WPARAM, LPARAM))
 {
 	//Do not initialize again if this instance was initialized already
 	if (m_bPrepared) {
@@ -466,7 +469,7 @@ bool VulkanRendererInitializer::GetPhysicalDevicesEnumerationAndProperties()
 			VK_VER_MINOR(deviceProperties.apiVersion),
 			VK_VER_PATCH(deviceProperties.apiVersion));
 	}
-	return true;
+
 }
 
 

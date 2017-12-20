@@ -2,7 +2,7 @@
 #include <cassert>
 
 #include "VulkanTools.h"
-#include "VulkanRendererInitializer.h"
+#include "VkRenderSystem.h"
 
 namespace Renderer
 {
@@ -16,9 +16,9 @@ namespace Renderer
 			const std::string shader_name = GpuProgramManager::GetNameByRef(ref);
 
 #if defined(__ANDROID__)
-			shader_module = VkTools::LoadShader(fileName.c_str(), VulkanSwapChain::device, stage);
+			shader_module = VkTools::LoadShader(fileName.c_str(), Vulkan::RenderSystem::vkDevice, stage);
 #else
-			shader_module = VkTools::LoadShader(file_path.c_str() + shader_name, VulkanSwapChain::device, stage);
+			shader_module = VkTools::LoadShader(file_path.c_str() + shader_name, Vulkan::RenderSystem::vkDevice, stage);
 #endif
 
 			shader_stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -39,7 +39,7 @@ namespace Renderer
 
 				if (shader_module != VK_NULL_HANDLE)
 				{
-					vkDestroyShaderModule(VulkanSwapChain::device, shader_module, nullptr);
+					vkDestroyShaderModule(Vulkan::RenderSystem::vkDevice, shader_module, nullptr);
 					VkShaderModule null_module = VK_NULL_HANDLE;
 
 					shader_module = null_module;

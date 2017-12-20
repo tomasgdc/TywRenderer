@@ -114,6 +114,8 @@ SET(HEADERS_VULKAN
 	"Vulkan/VkRenderPassManager.h"
 	"Vulkan/VkPipelineManager.h"
 	"Vulkan/VkDrawCallDispatcher.h"
+	"Vulkan/VkRenderSystem.h"
+	"Vulkan/VkFrameBufferManager.h"
 )
 SET(SOURCES_VULKAN
 	"Vulkan/DrawCallManager.cpp"
@@ -130,7 +132,10 @@ SET(SOURCES_VULKAN
 	"Vulkan/VkRenderPassManager.cpp"
 	"Vulkan/VkPipelineManager.cpp"
 	"Vulkan/VkDrawCallDispatcher.cpp"
+	"Vulkan/VkRenderSystem.cpp"
+	"Vulkan/VkFrameBufferManager.cpp"
 )
+
 SOURCE_GROUP("Vulkan\\Header Files" FILES ${HEADERS_VULKAN})
 SOURCE_GROUP("Vulkan\\Source Files" FILES ${SOURCES_VULKAN})
 

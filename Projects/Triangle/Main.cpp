@@ -1,6 +1,7 @@
 #include <RendererPch\stdafx.h>
 #include <External\glm\glm\gtc\matrix_inverse.hpp>
 
+#include "../../Renderer/Vulkan/VkRenderSystem.h"
 #include "../../Renderer/VKRenderer.h"
 #include "../../Renderer/Vulkan/VkPipelineManager.h"
 #include "../../Renderer/Vulkan/VkRenderPassManager.h"
@@ -94,19 +95,12 @@ bool GenerateEvents(MSG& msg)
 
 int main()
 {
-	g_bPrepared = g_Renderer.VInitRenderer(800, 600, false, HandleWindowMessages);
-	g_Renderer.UpdateUniformBuffers();
+	std::unique_ptr<VulkanRendererInitializer> renderer_initializer = std::make_unique<VulkanRendererInitializer>();
+	renderer_initializer->CreateWindows(800, 600, HandleWindowMessages);
 
+	Renderer::Vulkan::RenderSystem::Init(true, true, "Triangle", renderer_initializer->m_hinstance, renderer_initializer->m_HwndWindows);
+	  
 	DOD::Ref ref(0, 0);
-
-	//Allocate memory
-	Renderer::Resource::RenderPassManager::init();
-	Renderer::Resource::PipelineLayoutManager::init();
-	Renderer::Resource::GpuProgramManager::init();
-	Renderer::Resource::PipelineManager::init();
-	Renderer::Resource::BufferLayoutManager::init();
-	Renderer::Resource::BufferObjectManager::init();
-	Renderer::Resource::DrawCallManager::init();
 	
 	//Create GPU Resource
 	DOD::Ref vert_ref = Renderer::Resource::GpuProgramManager::CreateGPUProgram("triangle.vert.spv");
@@ -182,21 +176,21 @@ int main()
 		Renderer::Resource::BufferObjectManager::GetBufferSize(staging_buffer_vertices_ref) = static_cast<uint32_t>(sizeof(drawVert) * 4);
 		Renderer::Resource::BufferObjectManager::GetBufferUsageFlag(staging_buffer_vertices_ref) = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		Renderer::Resource::BufferObjectManager::GetBufferData(staging_buffer_vertices_ref) = vertData;
-		Renderer::Resource::BufferObjectManager::CreateResource(staging_buffer_vertices_ref, g_Renderer.m_pWRenderer->m_DeviceMemoryProperties);
+		Renderer::Resource::BufferObjectManager::CreateResource(staging_buffer_vertices_ref, Renderer::Vulkan::RenderSystem::vkPhysicalDeviceMemoryProperties);
 
 		DOD::Ref staging_buffer_indices_ref = Renderer::Resource::BufferObjectManager::CreateBufferOjbect("StaggingBuffer_Indices_1");
 
 		Renderer::Resource::BufferObjectManager::GetBufferSize(staging_buffer_indices_ref) = indexBufferSize;
 		Renderer::Resource::BufferObjectManager::GetBufferUsageFlag(staging_buffer_indices_ref) = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		Renderer::Resource::BufferObjectManager::GetBufferData(staging_buffer_indices_ref) = indexBuffer.data();
-		Renderer::Resource::BufferObjectManager::CreateResource(staging_buffer_indices_ref, g_Renderer.m_pWRenderer->m_DeviceMemoryProperties);
+		Renderer::Resource::BufferObjectManager::CreateResource(staging_buffer_indices_ref, Renderer::Vulkan::RenderSystem::vkPhysicalDeviceMemoryProperties);
 
 		DOD::Ref uniform_buffer_ref = Renderer::Resource::BufferObjectManager::CreateBufferOjbect("Uniform_Buffer_1");
 
 		Renderer::Resource::BufferObjectManager::GetBufferSize(uniform_buffer_ref) = sizeof(g_Renderer.m_uboVS);
 		Renderer::Resource::BufferObjectManager::GetBufferUsageFlag(uniform_buffer_ref) = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		Renderer::Resource::BufferObjectManager::GetBufferData(uniform_buffer_ref) = &g_Renderer.m_uboVS;
-		Renderer::Resource::BufferObjectManager::CreateResource(uniform_buffer_ref, g_Renderer.m_pWRenderer->m_DeviceMemoryProperties);
+		Renderer::Resource::BufferObjectManager::CreateResource(uniform_buffer_ref, Renderer::Vulkan::RenderSystem::vkPhysicalDeviceMemoryProperties);
 	//}
 
 	//Link data for drawing
@@ -225,9 +219,9 @@ int main()
 		if (!GenerateEvents(msg))break;
 
 		auto tStart = std::chrono::high_resolution_clock::now();
-		g_Renderer.StartFrame();
+		Renderer::Vulkan::RenderSystem::StartFrame();
 		//Do something
-		g_Renderer.EndFrame(nullptr);
+		Renderer::Vulkan::RenderSystem::EndFrame();
 		auto tEnd = std::chrono::high_resolution_clock::now();
 	}
 
@@ -238,6 +232,9 @@ int main()
 	Renderer::Resource::PipelineManager::DestroyResources(Renderer::Resource::PipelineManager::activeRefs);
 	Renderer::Resource::BufferObjectManager::DestroyResources(Renderer::Resource::BufferObjectManager::activeRefs);
 	Renderer::Resource::DrawCallManager::DestroyResources(Renderer::Resource::DrawCallManager::activeRefs);
+
+	//Destroy Command Buffers
+	Renderer::Vulkan::RenderSystem::DestroyCommandBuffers();
 
 	system("pause");
 	return 0;

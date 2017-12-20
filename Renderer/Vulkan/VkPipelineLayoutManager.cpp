@@ -2,7 +2,7 @@
 #include "VkBufferObjectManager.h"
 
 #include "VulkanTools.h"
-#include "VulkanRendererInitializer.h"
+#include "VkRenderSystem.h"
 
 namespace Renderer
 {
@@ -17,10 +17,10 @@ namespace Renderer
 			std::vector<VkDescriptorSetLayoutBinding>& set_layout_bindings = PipelineLayoutManager::GetDescriptorSetLayoutBinding(ref);
 
 			VkDescriptorSetLayoutCreateInfo descriptor_layout = VkTools::Initializer::DescriptorSetLayoutCreateInfo(set_layout_bindings.data(), set_layout_bindings.size());
-			VK_CHECK_RESULT(vkCreateDescriptorSetLayout(VulkanSwapChain::device, &descriptor_layout, nullptr, &descriptor_set_layout));
+			VK_CHECK_RESULT(vkCreateDescriptorSetLayout(Vulkan::RenderSystem::vkDevice, &descriptor_layout, nullptr, &descriptor_set_layout));
 
 			VkPipelineLayoutCreateInfo pipeline_layout_create_info = VkTools::Initializer::PipelineLayoutCreateInfo(&descriptor_set_layout, 1);
-			VK_CHECK_RESULT(vkCreatePipelineLayout(VulkanSwapChain::device, &pipeline_layout_create_info, nullptr, &pipeline_layout));
+			VK_CHECK_RESULT(vkCreatePipelineLayout(Vulkan::RenderSystem::vkDevice, &pipeline_layout_create_info, nullptr, &pipeline_layout));
 
 
 			std::vector<VkDescriptorPoolSize> pool_size;
@@ -34,7 +34,7 @@ namespace Renderer
 			}
 
 			VkDescriptorPoolCreateInfo descriptorPoolInfo = VkTools::Initializer::DescriptorPoolCreateInfo(pool_size.size(), pool_size.data(), max_pool_count);
-			VK_CHECK_RESULT(vkCreateDescriptorPool(VulkanSwapChain::device, &descriptorPoolInfo, nullptr, &descriptor_pool));
+			VK_CHECK_RESULT(vkCreateDescriptorPool(Vulkan::RenderSystem::vkDevice, &descriptorPoolInfo, nullptr, &descriptor_pool));
 		}
 
 		VkDescriptorSet PipelineLayoutManager::AllocateWriteDescriptorSet(const DOD::Ref& ref, const std::vector<BindingInfo>& binding_infos)
@@ -46,7 +46,7 @@ namespace Renderer
 			VkDescriptorSetAllocateInfo descriptor_allocate_info = VkTools::Initializer::DescriptorSetAllocateInfo(descriptor_pool, &descriptor_set_layout, 1);
 
 			VkDescriptorSet descriptor_set;
-			VK_CHECK_RESULT(vkAllocateDescriptorSets(VulkanSwapChain::device, &descriptor_allocate_info, &descriptor_set));
+			VK_CHECK_RESULT(vkAllocateDescriptorSets(Vulkan::RenderSystem::vkDevice, &descriptor_allocate_info, &descriptor_set));
 
 			auto& pipeline_layouts = PipelineLayoutManager::GetDescriptorSetLayoutBinding(ref);
 			
@@ -76,7 +76,7 @@ namespace Renderer
 				write_descriptor_set[i] = VkTools::Initializer::WriteDescriptorSet(descriptor_set, pipeline_layout.descriptorType, pipeline_layout.binding, &buffer_info);
 			}
 
-			vkUpdateDescriptorSets(VulkanSwapChain::device, write_descriptor_set.size(), write_descriptor_set.data(), 0, NULL);
+			vkUpdateDescriptorSets(Vulkan::RenderSystem::vkDevice, write_descriptor_set.size(), write_descriptor_set.data(), 0, NULL);
 			return descriptor_set;
 		}
 
@@ -89,21 +89,21 @@ namespace Renderer
 				VkPipelineLayout& pipeline_layout = GetPipelineLayout(ref);
 				if (pipeline_layout != VK_NULL_HANDLE)
 				{
-					vkDestroyPipelineLayout(VulkanSwapChain::device, pipeline_layout, nullptr);
+					vkDestroyPipelineLayout(Vulkan::RenderSystem::vkDevice, pipeline_layout, nullptr);
 					pipeline_layout = VK_NULL_HANDLE;
 				}
 
 				VkDescriptorSetLayout& descriptor_layout = GetDescriptorSetLayout(ref);
 				if (descriptor_layout != VK_NULL_HANDLE)
 				{
-					vkDestroyDescriptorSetLayout(VulkanSwapChain::device, descriptor_layout, nullptr);
+					vkDestroyDescriptorSetLayout(Vulkan::RenderSystem::vkDevice, descriptor_layout, nullptr);
 					descriptor_layout = VK_NULL_HANDLE;
 				}
 
 				VkDescriptorPool& descriptor_pool = GetDescriptorPool(ref);
 				if (descriptor_pool != VK_NULL_HANDLE)
 				{
-					vkDestroyDescriptorPool(VulkanSwapChain::device, descriptor_pool, nullptr);
+					vkDestroyDescriptorPool(Vulkan::RenderSystem::vkDevice, descriptor_pool, nullptr);
 					descriptor_pool = VK_NULL_HANDLE;
 				}
 			}
