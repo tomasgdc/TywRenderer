@@ -1,6 +1,8 @@
 #include "VkFrameBufferManager.h"
 #include "VkRenderSystem.h"
 #include "VkRenderPassManager.h"
+#include "VkImageManager.h"
+#include "VulkanTools.h"
 
 namespace Renderer
 {
@@ -9,7 +11,7 @@ namespace Renderer
 
 		void FrameBufferManager::CreateResource(const DOD::Ref& ref)
 		{
-			AttachementInfoArray& attachedImgs = GetAttachedImiges(ref);
+			AttachementInfoArray& attachedImgs = FrameBufferManager::GetAttachedImiges(ref);
 			assert(!attachedImgs.empty());
 
 				// Collect image views from images
@@ -19,8 +21,7 @@ namespace Renderer
 					for (uint32_t attIdx = 0u; attIdx < attachments.size(); ++attIdx)
 					{
 						AttachmentInfo attachmentInfo = attachedImgs[attIdx];
-						//attachments[attIdx] = Resources::ImageManager::_vkSubResourceImageView(
-							//attachmentInfo.imageRef, attachmentInfo.arrayLayerIdx, 0u);
+						attachments[attIdx] = Resource::ImageManager::GetSubresourceImageViews(attachmentInfo.imageRef, attachmentInfo.arrayLayerIdx,  0u);
 					}
 				}
 
@@ -35,14 +36,14 @@ namespace Renderer
 					fbCreateInfo.attachmentCount = (uint32_t)attachments.size();
 					fbCreateInfo.pAttachments = attachments.data();
 
-					const glm::uvec2& dimensions = GetDimensions(ref);
+					const glm::uvec2& dimensions = FrameBufferManager::GetDimensions(ref);
 					fbCreateInfo.width = (uint32_t)dimensions.x;
 					fbCreateInfo.height = (uint32_t)dimensions.y;
 					fbCreateInfo.layers = 1u;
 				}
 
-				VkFramebuffer& vkFrameBuffer = GetFrameBuffer(ref);
-				VkResult result = vkCreateFramebuffer(Renderer::Vulkan::RenderSystem::vkDevice, &fbCreateInfo, nullptr, &vkFrameBuffer);
+				VkFramebuffer& vkFrameBuffer = FrameBufferManager::GetFrameBuffer(ref);
+				VK_CHECK_RESULT(vkCreateFramebuffer(Renderer::Vulkan::RenderSystem::vkDevice, &fbCreateInfo, nullptr, &vkFrameBuffer));
 		}
 
 		void FrameBufferManager::DestroyResources(const std::vector<DOD::Ref>& refs)

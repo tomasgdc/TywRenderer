@@ -7,7 +7,7 @@ namespace Renderer
 	{
 		struct DrawCall
 		{
-			static void BuildCommandBuffer(const DOD::Ref& ref, int width, int height);
+			static void BuildCommandBuffer(const DOD::Ref& ref, const DOD::Ref& frameBuffer, const DOD::Ref& renderPass, int width, int height);
 		};
 	}
 }

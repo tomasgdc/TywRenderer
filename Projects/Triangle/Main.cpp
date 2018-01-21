@@ -1,6 +1,7 @@
 #include <RendererPch\stdafx.h>
 #include <External\glm\glm\gtc\matrix_inverse.hpp>
 
+#include "../../Renderer/Vulkan/VkEnums.h"
 #include "../../Renderer/Vulkan/VkRenderSystem.h"
 #include "../../Renderer/VKRenderer.h"
 #include "../../Renderer/Vulkan/VkPipelineManager.h"
@@ -14,6 +15,10 @@
 #include "../../Renderer/Vulkan/VkBufferObject.h"
 #include "../../Renderer/Vulkan/DrawCallManager.h"
 #include "../../Renderer/Vulkan/VkDrawCallDispatcher.h"
+
+#include "../../Renderer/Vulkan/VkGPUMemoryManager.h"
+#include "../../Renderer/Vulkan/VkImageManager.h"
+#include ".../../Renderer/Vulkan/VkFrameBufferManager.h"
 
 LRESULT CALLBACK HandleWindowMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -99,9 +104,7 @@ int main()
 	renderer_initializer->CreateWindows(800, 600, HandleWindowMessages);
 
 	Renderer::Vulkan::RenderSystem::Init(true, true, "Triangle", renderer_initializer->m_hinstance, renderer_initializer->m_HwndWindows);
-	  
-	DOD::Ref ref(0, 0);
-	
+
 	//Create GPU Resource
 	DOD::Ref vert_ref = Renderer::Resource::GpuProgramManager::CreateGPUProgram("triangle.vert.spv");
 	DOD::Ref frag_ref = Renderer::Resource::GpuProgramManager::CreateGPUProgram("triangle.frag.spv");
@@ -111,25 +114,49 @@ int main()
 	Renderer::Resource::GpuProgramManager::LoadAndCompileShader(frag_ref, "../../../Assets/Shaders/Triangle/", VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	//Set bindings positions
-	DOD::Ref pipeline_layout_ref = Renderer::Resource::PipelineLayoutManager::CreatePipelineLayout("Pipeline_layout_1");
+	DOD::Ref pipeline_layout_ref = Renderer::Resource::PipelineLayoutManager::CreatePipelineLayout("PipelineLayout1");
 
 	//Describe at which position uniform and image buffer object goes
-	auto& descriptor_layout = Renderer::Resource::PipelineLayoutManager::GetDescriptorSetLayoutBinding(pipeline_layout_ref);
-	descriptor_layout.push_back(VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0));
-	//descriptor_layout.push_back(VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1));
-
+	auto& descriptorSetLayout = Renderer::Resource::PipelineLayoutManager::GetDescriptorSetLayoutBinding(pipeline_layout_ref);
+	descriptorSetLayout.push_back(VkTools::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0));
 	Renderer::Resource::PipelineLayoutManager::CreateResource(pipeline_layout_ref);
 
-	//Connect shader to pipeline
-	Renderer::Resource::PipelineManager::GetVertexShader(ref) = vert_ref;
-	Renderer::Resource::PipelineManager::GetFragmentShader(ref) = frag_ref;
-
 	//Create Render Pass
-	DOD::Ref render_pass = Renderer::Resource::RenderPassManager::CreateRenderPass("Pass_1");
+	DOD::Ref render_pass = Renderer::Resource::RenderPassManager::CreateRenderPass("RenderPass1");
+	Renderer::Resource::RenderPassManager::ResetToDefault(render_pass);
+
+	AttachementDescription sceneAttachment =
+	{
+		Renderer::Vulkan::RenderSystem::vkColorFormatToUse,
+		0u,
+		false
+	};
+
+	Renderer::Resource::RenderPassManager::GetAttachementDescription(render_pass).push_back(sceneAttachment);
 	Renderer::Resource::RenderPassManager::CreateResource(render_pass);
 
+	//Create FrameBuffer
+	std::vector<DOD::Ref> frameBufferRefs;
+	frameBufferRefs.reserve(Renderer::Vulkan::RenderSystem::vkSwapchainImages.size());
 
-	DOD::Ref buffer_layout_ref = Renderer::Resource::BufferLayoutManager::CreateBufferLayout("Buffer_Layout_1");
+	for (int backBufferIndex = 0; backBufferIndex < Renderer::Vulkan::RenderSystem::vkSwapchainImages.size(); backBufferIndex++)
+	{
+		DOD::Ref frame_buffer_Ref = Renderer::Resource::FrameBufferManager::CreateFrameBuffer("FrameBuffer1");
+
+		std::string imageName = "Backbuffer" + std::to_string(backBufferIndex);
+		DOD::Ref imageRef = Renderer::Resource::ImageManager::GetResourceByName(imageName);
+
+		Renderer::Resource::FrameBufferManager::ResetToDefault(frame_buffer_Ref);
+		Renderer::Resource::FrameBufferManager::GetDimensions(frame_buffer_Ref) = Renderer::Vulkan::RenderSystem::backBufferDimensions;
+		Renderer::Resource::FrameBufferManager::GetAttachedImiges(frame_buffer_Ref).push_back(imageRef);
+		Renderer::Resource::FrameBufferManager::GetRenderPassRef(frame_buffer_Ref) = render_pass;
+		Renderer::Resource::FrameBufferManager::CreateResource(frame_buffer_Ref);
+
+		frameBufferRefs.push_back(frame_buffer_Ref);
+	}
+
+
+	DOD::Ref buffer_layout_ref = Renderer::Resource::BufferLayoutManager::CreateBufferLayout("BufferLayout1");
 	auto& buffer_layout_description = Renderer::Resource::BufferLayoutManager::GetBufferLayoutDescription(buffer_layout_ref);
 
 	//Describe layout of data that will be sent from cpu to gpu
@@ -143,8 +170,13 @@ int main()
 	Renderer::Resource::BufferLayoutManager::CreateResource(buffer_layout_ref); 
 
 	//Create pipeline
-	DOD::Ref pipeline_ref = Renderer::Resource::PipelineManager::CreatePipeline("Pipeline_1");
-	Renderer::Resource::PipelineManager::CreateResource(pipeline_ref);
+	const DOD::Ref& pipelineRef = Renderer::Resource::PipelineManager::CreatePipeline("Pipeline1");
+	Renderer::Resource::PipelineManager::GetVertexShader(pipelineRef) = vert_ref;
+	Renderer::Resource::PipelineManager::GetFragmentShader(pipelineRef) = frag_ref;
+	Renderer::Resource::PipelineManager::GetRenderPassRef(pipelineRef) = render_pass;
+	Renderer::Resource::PipelineManager::GetPipelineLayoutRef(pipelineRef) = pipeline_layout_ref;
+	Renderer::Resource::PipelineManager::GetbufferLayoutRef(pipelineRef) = buffer_layout_ref;
+	Renderer::Resource::PipelineManager::CreateResource(pipelineRef);
 
 	//SENDING DATA TO GPU
 	//{
@@ -171,21 +203,21 @@ int main()
 		uint32_t indexBufferSize = indexBuffer.size() * sizeof(uint32_t);
 
 
-		DOD::Ref staging_buffer_vertices_ref = Renderer::Resource::BufferObjectManager::CreateBufferOjbect("StaggingBuffer_Vertices_1");
+		DOD::Ref staging_buffer_vertices_ref = Renderer::Resource::BufferObjectManager::CreateBufferOjbect("StaggingBufferVertices1");
 		
 		Renderer::Resource::BufferObjectManager::GetBufferSize(staging_buffer_vertices_ref) = static_cast<uint32_t>(sizeof(drawVert) * 4);
 		Renderer::Resource::BufferObjectManager::GetBufferUsageFlag(staging_buffer_vertices_ref) = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		Renderer::Resource::BufferObjectManager::GetBufferData(staging_buffer_vertices_ref) = vertData;
 		Renderer::Resource::BufferObjectManager::CreateResource(staging_buffer_vertices_ref, Renderer::Vulkan::RenderSystem::vkPhysicalDeviceMemoryProperties);
 
-		DOD::Ref staging_buffer_indices_ref = Renderer::Resource::BufferObjectManager::CreateBufferOjbect("StaggingBuffer_Indices_1");
+		DOD::Ref staging_buffer_indices_ref = Renderer::Resource::BufferObjectManager::CreateBufferOjbect("StaggingBufferIndices1");
 
 		Renderer::Resource::BufferObjectManager::GetBufferSize(staging_buffer_indices_ref) = indexBufferSize;
 		Renderer::Resource::BufferObjectManager::GetBufferUsageFlag(staging_buffer_indices_ref) = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		Renderer::Resource::BufferObjectManager::GetBufferData(staging_buffer_indices_ref) = indexBuffer.data();
 		Renderer::Resource::BufferObjectManager::CreateResource(staging_buffer_indices_ref, Renderer::Vulkan::RenderSystem::vkPhysicalDeviceMemoryProperties);
 
-		DOD::Ref uniform_buffer_ref = Renderer::Resource::BufferObjectManager::CreateBufferOjbect("Uniform_Buffer_1");
+		DOD::Ref uniform_buffer_ref = Renderer::Resource::BufferObjectManager::CreateBufferOjbect("UniformBuffer1");
 
 		Renderer::Resource::BufferObjectManager::GetBufferSize(uniform_buffer_ref) = sizeof(g_Renderer.m_uboVS);
 		Renderer::Resource::BufferObjectManager::GetBufferUsageFlag(uniform_buffer_ref) = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
@@ -194,7 +226,7 @@ int main()
 	//}
 
 	//Link data for drawing
-	DOD::Ref draw_call_ref = Renderer::Resource::DrawCallManager::CreateDrawCall("Draw_call_1");
+	DOD::Ref draw_call_ref = Renderer::Resource::DrawCallManager::CreateDrawCall("DrawCall1");
 	auto& binding_infos = Renderer::Resource::DrawCallManager::GetBindingInfo(draw_call_ref);
 
 	binding_infos.push_back(std::move(Renderer::Resource::BindingInfo{ 0, uniform_buffer_ref }));
@@ -203,16 +235,16 @@ int main()
 	Renderer::Resource::DrawCallManager::GetIndexBufferRef(draw_call_ref) = staging_buffer_indices_ref;
 	Renderer::Resource::DrawCallManager::GetVertexBufferRef(draw_call_ref) = staging_buffer_vertices_ref;
 	Renderer::Resource::DrawCallManager::GetPipelineLayoutRef(draw_call_ref) = pipeline_layout_ref;
-	Renderer::Resource::DrawCallManager::GetPipelineRef(draw_call_ref) = pipeline_ref;
+	Renderer::Resource::DrawCallManager::GetPipelineRef(draw_call_ref) = pipelineRef;
 
 	Renderer::Resource::DrawCallManager::CreateResource(draw_call_ref);
-	
-	//Build commands
-	Renderer::Vulkan::DrawCall::BuildCommandBuffer(draw_call_ref, g_iDesktopWidth, g_iDesktopHeight);
-
 #if defined(_WIN32)
 	MSG msg;
 #endif
+
+	VkClearValue clearValues[2];
+	clearValues[0].color = { { 0.5f, 0.5f, 0.5f, 1.0f } };
+	clearValues[1].depthStencil = { 1.0f, 0 };
 
 	while (TRUE)
 	{
@@ -220,7 +252,12 @@ int main()
 
 		auto tStart = std::chrono::high_resolution_clock::now();
 		Renderer::Vulkan::RenderSystem::StartFrame();
-		//Do something
+		
+		//Generate command buffers
+		Renderer::Vulkan::RenderSystem::BeginRenderPass(render_pass, frameBufferRefs[Renderer::Vulkan::RenderSystem::backBufferIndex], VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS, 2, clearValues);
+		Renderer::Vulkan::DrawCall::BuildCommandBuffer(draw_call_ref, frameBufferRefs[Renderer::Vulkan::RenderSystem::backBufferIndex], render_pass, g_iDesktopWidth, g_iDesktopHeight);
+		Renderer::Vulkan::RenderSystem::EndRenderPass();
+
 		Renderer::Vulkan::RenderSystem::EndFrame();
 		auto tEnd = std::chrono::high_resolution_clock::now();
 	}
@@ -235,6 +272,8 @@ int main()
 
 	//Destroy Command Buffers
 	Renderer::Vulkan::RenderSystem::DestroyCommandBuffers();
+
+	Renderer::Vulkan::GpuMemoryManager::Destroy();
 
 	system("pause");
 	return 0;

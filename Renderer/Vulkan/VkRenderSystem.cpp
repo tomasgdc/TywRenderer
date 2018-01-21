@@ -10,8 +10,11 @@
 #include "VkBufferObjectManager.h"
 #include "DrawCallManager.h"
 #include "VkDrawCallDispatcher.h"
+#include "VkGPUMemoryManager.h"
+#include "VkImageManager.h"
+#include "VkFrameBufferManager.h"
 
-#define SECONDARY_COMMAND_BUFFER_COUNT 128u
+
 
 //In Vulkan the API version is encoded as a 32 - bit integer with the major and minor version being encoded into bits 31 - 22 and 21 - 12 
 //respectively(for 10 bits each.); the final 12 - bits encode the patch version number.
@@ -45,11 +48,12 @@ namespace Renderer
 		VkSwapchainKHR               RenderSystem::vkSwapchain = nullptr;
 		std::vector<VkImageView>     RenderSystem::vkSwapchainImageViews;
 		VkFormat                     RenderSystem::vkDepthFormatToUse;
-		VkFormat                     RenderSystem::vkColorFormatToUse = VK_FORMAT_B8G8R8A8_UNORM;
+		VkFormat                     RenderSystem::vkColorFormatToUse = VK_FORMAT_B8G8R8A8_SRGB;
 		VkSemaphore                  RenderSystem::vkImageAcquireSemaphore;
 
 		uint32_t                     RenderSystem::backBufferIndex = 0u;
 		uint32_t                     RenderSystem::activeBackbufferMask = 0u;
+		glm::uvec2                   RenderSystem::backBufferDimensions = glm::uvec2(0, 0);
 
 		VkPipelineCache              RenderSystem::vkPipelineCache = nullptr;
 
@@ -324,6 +328,18 @@ namespace Renderer
 #endif
 		)
 		{
+			//Allocate resources
+			Renderer::Resource::RenderPassManager::init();
+			Renderer::Resource::PipelineLayoutManager::init();
+			Renderer::Resource::GpuProgramManager::init();
+			Renderer::Resource::PipelineManager::init();
+			Renderer::Resource::BufferLayoutManager::init();
+			Renderer::Resource::BufferObjectManager::init();
+			Renderer::Resource::ImageManager::init();
+			Renderer::Resource::FrameBufferManager::init();
+			Renderer::Resource::DrawCallManager::init();
+			Renderer::Vulkan::GpuMemoryManager::Init();
+
 			InitVulkanInstance(enableValidation, application_name);
 			InitVulkanDevice(enableValidation);
 			InitPlatformDependentFormats();
@@ -333,15 +349,6 @@ namespace Renderer
 			InitCommandPool();
 			InitCommandBuffers();
 			InitVulkanPipelineCache();
-
-			//Allocate resources
-			Renderer::Resource::RenderPassManager::init();
-			Renderer::Resource::PipelineLayoutManager::init();
-			Renderer::Resource::GpuProgramManager::init();
-			Renderer::Resource::PipelineManager::init();
-			Renderer::Resource::BufferLayoutManager::init();
-			Renderer::Resource::BufferObjectManager::init();
-			Renderer::Resource::DrawCallManager::init();
 		}
 
 		void RenderSystem::InitVulkanSurface(
@@ -536,6 +543,34 @@ namespace Renderer
 				result = vkCreateImageView(vkDevice, &colorAttachmentView, nullptr, &vkSwapchainImageViews[i]);
 				VK_CHECK_RESULT(result);
 			}
+
+			std::vector<DOD::Ref> imagesToCreate;
+			backBufferDimensions = glm::uvec2(swapchainCI.imageExtent.width, swapchainCI.imageExtent.height);
+
+			//Create backbuffer resource
+			for (int i = 0; i < swapchainImageCount; i++)
+			{
+				std::string bufferName = "Backbuffer" + std::to_string(i);
+				DOD::Ref backBufferRef = Renderer::Resource::ImageManager::CreateImage(bufferName);
+
+				Renderer::Resource::ImageManager::GetVkImage(backBufferRef) = vkSwapchainImages[i];
+				Renderer::Resource::ImageManager::ResetToDefault(backBufferRef);
+
+				Renderer::Resource::ImageManager::GetVkImage(backBufferRef) = vkSwapchainImages[i];
+				Renderer::Resource::ImageManager::GetImageView(backBufferRef) = vkSwapchainImageViews[i];
+				Renderer::Resource::ImageManager::GetSubresourceImageViews(backBufferRef).resize(1u);
+				Renderer::Resource::ImageManager::GetSubresourceImageViews(backBufferRef)[0u].resize(1u);
+				Renderer::Resource::ImageManager::GetSubresourceImageViews(backBufferRef)[0u][0u] = vkSwapchainImageViews[i];
+				Renderer::Resource::ImageManager::GetImageDimensions(backBufferRef) = glm::uvec3(backBufferDimensions, 1u);
+				Renderer::Resource::ImageManager::AddImageFlags(backBufferRef,
+					                                            ImageFlags::kExternalImage |
+					                                            ImageFlags::kExternalView |
+					                                            ImageFlags::kExternalDeviceMemory);
+
+				imagesToCreate.push_back(backBufferRef);
+			}
+
+			//Renderer::Resource::ImageManager::CreateResource(imagesToCreate);
 		}
 
 		void RenderSystem::InitVulkanPipelineCache()
@@ -701,6 +736,34 @@ namespace Renderer
 
 			VK_CHECK_RESULT(vkBeginCommandBuffer(
 				vkSecondaryCommandBuffers[backBufferIndex * SECONDARY_COMMAND_BUFFER_COUNT + p_CmdBufferIdx], &commandBufferBeginInfo));
+		}
+
+		void RenderSystem::EndSecondaryComandBuffer(uint32_t p_CmdBufferId)
+		{
+			VK_CHECK_RESULT(vkEndCommandBuffer
+			(vkSecondaryCommandBuffers[backBufferIndex * SECONDARY_COMMAND_BUFFER_COUNT + p_CmdBufferId]));
+		}
+
+		void RenderSystem::BeginRenderPass(const DOD::Ref& renderPass, const DOD::Ref& frameBufferRef, VkSubpassContents p_SubpassContents, uint32_t clearValueCount, VkClearValue* p_ClearValues)
+		{
+			VkRenderPassBeginInfo renderPassBegin = {};
+			{
+				renderPassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+				renderPassBegin.pNext = nullptr;
+				renderPassBegin.renderPass = Resource::RenderPassManager::GetRenderPass(renderPass);
+				renderPassBegin.framebuffer = Resource::FrameBufferManager::GetFrameBuffer(frameBufferRef);
+
+				const glm::uvec2& framebufferDim = Resource::FrameBufferManager::GetDimensions(frameBufferRef);
+				renderPassBegin.renderArea.offset.x = 0u;
+				renderPassBegin.renderArea.offset.y = 0u;
+				renderPassBegin.renderArea.extent.width = framebufferDim.x;
+				renderPassBegin.renderArea.extent.height = framebufferDim.y;
+
+				renderPassBegin.clearValueCount = clearValueCount;
+				renderPassBegin.pClearValues = p_ClearValues;
+			}
+			
+			vkCmdBeginRenderPass(GetPrimaryCommandBuffer(), &renderPassBegin, p_SubpassContents);
 		}
 
 		void RenderSystem::InsertPostPresentBarrier()

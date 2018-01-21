@@ -13,10 +13,16 @@ namespace Renderer
     {
         void PipelineManager::CreateResource(const DOD::Ref& ref)
         {
-            VkRenderPass& render_pass = RenderPassManager::GetRenderPass(ref);
-            VkPipeline&   pipeline	  = PipelineManager::GetPipeline(ref);
-            VkPipelineLayout& pipeline_layout = PipelineLayoutManager::GetPipelineLayout(ref);
-			VkPipelineVertexInputStateCreateInfo& vertex_input = BufferLayoutManager::GetVertexInput(ref);
+			VkPipeline&   pipeline = PipelineManager::GetPipeline(ref);
+
+            const DOD::Ref renderPassRef = PipelineManager::GetRenderPassRef(ref);
+			VkRenderPass& render_pass = RenderPassManager::GetRenderPass(renderPassRef);
+
+			const DOD::Ref pipelineLayoutRef = PipelineManager::GetPipelineLayoutRef(ref);
+            VkPipelineLayout& pipeline_layout = PipelineLayoutManager::GetPipelineLayout(pipelineLayoutRef);
+
+			const DOD::Ref bufferLayoutRef = PipelineManager::GetbufferLayoutRef(ref);
+			VkPipelineVertexInputStateCreateInfo& vertex_input = BufferLayoutManager::GetVertexInput(bufferLayoutRef);
 
             uint32_t shader_stage_count = 0u;
             VkPipelineShaderStageCreateInfo shader_stages[3];

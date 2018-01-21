@@ -64,6 +64,12 @@ namespace Renderer
 			static void CreateResource(const DOD::Ref& ref);
 			static void DestroyResources(const std::vector<DOD::Ref>& refs);
 
+			static void ResetToDefault(const DOD::Ref& ref)
+			{
+				data.attachedImages[ref._id].clear();
+				data.dimensions[ref._id] = glm::uvec2(0, 0);
+			}
+
 			static VkFramebuffer& GetFrameBuffer(const DOD::Ref& ref)
 			{
 				return data.frameBuffers[ref._id];
@@ -74,7 +80,7 @@ namespace Renderer
 				return data.attachedImages[ref._id];
 			}
 
-			const static DOD::Ref GetRenderPassRef(const DOD::Ref& ref)
+			static DOD::Ref& GetRenderPassRef(const DOD::Ref& ref)
 			{
 				return data.renderPassRef[ref._id];
 			}

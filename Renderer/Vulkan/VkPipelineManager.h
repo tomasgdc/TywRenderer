@@ -17,6 +17,9 @@ namespace Renderer
 				fragment_shaders.resize(MAX_PIPELINES);
 				geometry_shaders.resize(MAX_PIPELINES);
 				compute_shaders.resize(MAX_PIPELINES);
+				renderPassRef.resize(MAX_PIPELINES);
+				pipelineLayoutRef.resize(MAX_PIPELINES);
+				bufferLayoutRef.resize(MAX_PIPELINES);
 				pipelines.resize(MAX_PIPELINES);
 				input_state.resize(MAX_PIPELINES);
 			}
@@ -25,6 +28,9 @@ namespace Renderer
 			std::vector<DOD::Ref>								fragment_shaders;
 			std::vector<DOD::Ref>								geometry_shaders;
 			std::vector<DOD::Ref>								compute_shaders;
+			std::vector<DOD::Ref>								renderPassRef;
+			std::vector<DOD::Ref>								pipelineLayoutRef;
+			std::vector<DOD::Ref>								bufferLayoutRef;
 			std::vector<VkPipeline>								pipelines;
 			std::vector<VkPipelineVertexInputStateCreateInfo>   input_state;
 		};
@@ -72,6 +78,21 @@ namespace Renderer
 			static DOD::Ref& GetComputeShader(const DOD::Ref& ref)
 			{
 				return data.compute_shaders[ref._id];
+			}
+
+			static DOD::Ref& GetRenderPassRef(const DOD::Ref& ref)
+			{
+				return data.renderPassRef[ref._id];
+			}
+
+			static DOD::Ref& GetPipelineLayoutRef(const DOD::Ref& ref)
+			{
+				return data.pipelineLayoutRef[ref._id];
+			}
+
+			static DOD::Ref& GetbufferLayoutRef(const DOD::Ref& ref)
+			{
+				return data.bufferLayoutRef[ref._id];
 			}
 
 			static VkPipeline& GetPipeline(const DOD::Ref& ref)

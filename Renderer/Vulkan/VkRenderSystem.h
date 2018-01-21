@@ -1,11 +1,14 @@
 #pragma once
 #include <vector>
 #include <External\vulkan\vulkan.h>
+#include "../DOD.h"
 
 namespace Renderer
 {
 	namespace Vulkan
 	{
+		#define SECONDARY_COMMAND_BUFFER_COUNT 128u
+
 		struct RenderSystem
 		{
 			static std::vector<VkCommandBuffer> vkPrimalCommandBuffers;
@@ -33,6 +36,7 @@ namespace Renderer
 
 			static uint32_t                      backBufferIndex;
 			static uint32_t                      activeBackbufferMask;
+			static glm::uvec2                    backBufferDimensions;
 
 			static VkPipelineCache               vkPipelineCache;
 
@@ -86,6 +90,15 @@ namespace Renderer
 			static void EndPrimaryCommandBuffer();
 
 			static void BeginSecondaryComandBuffer(uint32_t p_CmdBufferIdx, VkRenderPass p_VkRenderPass, VkFramebuffer p_VkFramebuffer);
+			static void EndSecondaryComandBuffer(uint32_t p_CmdBufferId);
+
+			static void BeginRenderPass(const DOD::Ref& renderPass, const DOD::Ref& frameBufferRef, 
+				VkSubpassContents p_SubpassContents = VK_SUBPASS_CONTENTS_INLINE, uint32_t clearValueCount = 0u, VkClearValue* p_ClearValues = nullptr);
+
+			static void EndRenderPass()
+			{
+				vkCmdEndRenderPass(GetPrimaryCommandBuffer());
+			}
 
 			static void InsertPostPresentBarrier();
 			static void InsertPrePresentBarrier();
@@ -93,6 +106,11 @@ namespace Renderer
 			static VkCommandBuffer GetPrimaryCommandBuffer()
 			{
 				return vkPrimalCommandBuffers[backBufferIndex];
+			}
+
+			static VkCommandBuffer& GetSecondaryCommandBuffer(uint32_t commandBufferIndex)
+			{
+				return vkSecondaryCommandBuffers[backBufferIndex * SECONDARY_COMMAND_BUFFER_COUNT + commandBufferIndex];
 			}
 		};
 	}
