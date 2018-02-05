@@ -43,8 +43,16 @@ namespace Renderer
 					MAX_PIPELINES>::initResourceManager();
 			}
 
-			static void		CreateResource(const DOD::Ref& ref);
-			static void     DestroyResources(std::vector<DOD::Ref>& refs);
+			static void DestroyPipelineAndResources(const std::vector<DOD::Ref>& refs);
+
+			static void	CreateResource(const std::vector<DOD::Ref>& ref);
+			static void DestroyResources(const std::vector<DOD::Ref>& refs);
+
+			static void CreateAllResources()
+			{
+				DestroyResources(activeRefs);
+				CreateResource(activeRefs);
+			}
 
 			static DOD::Ref CreatePipeline(const std::string& name)
 			{
@@ -54,7 +62,7 @@ namespace Renderer
 				return ref;
 			}
 
-			static void DestroyPipelineData(const DOD::Ref& ref)
+			static void DestroyPipeline(const DOD::Ref& ref)
 			{
 				DOD::Resource::ResourceManagerBase<PipelineData, MAX_PIPELINES>::destroyResource(ref);
 			}

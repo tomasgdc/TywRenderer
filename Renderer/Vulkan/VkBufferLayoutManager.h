@@ -50,6 +50,16 @@ namespace Renderer
 					MAX_BUFFER_LAYOUTS>::initResourceManager();
 			}
 
+			static DOD::Ref GetResourceByName(const std::string& name)
+			{
+				auto resourceIt = nameResourceMap.find(name);
+				if (resourceIt == nameResourceMap.end())
+				{
+					return DOD::Ref();
+				}
+				return resourceIt->second;
+			}
+
 			static DOD::Ref CreateBufferLayout(const std::string& p_Name)
 			{
 				DOD::Ref ref = DOD::Resource::ResourceManagerBase<

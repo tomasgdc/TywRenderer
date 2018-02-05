@@ -344,7 +344,7 @@ namespace Renderer
 			InitVulkanDevice(enableValidation);
 			InitPlatformDependentFormats();
 			InitVulkanSurface(handle, window);
-			InitVulkanSwapChain(enableVsync);
+			InitOrUpdateVulkanSwapChain(enableVsync);
 			InitVulkanSynchronization();
 			InitCommandPool();
 			InitCommandBuffers();
@@ -390,7 +390,7 @@ namespace Renderer
 			VK_CHECK_RESULT(result);
 		}
 
-		void RenderSystem::InitVulkanSwapChain(bool vsync)
+		void RenderSystem::InitOrUpdateVulkanSwapChain(bool vsync)
 		{
 			// Get physical device surface properties and formats
 			VkBool32 supported = false;
@@ -547,11 +547,31 @@ namespace Renderer
 			std::vector<DOD::Ref> imagesToCreate;
 			backBufferDimensions = glm::uvec2(swapchainCI.imageExtent.width, swapchainCI.imageExtent.height);
 
+			std::vector<DOD::Ref> imagesToDestroy;
+
+			//Destroy existing backbuffer
+			for (int i = 0; i < swapchainImageCount; i++)
+			{
+				std::string bufferName = "Backbuffer" + std::to_string(i);
+				DOD::Ref imageRef = Renderer::Resource::ImageManager::GetResourceByName(bufferName);
+
+				if (imageRef.isValid())
+				{
+					imagesToDestroy.push_back(imageRef);
+				}
+				else
+				{
+					Renderer::Resource::ImageManager::CreateImage(bufferName);
+				}
+			}
+
+			Renderer::Resource::ImageManager::DestroyResource(imagesToDestroy);
+
 			//Create backbuffer resource
 			for (int i = 0; i < swapchainImageCount; i++)
 			{
 				std::string bufferName = "Backbuffer" + std::to_string(i);
-				DOD::Ref backBufferRef = Renderer::Resource::ImageManager::CreateImage(bufferName);
+				DOD::Ref backBufferRef = Renderer::Resource::ImageManager::GetResourceByName(bufferName);
 
 				Renderer::Resource::ImageManager::GetVkImage(backBufferRef) = vkSwapchainImages[i];
 				Renderer::Resource::ImageManager::ResetToDefault(backBufferRef);
@@ -616,6 +636,18 @@ namespace Renderer
 
 			result = vkResetFences(vkDevice, vkDrawFences.size(), vkDrawFences.data());
 			VK_CHECK_RESULT(result);
+		}
+
+		void RenderSystem::ResizeSwapchain()
+		{
+			vkDeviceWaitIdle(vkDevice);
+			InitOrUpdateVulkanSwapChain(true);
+
+			Renderer::Resource::DrawCallManager::DestroyDrawCallsAndResources(Renderer::Resource::DrawCallManager::activeRefs);
+			Renderer::Resource::PipelineLayoutManager::DestroyPipelineLayoutAndResources(Renderer::Resource::PipelineLayoutManager::activeRefs);
+			Renderer::Resource::PipelineManager::DestroyPipelineAndResources(Renderer::Resource::PipelineManager::activeRefs);
+			Renderer::Resource::FrameBufferManager::DestroyFrameBufferAndResources(Renderer::Resource::FrameBufferManager::activeRefs);
+			Renderer::Resource::RenderPassManager::DestroyRenderPassAndResources(Renderer::Resource::FrameBufferManager::activeRefs);
 		}
 
 		void RenderSystem::StartFrame()

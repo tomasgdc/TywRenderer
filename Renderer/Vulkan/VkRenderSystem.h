@@ -76,10 +76,12 @@ namespace Renderer
 #endif
 			);
 
-			static void InitVulkanSwapChain(bool vsync);
+			static void InitOrUpdateVulkanSwapChain(bool vsync);
 			static void InitVulkanPipelineCache();
 			static void InitPlatformDependentFormats();
 			static void InitVulkanSynchronization();
+
+			static void ResizeSwapchain();
 
 			static void StartFrame();
 			static void EndFrame();

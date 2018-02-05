@@ -67,7 +67,7 @@ namespace Renderer
 				auto resourceIt = nameResourceMap.find(name);
 				if (resourceIt == nameResourceMap.end())
 				{
-					assert(false);
+					return DOD::Ref();
 				}
 				return resourceIt->second;
 			}
@@ -83,6 +83,8 @@ namespace Renderer
 				GetMipLevelCount(p_Ref) = 1u;
 				//_descFileName(p_Ref) = "";
 			}
+
+			static void DestroyResource(const std::vector<DOD::Ref>& refs);
 
 			static void DestroyImage(DOD::Ref p_Ref)
 			{
@@ -157,6 +159,11 @@ namespace Renderer
 			static MemoryPoolTypes::Enum& GetMemoryPoolType(const DOD::Ref ref)
 			{
 				return data.descMemoryPoolType[ref._id];
+			}
+
+			static bool HasImageFlags(const DOD::Ref ref, uint8_t flag)
+			{
+				return (data.descImageFlags[ref._id] & flag) == flag;
 			}
 		};
 	}

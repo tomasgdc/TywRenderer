@@ -55,6 +55,8 @@ namespace Renderer
 				return ref;
 			}
 
+			static void DestroyFrameBufferAndResources(const std::vector<DOD::Ref>& refs);
+
 			static void DestroyFrameBuffer(const DOD::Ref& ref)
 			{
 				DOD::Resource::ResourceManagerBase<

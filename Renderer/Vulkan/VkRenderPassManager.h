@@ -30,7 +30,23 @@ namespace Renderer
 					MAX_RENDER_PASS_COUNT>::initResourceManager();
 			}
 
-			static void CreateResource(const DOD::Ref& ref);
+			static DOD::Ref GetResourceByName(const std::string& name)
+			{
+				auto resourceIt = nameResourceMap.find(name);
+				if (resourceIt == nameResourceMap.end())
+				{
+					return DOD::Ref();
+				}
+				return resourceIt->second;
+			}
+
+			static void CreateAllResources()
+			{
+				DestroyResources(activeRefs);
+				CreateResource(activeRefs);
+			}
+
+			static void CreateResource(const std::vector<DOD::Ref>& ref);
 
 			static void ResetToDefault(const DOD::Ref& ref)
 			{
@@ -45,7 +61,17 @@ namespace Renderer
 				return ref;
 			}
 
-			static void DestroyRenderPassData(const DOD::Ref& ref)
+			static void DestroyRenderPassAndResources(const std::vector<DOD::Ref>& refs)
+			{
+				DestroyResources(refs);
+
+				for (const auto& ref : refs)
+				{
+					DestroyRenderPass(ref);
+				}
+			}
+
+			static void DestroyRenderPass(const DOD::Ref& ref)
 			{
 				DOD::Resource::ResourceManagerBase<RenderPassData, MAX_RENDER_PASS_COUNT>::destroyResource(ref);
 			}

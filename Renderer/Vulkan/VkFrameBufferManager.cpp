@@ -46,6 +46,16 @@ namespace Renderer
 				VK_CHECK_RESULT(vkCreateFramebuffer(Renderer::Vulkan::RenderSystem::vkDevice, &fbCreateInfo, nullptr, &vkFrameBuffer));
 		}
 
+		void FrameBufferManager::DestroyFrameBufferAndResources(const std::vector<DOD::Ref>& refs)
+		{
+			DestroyResources(refs);
+
+			for (const auto& ref : refs)
+			{
+				DestroyFrameBuffer(ref);
+			}
+		}
+
 		void FrameBufferManager::DestroyResources(const std::vector<DOD::Ref>& refs)
 		{
 			for (uint32_t i = 0u; i < refs.size(); ++i)

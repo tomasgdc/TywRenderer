@@ -136,5 +136,48 @@ namespace Renderer
 
 			VK_CHECK_RESULT(vkCreateImageView(Renderer::Vulkan::RenderSystem::vkDevice, &imageViewCreateInfo, nullptr, &ImageManager::GetImageView(ref)));
 		}
+
+
+		void ImageManager::DestroyResource(const std::vector<DOD::Ref>& refs)
+		{
+			for (auto& ref : refs)
+			{
+				VkImage& image = GetVkImage(ref);
+				auto& imageViews = GetSubresourceImageViews(ref);
+				VkImageView imageView = GetImageView(ref);
+
+				if (!HasImageFlags(ref, ImageFlags::kExternalImage))
+				{
+					if (image != VK_NULL_HANDLE)
+					{
+						vkDestroyImage(Renderer::Vulkan::RenderSystem::vkDevice, image, nullptr);
+					}
+				}
+				image = VK_NULL_HANDLE;
+
+				if (!HasImageFlags(ref, ImageFlags::kExternalView))
+				{
+					for (uint32_t arrayLayerIdx = 0u; arrayLayerIdx < imageViews.size(); ++arrayLayerIdx)
+					{
+						for (uint32_t mipIdx = 0u; mipIdx < imageViews[arrayLayerIdx].size(); ++mipIdx)
+						{
+							VkImageView vkImageView = imageViews[arrayLayerIdx][mipIdx];
+							if (vkImageView != VK_NULL_HANDLE)
+							{
+								vkDestroyImageView(Renderer::Vulkan::RenderSystem::vkDevice, vkImageView, nullptr);
+								vkImageView = VK_NULL_HANDLE;
+							}
+						}
+
+						if (imageView != VK_NULL_HANDLE)
+						{
+							vkDestroyImageView(Renderer::Vulkan::RenderSystem::vkDevice, imageView, nullptr);
+							imageView = VK_NULL_HANDLE;
+						}
+					}
+				}
+				imageViews.clear();
+			}
+		}
 	}
 }

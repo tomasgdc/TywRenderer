@@ -38,9 +38,18 @@ namespace Renderer
 					MAX_PIPELINE_LAYOUT_COUNT>::initResourceManager();
 			}
 
-			static void	CreateResource(const DOD::Ref& ref);
+			static void CreateAllResources()
+			{
+				DestroyResources(activeRefs);
+				CreateResource(activeRefs);
+			}
+
+			static void	CreateResource(const std::vector<DOD::Ref>& refs);
 
 			static VkDescriptorSet AllocateWriteDescriptorSet(const DOD::Ref& ref, const std::vector<BindingInfo>& binding_infos);
+
+
+			static void DestroyPipelineLayoutAndResources(const std::vector<DOD::Ref>& refs);
 
 			static DOD::Ref CreatePipelineLayout(const std::string& name)
 			{
@@ -50,7 +59,7 @@ namespace Renderer
 				return ref;
 			}
 
-			static void DestroyPipelineLayoutAndResource(const DOD::Ref& ref)
+			static void DestroyPipelineLayout(const DOD::Ref& ref)
 			{
 				DOD::Resource::ResourceManagerBase<PipelineLayoutData, MAX_PIPELINE_LAYOUT_COUNT>::destroyResource(ref);
 			}

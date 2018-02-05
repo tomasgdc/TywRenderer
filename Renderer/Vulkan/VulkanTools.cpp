@@ -396,7 +396,7 @@ VkDescriptorSetLayoutCreateInfo VkTools::Initializer::DescriptorSetLayoutCreateI
 {
 	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
 	descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptorSetLayoutCreateInfo.pNext = NULL;
+	descriptorSetLayoutCreateInfo.pNext = nullptr;
 	descriptorSetLayoutCreateInfo.pBindings = pBindings;
 	descriptorSetLayoutCreateInfo.bindingCount = bindingCount;
 	descriptorSetLayoutCreateInfo.flags = 0;
@@ -407,9 +407,13 @@ VkPipelineLayoutCreateInfo VkTools::Initializer::PipelineLayoutCreateInfo(const 
 {
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
 	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutCreateInfo.pNext = NULL;
+	pipelineLayoutCreateInfo.pNext = nullptr;
 	pipelineLayoutCreateInfo.setLayoutCount = setLayoutCount;
 	pipelineLayoutCreateInfo.pSetLayouts = pSetLayouts;
+	pipelineLayoutCreateInfo.setLayoutCount = 1u;
+	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+	pipelineLayoutCreateInfo.flags = 0;
 	return pipelineLayoutCreateInfo;
 }
 
@@ -417,7 +421,7 @@ VkDescriptorSetAllocateInfo VkTools::Initializer::DescriptorSetAllocateInfo(VkDe
 {
 	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
 	descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descriptorSetAllocateInfo.pNext = NULL;
+	descriptorSetAllocateInfo.pNext = nullptr;
 	descriptorSetAllocateInfo.descriptorPool = descriptorPool;
 	descriptorSetAllocateInfo.pSetLayouts = pSetLayouts;
 	descriptorSetAllocateInfo.descriptorSetCount = descriptorSetCount;
@@ -429,7 +433,8 @@ VkDescriptorPoolCreateInfo VkTools::Initializer::DescriptorPoolCreateInfo(uint32
 {
 	VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
 	descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolInfo.pNext = NULL;
+	descriptorPoolInfo.pNext = nullptr;
+	descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 	descriptorPoolInfo.poolSizeCount = poolSizeCount;
 	descriptorPoolInfo.pPoolSizes = pPoolSizes;
 	descriptorPoolInfo.maxSets = maxSets;

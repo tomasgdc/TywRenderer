@@ -59,8 +59,24 @@ namespace Renderer
 				return ref;
 			}
 
-			static void CreateResource(const DOD::Ref& ref);
+			static void DestroyDrawCall(const DOD::Ref& ref)
+			{
+				DOD::Resource::ResourceManagerBase<
+					DrawCallData, MAX_DRAW_CALLS>::destroyResource(ref);
+			}
+
+			static void DestroyDrawCallsAndResources(const std::vector<DOD::Ref>& refs);
+
+			static void CreateAllResources()
+			{
+				DestroyResources(activeRefs);
+				CreateResource(activeRefs);
+			}
+
+			static void CreateResource(const std::vector<DOD::Ref>& refs);
 			static void DestroyResources(const std::vector<DOD::Ref>& refs);
+
+			static void CreateDrawCallForMesh(const DOD::Ref& ref);
 
 			static std::vector<BindingInfo>& GetBindingInfo(const DOD::Ref& ref)
 			{
