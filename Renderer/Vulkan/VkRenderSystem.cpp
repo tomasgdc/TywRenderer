@@ -104,6 +104,25 @@ namespace Renderer
 			VK_CHECK_RESULT(vkCreateInstance(&instanceCreateInfo, nullptr, &vkInstance));
 		}
 
+		void RenderSystem::Shutdown()
+		{
+			//wait on the host for the completion of outstanding queue operations for all queues on a given logical device
+			vkDeviceWaitIdle(vkDevice);
+
+			Renderer::Vulkan::RenderSystem::DestroyCommandBuffers();
+
+			//Release resources
+			Renderer::Resource::DrawCallManager::DestroyResources(Renderer::Resource::DrawCallManager::activeRefs);
+			Renderer::Resource::RenderPassManager::DestroyResources(Renderer::Resource::RenderPassManager::activeRefs);
+			Renderer::Resource::GpuProgramManager::DestroyResources(Renderer::Resource::GpuProgramManager::activeRefs);
+			Renderer::Resource::PipelineLayoutManager::DestroyResources(Renderer::Resource::PipelineLayoutManager::activeRefs);
+			Renderer::Resource::PipelineManager::DestroyResources(Renderer::Resource::PipelineManager::activeRefs);
+			Renderer::Resource::BufferObjectManager::DestroyResources(Renderer::Resource::BufferObjectManager::activeRefs);
+			Renderer::Vulkan::GpuMemoryManager::Destroy();
+
+			//Will fix later...
+			Renderer::Vulkan::RenderSystem::DestroyVulkanDebug(true);
+		}
 
 		void RenderSystem::InitVulkanDebug(bool enableValidation)
 		{

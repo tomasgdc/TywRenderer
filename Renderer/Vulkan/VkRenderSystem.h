@@ -57,6 +57,8 @@ namespace Renderer
 #endif
 			);
 
+			static void Shutdown();
+
 			static void InitVulkanInstance(bool enableValidation, const std::string& application_name);
 
 			static void InitVulkanDebug(bool enableValidation);

@@ -379,20 +379,7 @@ int main()
 		auto tEnd = std::chrono::high_resolution_clock::now();
 	}
 
-	Renderer::Vulkan::RenderSystem::DestroyCommandBuffers();
-
-	//Release resources
-	Renderer::Resource::DrawCallManager::DestroyResources(Renderer::Resource::DrawCallManager::activeRefs);
-	Renderer::Resource::RenderPassManager::DestroyResources(Renderer::Resource::RenderPassManager::activeRefs);
-	Renderer::Resource::GpuProgramManager::DestroyResources(Renderer::Resource::GpuProgramManager::activeRefs);
-	Renderer::Resource::PipelineLayoutManager::DestroyResources(Renderer::Resource::PipelineLayoutManager::activeRefs);
-	Renderer::Resource::PipelineManager::DestroyResources(Renderer::Resource::PipelineManager::activeRefs);
-	Renderer::Resource::BufferObjectManager::DestroyResources(Renderer::Resource::BufferObjectManager::activeRefs);
-	Renderer::Vulkan::GpuMemoryManager::Destroy();
-
-	//Will fix later...
-	Renderer::Vulkan::RenderSystem::DestroyVulkanDebug(true);
-
+	Renderer::Vulkan::RenderSystem::Shutdown();
 	system("pause");
 	return 0;
 }
