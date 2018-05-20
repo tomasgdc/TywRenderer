@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <External\vulkan\vulkan.h>
+#include <External\vulkan\vulkan.hpp>
 #include "../DOD.h"
 
 namespace Renderer
@@ -57,6 +58,10 @@ namespace Renderer
 			);
 
 			static void InitVulkanInstance(bool enableValidation, const std::string& application_name);
+
+			static void InitVulkanDebug(bool enableValidation);
+			static void DestroyVulkanDebug(bool enableValidation);
+
 			static void InitVulkanDevice(bool enableValidation);
 			static void InitCommandPool();
 

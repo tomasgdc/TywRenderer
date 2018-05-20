@@ -57,8 +57,8 @@ namespace Renderer
 
 				VkPipelineColorBlendAttachmentState blendAttachmentState =
 					VkTools::Initializer::PipelineColorBlendAttachmentState(
-						0xf,
-						VK_FALSE);
+						VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+						VK_TRUE);
 
 				VkPipelineColorBlendStateCreateInfo colorBlendState =
 					VkTools::Initializer::PipelineColorBlendStateCreateInfo(

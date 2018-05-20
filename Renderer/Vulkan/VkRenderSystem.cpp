@@ -48,7 +48,7 @@ namespace Renderer
 		VkSwapchainKHR               RenderSystem::vkSwapchain = nullptr;
 		std::vector<VkImageView>     RenderSystem::vkSwapchainImageViews;
 		VkFormat                     RenderSystem::vkDepthFormatToUse;
-		VkFormat                     RenderSystem::vkColorFormatToUse = VK_FORMAT_B8G8R8A8_SRGB;
+		VkFormat                     RenderSystem::vkColorFormatToUse = VK_FORMAT_B8G8R8A8_UNORM;
 		VkSemaphore                  RenderSystem::vkImageAcquireSemaphore;
 
 		uint32_t                     RenderSystem::backBufferIndex = 0u;
@@ -104,6 +104,28 @@ namespace Renderer
 			VK_CHECK_RESULT(vkCreateInstance(&instanceCreateInfo, nullptr, &vkInstance));
 		}
 
+
+		void RenderSystem::InitVulkanDebug(bool enableValidation)
+		{
+			if (enableValidation)
+			{
+				VkDebugReportFlagsEXT debugReportFlags = VK_DEBUG_REPORT_ERROR_BIT_EXT
+					| VK_DEBUG_REPORT_WARNING_BIT_EXT
+					//| VK_DEBUG_REPORT_INFORMATION_BIT_EXT
+					| VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
+					//| VK_DEBUG_REPORT_DEBUG_BIT_EXT;
+
+				vkDebug::setupDebugging(vkInstance, debugReportFlags, VK_NULL_HANDLE);
+			}
+		}
+
+		void RenderSystem::DestroyVulkanDebug(bool enableValidation)
+		{
+			if (enableValidation)
+			{
+				vkDebug::freeDebugCallback(vkInstance);
+			}
+		}
 
 		void RenderSystem::InitVulkanDevice(bool benableValidation)
 		{
@@ -234,11 +256,6 @@ namespace Renderer
 
 			if (benableValidation)
 			{
-				// The report flags determine what type of messages for the layers will be displayed
-				// For validating (debugging) an appplication the error and warning bits should suffice
-				VkDebugReportFlagsEXT debugReportFlags = VK_DEBUG_REPORT_ERROR_BIT_EXT; // VK_DEBUG_REPORT_WARNING_BIT_EXT (enable to also display warnings)
-																						// Additional flags include performance info, loader and layer debug messages, etc.
-				vkDebug::setupDebugging(vkInstance, debugReportFlags, VK_NULL_HANDLE);
 				vkDebug::DebugMarker::setup(vkDevice);
 			}
 		}
@@ -341,6 +358,7 @@ namespace Renderer
 			Renderer::Vulkan::GpuMemoryManager::Init();
 
 			InitVulkanInstance(enableValidation, application_name);
+			InitVulkanDebug(enableValidation);
 			InitVulkanDevice(enableValidation);
 			InitPlatformDependentFormats();
 			InitVulkanSurface(handle, window);
@@ -404,7 +422,7 @@ namespace Renderer
 			result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkPhysicalDevice, vkSurface, &surfaceCapabilities);
 			VK_CHECK_RESULT(result);
 
-			static VkFormat surfaceFormatToUse = VK_FORMAT_B8G8R8A8_SRGB;
+			static VkFormat surfaceFormatToUse = VK_FORMAT_B8G8R8A8_UNORM;
 			static VkColorSpaceKHR surfaceColorSpaceToUse = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
 			// Get available present modes
@@ -540,7 +558,13 @@ namespace Renderer
 				colorAttachmentView.flags = 0;
 				colorAttachmentView.image = vkSwapchainImages[i];
 
-				result = vkCreateImageView(vkDevice, &colorAttachmentView, nullptr, &vkSwapchainImageViews[i]);
+				auto const viewInfo = vk::ImageViewCreateInfo()
+					.setImage(vkSwapchainImages[i])
+					.setViewType(vk::ImageViewType::e2D)
+					.setFormat(vk::Format::eB8G8R8A8Unorm)
+					.setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
+
+				result = vkCreateImageView(vkDevice, reinterpret_cast<const VkImageViewCreateInfo*>(&viewInfo), nullptr, &vkSwapchainImageViews[i]);
 				VK_CHECK_RESULT(result);
 			}
 
@@ -806,7 +830,7 @@ namespace Renderer
 			{
 				postPresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 				postPresentBarrier.pNext = nullptr;
-				postPresentBarrier.srcAccessMask = 0u;
+				postPresentBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
 				postPresentBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 				postPresentBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 				postPresentBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -820,7 +844,7 @@ namespace Renderer
 				postPresentBarrier.subresourceRange.layerCount = 1u;
 				postPresentBarrier.image = vkSwapchainImages[backBufferIndex];
 
-				vkCmdPipelineBarrier(vkCmdBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &postPresentBarrier);
+				vkCmdPipelineBarrier(vkCmdBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &postPresentBarrier);
 			}
 		}
 

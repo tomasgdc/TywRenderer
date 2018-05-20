@@ -601,6 +601,17 @@ VkPipelineColorBlendAttachmentState VkTools::Initializer::PipelineColorBlendAtta
 	VkPipelineColorBlendAttachmentState pipelineColorBlendAttachmentState = {};
 	pipelineColorBlendAttachmentState.colorWriteMask = colorWriteMask;
 	pipelineColorBlendAttachmentState.blendEnable = blendEnable;
+
+	if (blendEnable)
+	{
+		pipelineColorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		pipelineColorBlendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		pipelineColorBlendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
+		pipelineColorBlendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		pipelineColorBlendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		pipelineColorBlendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
+	}
+
 	return pipelineColorBlendAttachmentState;
 }
 
