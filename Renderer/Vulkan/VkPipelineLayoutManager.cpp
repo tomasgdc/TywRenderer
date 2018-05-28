@@ -1,5 +1,5 @@
 #include "VkPipelineLayoutManager.h"
-#include "VkBufferObjectManager.h"
+#include "VkUniformBufferManager.h"
 
 #include "VulkanTools.h"
 #include "VkRenderSystem.h"
@@ -66,9 +66,9 @@ namespace Renderer
 			{
 				auto& pipeline_layout = pipeline_layouts[i];
 
-				const BindingInfo&     info      = binding_infos[i];
-				BufferObject& buffer_object      = BufferObjectManager::GetBufferObject(info.buffer_ref);
-				const VkDeviceSize size_in_bytes = BufferObjectManager::GetBufferSize(info.buffer_ref);
+				const BindingInfo&     info			= binding_infos[i];
+				UniformBufferObject& buffer_object  = UniformBufferManager::GetUniformBufferObject(info.buffer_ref);
+				const VkDeviceSize size_in_bytes	= UniformBufferManager::GetUniformBufferSize(info.buffer_ref);
 
 				VkDescriptorBufferInfo& buffer_info = buffer_infos[i];
 

@@ -1,7 +1,7 @@
 #pragma once
+#include <glm\vec2.hpp>
 #include <vector>
 #include <External\vulkan\vulkan.h>
-#include <External\vulkan\vulkan.hpp>
 #include "../DOD.h"
 
 namespace Renderer

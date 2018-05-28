@@ -8,6 +8,7 @@
 #include "VkGpuProgram.h"
 #include "VkBufferLayoutManager.h"
 #include "VkBufferObjectManager.h"
+#include "VkUniformBufferManager.h"
 #include "DrawCallManager.h"
 #include "VkDrawCallDispatcher.h"
 #include "VkGPUMemoryManager.h"
@@ -118,6 +119,7 @@ namespace Renderer
 			Renderer::Resource::PipelineLayoutManager::DestroyResources(Renderer::Resource::PipelineLayoutManager::activeRefs);
 			Renderer::Resource::PipelineManager::DestroyResources(Renderer::Resource::PipelineManager::activeRefs);
 			Renderer::Resource::BufferObjectManager::DestroyResources(Renderer::Resource::BufferObjectManager::activeRefs);
+			Renderer::Resource::UniformBufferManager::DestroyResources(Renderer::Resource::UniformBufferManager::activeRefs);
 			Renderer::Vulkan::GpuMemoryManager::Destroy();
 
 			//Will fix later...
@@ -371,6 +373,7 @@ namespace Renderer
 			Renderer::Resource::PipelineManager::init();
 			Renderer::Resource::BufferLayoutManager::init();
 			Renderer::Resource::BufferObjectManager::init();
+			Renderer::Resource::UniformBufferManager::init();
 			Renderer::Resource::ImageManager::init();
 			Renderer::Resource::FrameBufferManager::init();
 			Renderer::Resource::DrawCallManager::init();
@@ -577,13 +580,7 @@ namespace Renderer
 				colorAttachmentView.flags = 0;
 				colorAttachmentView.image = vkSwapchainImages[i];
 
-				auto const viewInfo = vk::ImageViewCreateInfo()
-					.setImage(vkSwapchainImages[i])
-					.setViewType(vk::ImageViewType::e2D)
-					.setFormat(vk::Format::eB8G8R8A8Unorm)
-					.setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-
-				result = vkCreateImageView(vkDevice, reinterpret_cast<const VkImageViewCreateInfo*>(&viewInfo), nullptr, &vkSwapchainImageViews[i]);
+				result = vkCreateImageView(vkDevice, reinterpret_cast<const VkImageViewCreateInfo*>(&colorAttachmentView), nullptr, &vkSwapchainImageViews[i]);
 				VK_CHECK_RESULT(result);
 			}
 

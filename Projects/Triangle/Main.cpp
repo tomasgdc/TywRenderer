@@ -10,6 +10,7 @@
 #include "../../Renderer/Vulkan/VkGpuProgram.h"
 #include "../../Renderer/Vulkan/VkBufferLayoutManager.h"
 #include "../../Renderer/Vulkan/VkBufferObjectManager.h"
+#include "../../Renderer/Vulkan/VkUniformBufferManager.h"
 #include "../../Renderer/Geometry/VertData.h"
 
 #include "../../Renderer/Vulkan/VkBufferObject.h"
@@ -331,12 +332,12 @@ int main()
 		Renderer::Resource::BufferObjectManager::GetBufferData(staging_buffer_indices_ref) = indexBuffer.data();
 		Renderer::Resource::BufferObjectManager::CreateResource(staging_buffer_indices_ref, Renderer::Vulkan::RenderSystem::vkPhysicalDeviceMemoryProperties);
 
-		DOD::Ref uniform_buffer_ref = Renderer::Resource::BufferObjectManager::CreateBufferOjbect("UniformBuffer1");
+		DOD::Ref uniform_buffer_ref = Renderer::Resource::UniformBufferManager::CreateUniformBufferOjbect("UniformBuffer1");
 
-		Renderer::Resource::BufferObjectManager::GetBufferSize(uniform_buffer_ref) = sizeof(m_uboVS);
-		Renderer::Resource::BufferObjectManager::GetBufferUsageFlag(uniform_buffer_ref) = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-		Renderer::Resource::BufferObjectManager::GetBufferData(uniform_buffer_ref) = &m_uboVS;
-		Renderer::Resource::BufferObjectManager::CreateResource(uniform_buffer_ref, Renderer::Vulkan::RenderSystem::vkPhysicalDeviceMemoryProperties);
+		Renderer::Resource::UniformBufferManager::GetUniformBufferSize(uniform_buffer_ref) = sizeof(m_uboVS);
+		Renderer::Resource::UniformBufferManager::GetUniformBufferUsageFlag(uniform_buffer_ref) = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		Renderer::Resource::UniformBufferManager::GetUniformBufferData(uniform_buffer_ref) = &m_uboVS;
+		Renderer::Resource::UniformBufferManager::CreateResource(uniform_buffer_ref, Renderer::Vulkan::RenderSystem::vkPhysicalDeviceMemoryProperties);
 	//}
 
 	//Link data for drawing
