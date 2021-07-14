@@ -1,3 +1,7 @@
+
+
+https://user-images.githubusercontent.com/10357361/125615219-82803abe-fdbc-4a92-b8cf-484bad370515.mp4
+
 # TywRenderer
 <a href="https://scan.coverity.com/projects/tywyllsoftware-tywrenderer">
   <img alt="Coverity Scan Build Status"
@@ -109,6 +113,8 @@ Big part of the code is based on the Frostbite documentation on PBR.
 [SSAO shader](Assets/Shaders/SSAO)
 Based on John Champan tutorial for Normal oriented SSAO.
 http://john-chapman-graphics.blogspot.co.uk/2013/01/ssao-tutorial.html
+
+Uploading tomasgraphics.mp4…
 
 ## License
 Copyright (c) 2016 Tomas Mikalauskas
